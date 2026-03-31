@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Types, Document } from "mongoose";
 import { Product } from "src/products/schemas/producct.schema";
 import { User } from "src/users/schema/users.schema";
+import { OrderStatus } from "../order-status.enum";
 
 export type OrderDocument = Order & Document;
 
@@ -36,8 +37,12 @@ export class Order {
     @Prop()
     address: string;
 
-    @Prop({ default: 'PENDING' })
-    status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
+    @Prop({
+    type: String,
+    enum: OrderStatus,
+    default: OrderStatus.PENDING,
+    })
+    status: OrderStatus;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

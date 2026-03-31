@@ -5,6 +5,7 @@ import { OrdersService } from './orders.service';
 import { Roles } from 'src/auth/roles.decorator';
 import { Role } from 'src/auth/roles.enum';
 import { CreateOrderDto } from './dto/create-order.dto';
+import {  OrderStatus } from './order-status.enum';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('orders')
@@ -33,7 +34,7 @@ export class OrdersController {
     @Roles(Role.ADMIN)
     updateStatus(
         @Param('id') id: string,
-        @Body() body: { status: string },
+        @Body() body: { status: OrderStatus },
     ) {
         return this.ordersService.updateStatus(id, body.status);
     }

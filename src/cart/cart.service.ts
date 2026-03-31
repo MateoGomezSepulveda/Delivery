@@ -27,6 +27,8 @@ export class CartService {
     const product = await this.productsService.findOne(productId);
     if (!product) throw new NotFoundException('Product not found');
 
+    if (!product.available) throw new NotFoundException('Product not available');
+
     const cart = await this.getActiveCart(userId);
 
     const itemIndex = cart.items.findIndex(
