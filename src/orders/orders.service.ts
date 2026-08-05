@@ -30,9 +30,9 @@ export class OrdersService {
             throw new BadRequestException('Cart is empty');
         }
 
-        const orderItems = cart.items.map((item) => ({
-            productId: item.productId,
-            name: item.productId.toString(),
+        const orderItems = cart.items.map((item: any) => ({
+            productId: item.productId._id || item.productId,
+            name: item.productId.name || 'Producto',
             quantity: item.quantity,
             price: item.price,
         }));

@@ -1,101 +1,150 @@
 # 📦 App Delivery – Backend API
 
-Backend API for **App Delivery**, built with **Node.js**, **Express**, **MongoDB**, and **Mongoose**.
-This project provides user management and authentication features following a modular architecture.
+API RESTful completa para la plataforma de **App Delivery**, desarrollada con **NestJS (v11)**, **TypeScript**, **MongoDB** y **Mongoose**. Sigue una arquitectura modular, limpia y robusta, con seguridad por roles, autenticación JWT, limitación de tasa (rate limiting) y soporte para Docker.
 
 ---
 
-## 🚀 Technologies Used
+## 🚀 Tecnologías Utilizadas
 
-* Node.js
-* Express
-* MongoDB Atlas
-* Mongoose
-* bcrypt
-* JWT *(in progress)*
-* DTO validation
-
----
-
-## 📁 Project Structure
-
-* Modular architecture
-* Separation of concerns:
-
-  * Controllers
-  * Services
-  * Modules
-  * Schemas
-  * DTOs
+- **Framework Core:** NestJS (v11) & Node.js
+- **Base de Datos:** MongoDB Atlas / Mongoose (v9)
+- **Autenticación & Encriptación:** JWT (`@nestjs/jwt`, `passport-jwt`) & `bcrypt`
+- **Autorización:** Control de Acceso Basado en Roles (RBAC: `ADMIN`, `CLIENT`, `DELIVERY`)
+- **Validación de Datos:** `class-validator` & `class-transformer` (ValidationPipe estricto)
+- **Seguridad:** `helmet` (HTTP Headers) & `@nestjs/throttler` (Rate Limiting)
+- **Manejo de Errores:** Filtro global de excepciones personalizado (`HttpExceptionFilter`)
+- **Contenedorización:** Docker & Docker Compose
 
 ---
 
-## ⚙️ Database Setup
+## 📁 Arquitectura del Proyecto
 
-1. MongoDB Atlas configured
-2. Mongoose installed and connected
-3. User schema created with validations
-4. Unique email constraint applied
+El proyecto sigue una arquitectura modular en NestJS con separación clara de responsabilidades:
 
----
-
-## 👤 Users Module
-
-### Implemented Features
-
-* User schema definition
-* Users module, controller, and service
-* Database persistence using Mongoose
-
-### CRUD Endpoints
-
-* `POST /users` → Create user
-* `GET /users` → Get all users
-* `PATCH /users/:id` → Update user data
-* `DELETE /users/:id` → Delete user
+```text
+src/
+├── main.ts                     # Punto de entrada (Pipes globales, Helmet, CORS, Throttler)
+├── app.module.ts               # Módulo raíz e integración de Mongoose & ConfigModule
+├── common/                     # Utilidades compartidas y filtros globales de excepciones
+├── auth/                       # Autenticación JWT, Estrategia Passport, Guards y Roles
+├── users/                      # Gestión de usuarios, esquemas y DTOs
+├── categories/                 # Categorías de productos
+├── products/                   # Catálogo de productos
+├── cart/                       # Carrito de compras persistente por usuario
+└── orders/                     # Creación, consulta y cambio de estados de pedidos
+```
 
 ---
 
-## ✅ Validation & Security
+## 🔐 Seguridad y Funcionalidades Principales
 
-* DTO-based input validation
-* Email must follow `@gmail.com` format
-* Password minimum length: **6 characters**
-* Username is required
-* Password encryption using **bcrypt**
-* Duplicate email handling at database level
+### 1. Autenticación y Autorización (RBAC)
+- Encriptación segura de contraseñas con `bcrypt`.
+- Emisión y validación de tokens JWT mediante `JwtAuthGuard` y `JwtStrategy`.
+- Decorador personalizado `@Roles()` y `RolesGuard` para proteger rutas según el rol (`ADMIN`, `CLIENT`, `DELIVERY`).
 
----
-
-## 🔐 Authentication (In Progress)
-
-### Current Auth Features
-
-* Login endpoint implemented
-* User credential validation
-* Password comparison using bcrypt
-
-### Upcoming
-
-* JWT token generation
-* Authentication middleware
-* Protected routes
-* Role-based access control
+### 2. Protección & Rate Limiting
+- **Helmet:** Encabezados de seguridad HTTP habilitados.
+- **Throttler Guard:** Protección anti-fuerza bruta (Límite: 10 peticiones por minuto por cliente).
+- **ValidationPipe Global:** Limpieza estricta de payloads (`whitelist`, `forbidNonWhitelisted`, `transform`).
 
 ---
 
-## 📌 Current Status
+## 📡 Módulos y Endpoints de la API
 
-✔ Database connected
-✔ Users CRUD implemented
-✔ Validations applied
-✔ Password encryption
-✔ Login flow started
+### 🔑 Autenticación (`/auth`)
+| Método | Endpoint | Protección | Descripción |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/auth/login` | Pública | Iniciar sesión y obtener el token JWT |
 
-➡️ **Next step:** Complete JWT authentication and protect routes.
+### 👤 Usuarios (`/users`)
+| Método | Endpoint | Protección | Descripción |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/users` | Pública | Registro de nuevos usuarios |
+| `GET` | `/users` | JWT + Admin | Obtener lista completa de usuarios |
+| `GET` | `/users/:id` | JWT | Obtener detalles de un usuario |
+| `PATCH` | `/users/:id` | JWT | Actualizar datos del usuario |
+| `DELETE` | `/users/:id` | JWT + Admin | Eliminar un usuario |
+
+### 🏷️ Categorías (`/categories`)
+| Método | Endpoint | Protección | Descripción |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/categories` | Pública | Obtener todas las categorías |
+| `GET` | `/categories/:id` | Pública | Obtener categoría por ID |
+| `POST` | `/categories` | JWT + Admin | Crear nueva categoría |
+| `PATCH` | `/categories/:id` | JWT + Admin | Editar categoría existente |
+| `DELETE` | `/categories/:id` | JWT + Admin | Eliminar categoría |
+
+### 🍕 Productos (`/products`)
+| Método | Endpoint | Protección | Descripción |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/products` | Pública | Listar todos los productos del catálogo |
+| `GET` | `/products/:id` | Pública | Obtener detalles de un producto |
+| `POST` | `/products` | JWT + Admin | Crear un nuevo producto |
+| `PATCH` | `/products/:id` | JWT + Admin | Actualizar un producto |
+| `DELETE` | `/products/:id` | JWT + Admin | Eliminar un producto |
+
+### 🛒 Carrito de Compras (`/cart`)
+| Método | Endpoint | Protección | Descripción |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/cart` | JWT | Obtener el carrito del usuario autenticado |
+| `POST` | `/cart/add` | JWT | Agregar/actualizar producto en el carrito |
+| `DELETE` | `/cart/remove` | JWT | Eliminar producto específico del carrito |
+
+### 📦 Pedidos (`/orders`)
+| Método | Endpoint | Protección | Descripción |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/orders` | JWT | Crear pedido a partir del carrito actual |
+| `GET` | `/orders/me` | JWT | Historial de pedidos del cliente |
+| `GET` | `/orders` | JWT + Admin | Ver todos los pedidos creados |
+| `PATCH` | `/orders/:id/status` | JWT + Admin | Cambiar estado (`PENDING`, `IN_PREPARATION`, `ON_THE_WAY`, `DELIVERED`, `CANCELLED`) |
 
 ---
 
-## 🧠 Notes
+## ⚙️ Configuración y Variables de Entorno
 
-This project is under active development and follows best practices for backend architecture and security.
+Crea un archivo `.env` en la raíz del proyecto backend con la siguiente configuración:
+
+```env
+PORT=3000
+MONGO_URI=mongodb+srv://<usuario>:<password>@<cluster>.mongodb.net/<dbname>?retryWrites=true&wMode=majority
+JWT_SECRET=tu_clave_secreta_super_segura
+```
+
+---
+
+## 🛠️ Instalación y Ejecución
+
+### Desarrollo Local
+
+```bash
+# 1. Instalar dependencias
+npm install
+
+# 2. Iniciar servidor en modo desarrollo (Watch mode)
+npm run start:dev
+```
+
+### Ejecución con Docker
+
+```bash
+# Construir la imagen de Docker
+docker build -t delivery-backend .
+
+# Correr el contenedor pasando las variables de entorno
+docker run -p 3000:3000 --env-file .env delivery-backend
+```
+
+---
+
+## 📌 Estado del Proyecto
+
+- [x] Arquitectura modular NestJS configurada.
+- [x] Conexión asíncrona a MongoDB Atlas mediante `ConfigService`.
+- [x] CRUD completo de Usuarios, Categorías y Productos.
+- [x] Autenticación JWT y roles de usuario (`ADMIN`, `CLIENT`, `DELIVERY`).
+- [x] Carrito de compras en tiempo real vinculado por usuario.
+- [x] Flujo completo de Pedidos y gestión de estados de orden.
+- [x] Seguridad con Helmet, Rate Limiting (Throttler) y DTO Validations.
+- [x] Contenedorización con Docker lista para despliegue.
+

@@ -12,6 +12,7 @@ import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([
       {
         ttl: 60,
@@ -25,7 +26,6 @@ import { APP_GUARD } from '@nestjs/core';
         uri: configService.get<string>('MONGO_URI'),
       }),
     }),
-    ConfigModule.forRoot({ isGlobal: true }),
     UsersModule,
     AuthModule,
     ProductsModule,
