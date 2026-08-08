@@ -2,6 +2,8 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from 'src/users/users.service';
+import { RegisterDto } from './dto/register.dto';
+import { Role } from './roles.enum';
 
 @Injectable()
 export class AuthService {
@@ -9,6 +11,13 @@ export class AuthService {
     private readonly userService: UsersService,
     private readonly jwtService: JwtService,
   ) {}
+
+  async register(registerDto: RegisterDto) {
+    return this.userService.create({
+      ...registerDto,
+      role: Role.CLIENT, // Siempre CLIENT en registro público
+    });
+  }
 
   async login(email: string, password: string) {
     const user = await this.userService.findByEmail(email);
