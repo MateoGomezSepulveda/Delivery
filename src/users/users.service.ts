@@ -10,7 +10,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 export class UsersService {
   constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
   findAll() {
-    return this.userModel.find();
+    return this.userModel.find().select('-password');
   }
 
   async create(userData: CreateUserDto) {
@@ -20,7 +20,9 @@ export class UsersService {
       ...userData,
       password: hashedPassword,
     });
-    return newUser.save();
+    const saved = await newUser.save();
+    const { password, ...result } = saved.toObject();
+    return result;
   }
 
   async findOne(id: string) {
@@ -28,11 +30,14 @@ export class UsersService {
   }
 
   async update(id: string, updateData: UpdateUserDto) {
+    if (updateData.password) {
+      updateData.password = await bcrypt.hash(updateData.password, 10);
+    }
     return this.userModel.findByIdAndUpdate(
-    id,
-    updateData,
-    { new: true },
-  );
+      id,
+      updateData,
+      { new: true },
+    ).select('-password');
   }
 
   async remove(id: string) {

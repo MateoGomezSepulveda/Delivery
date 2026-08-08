@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Types, Document } from "mongoose";
-import { Product } from "src/products/schemas/producct.schema";
+import { Product } from "src/products/schemas/product.schema";
 import { User } from "src/users/schema/users.schema";
 import { OrderStatus } from "../order-status.enum";
 

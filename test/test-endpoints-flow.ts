@@ -169,16 +169,22 @@ async function runFlowTest() {
   console.log(`   Status: ${checkCartEmpty.status} ${checkCartEmpty.ok ? '✅' : '❌'}`);
   console.log('   Items en carrito post-compra:', checkCartEmpty.data?.items?.length || 0);
 
-  // 13. Actualizar Estado de la Orden (Admin)
+  // 13. Actualizar Estado de la Orden (Admin) — Flujo completo
   if (orderId) {
-    console.log(`\n13. Actualizando estado de la orden como Admin (DELIVERED)...`);
-    const updateOrder = await request(`/orders/${orderId}/status`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${adminToken}` },
-      body: { status: 'DELIVERED' },
-    });
-    console.log(`   Status: ${updateOrder.status} ${updateOrder.ok ? '✅' : '❌'}`);
-    console.log('   Estado actualizado:', updateOrder.data?.status);
+    const statusFlow = ['CONFIRMED', 'PREPARING', 'OUT_FOR_DELIVERY', 'DELIVERED'];
+    console.log(`\n13. Actualizando estado de la orden como Admin (flujo completo)...`);
+    for (const status of statusFlow) {
+      const updateOrder = await request(`/orders/${orderId}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${adminToken}` },
+        body: { status },
+      });
+      console.log(`   → ${status}: ${updateOrder.status} ${updateOrder.ok ? '✅' : '❌'}`);
+      if (!updateOrder.ok) {
+        console.log('   Error:', updateOrder.data);
+        break;
+      }
+    }
   }
 
   console.log('\n--------------------------------------------------');

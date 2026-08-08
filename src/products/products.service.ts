@@ -1,9 +1,9 @@
-import { BadRequestException, forwardRef, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Product, ProductDocument } from './schemas/producct.schema';
+import { Product, ProductDocument } from './schemas/product.schema';
 import { Model } from 'mongoose';
 import { CreateProductDto } from './dto/create-product.dto';
-import { NotFoundError } from 'rxjs';
+
 import { CategoriesService } from 'src/categories/categories.service';
 import { Order, OrderDocument } from 'src/orders/schemas/order.schema';
 
@@ -18,7 +18,7 @@ export class ProductsService {
   async create(dto: CreateProductDto) {
     const category = await this.categoriesService.findOne(dto.categoryId);
     if (!category) {
-      throw new NotFoundError('Category not found');
+      throw new NotFoundException('Category not found');
     }
     const newProduct = new this.productModel(dto);
     return newProduct.save();
