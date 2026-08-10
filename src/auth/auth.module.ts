@@ -7,10 +7,17 @@ import { JwtStrategy } from './jwt.strategy';
 import { RolesGuard } from './roles.guard';
 import { ConfigService } from '@nestjs/config';
 import { SeedService } from './seed.service';
+import { MongooseModule } from '@nestjs/mongoose';
+import { RefreshToken, RefreshTokenSchema } from './schemas/refresh-token.schema';
+import { PasswordReset, PasswordResetSchema } from './schemas/password-reset.schema';
 
 @Module({
   imports: [
     UsersModule,
+    MongooseModule.forFeature([
+      { name: RefreshToken.name, schema: RefreshTokenSchema },
+      { name: PasswordReset.name, schema: PasswordResetSchema },
+    ]),
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
