@@ -1,150 +1,64 @@
-# 📦 App Delivery – Backend API
+# 🚚 App Delivery - Proyecto Principal
 
-API RESTful completa para la plataforma de **App Delivery**, desarrollada con **NestJS (v11)**, **TypeScript**, **MongoDB** y **Mongoose**. Sigue una arquitectura modular, limpia y robusta, con seguridad por roles, autenticación JWT, limitación de tasa (rate limiting) y soporte para Docker.
-
----
-
-## 🚀 Tecnologías Utilizadas
-
-- **Framework Core:** NestJS (v11) & Node.js
-- **Base de Datos:** MongoDB Atlas / Mongoose (v9)
-- **Autenticación & Encriptación:** JWT (`@nestjs/jwt`, `passport-jwt`) & `bcrypt`
-- **Autorización:** Control de Acceso Basado en Roles (RBAC: `ADMIN`, `CLIENT`, `DELIVERY`)
-- **Validación de Datos:** `class-validator` & `class-transformer` (ValidationPipe estricto)
-- **Seguridad:** `helmet` (HTTP Headers) & `@nestjs/throttler` (Rate Limiting)
-- **Manejo de Errores:** Filtro global de excepciones personalizado (`HttpExceptionFilter`)
-- **Contenedorización:** Docker & Docker Compose
+Bienvenido al repositorio principal de la plataforma **App Delivery**. Este proyecto está diseñado con una arquitectura moderna, segura y escalable orientada a módulos desacoplados, enfocado en las mejores prácticas de desarrollo de software.
 
 ---
 
-## 📁 Arquitectura del Proyecto
+## 📁 Estructura del Repositorio
 
-El proyecto sigue una arquitectura modular en NestJS con separación clara de responsabilidades:
-
-```text
-src/
-├── main.ts                     # Punto de entrada (Pipes globales, Helmet, CORS, Throttler)
-├── app.module.ts               # Módulo raíz e integración de Mongoose & ConfigModule
-├── common/                     # Utilidades compartidas y filtros globales de excepciones
-├── auth/                       # Autenticación JWT, Estrategia Passport, Guards y Roles
-├── users/                      # Gestión de usuarios, esquemas y DTOs
-├── categories/                 # Categorías de productos
-├── products/                   # Catálogo de productos
-├── cart/                       # Carrito de compras persistente por usuario
-└── orders/                     # Creación, consulta y cambio de estados de pedidos
-```
+- **`delivery-backend/`**: Servidor API RESTful principal. Construido con **NestJS 11**, **MongoDB**, **Mongoose** y contenedorizado con **Docker**. Contiene toda la lógica de negocio, reglas de seguridad y autenticación. Consulta su documentación completa en el [README del backend](./delivery-backend/README.md).
+- **`docs/`**: Documentación adicional de la arquitectura e infraestructura del proyecto.
+- **`STATUS.md`**: Archivo de seguimiento en tiempo real que documenta el progreso actual, fases completadas y siguientes pasos del desarrollo.
 
 ---
 
-## 🔐 Seguridad y Funcionalidades Principales
+## 🔐 Enfoque en la Seguridad ("Secure by Design")
 
-### 1. Autenticación y Autorización (RBAC)
-- Encriptación segura de contraseñas con `bcrypt`.
-- Emisión y validación de tokens JWT mediante `JwtAuthGuard` y `JwtStrategy`.
-- Decorador personalizado `@Roles()` y `RolesGuard` para proteger rutas según el rol (`ADMIN`, `CLIENT`, `DELIVERY`).
+Este proyecto ha sido construido priorizando la seguridad en cada capa:
 
-### 2. Protección & Rate Limiting
-- **Helmet:** Encabezados de seguridad HTTP habilitados.
-- **Throttler Guard:** Protección anti-fuerza bruta (Límite: 10 peticiones por minuto por cliente).
-- **ValidationPipe Global:** Limpieza estricta de payloads (`whitelist`, `forbidNonWhitelisted`, `transform`).
-
----
-
-## 📡 Módulos y Endpoints de la API
-
-### 🔑 Autenticación (`/auth`)
-| Método | Endpoint | Protección | Descripción |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/auth/login` | Pública | Iniciar sesión y obtener el token JWT |
-
-### 👤 Usuarios (`/users`)
-| Método | Endpoint | Protección | Descripción |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/users` | Pública | Registro de nuevos usuarios |
-| `GET` | `/users` | JWT + Admin | Obtener lista completa de usuarios |
-| `GET` | `/users/:id` | JWT | Obtener detalles de un usuario |
-| `PATCH` | `/users/:id` | JWT | Actualizar datos del usuario |
-| `DELETE` | `/users/:id` | JWT + Admin | Eliminar un usuario |
-
-### 🏷️ Categorías (`/categories`)
-| Método | Endpoint | Protección | Descripción |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/categories` | Pública | Obtener todas las categorías |
-| `GET` | `/categories/:id` | Pública | Obtener categoría por ID |
-| `POST` | `/categories` | JWT + Admin | Crear nueva categoría |
-| `PATCH` | `/categories/:id` | JWT + Admin | Editar categoría existente |
-| `DELETE` | `/categories/:id` | JWT + Admin | Eliminar categoría |
-
-### 🍕 Productos (`/products`)
-| Método | Endpoint | Protección | Descripción |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/products` | Pública | Listar todos los productos del catálogo |
-| `GET` | `/products/:id` | Pública | Obtener detalles de un producto |
-| `POST` | `/products` | JWT + Admin | Crear un nuevo producto |
-| `PATCH` | `/products/:id` | JWT + Admin | Actualizar un producto |
-| `DELETE` | `/products/:id` | JWT + Admin | Eliminar un producto |
-
-### 🛒 Carrito de Compras (`/cart`)
-| Método | Endpoint | Protección | Descripción |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/cart` | JWT | Obtener el carrito del usuario autenticado |
-| `POST` | `/cart/add` | JWT | Agregar/actualizar producto en el carrito |
-| `DELETE` | `/cart/remove` | JWT | Eliminar producto específico del carrito |
-
-### 📦 Pedidos (`/orders`)
-| Método | Endpoint | Protección | Descripción |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/orders` | JWT | Crear pedido a partir del carrito actual |
-| `GET` | `/orders/me` | JWT | Historial de pedidos del cliente |
-| `GET` | `/orders` | JWT + Admin | Ver todos los pedidos creados |
-| `PATCH` | `/orders/:id/status` | JWT + Admin | Cambiar estado (`PENDING`, `IN_PREPARATION`, `ON_THE_WAY`, `DELIVERED`, `CANCELLED`) |
+- **Autenticación Robusta**: Implementación de JWT (JSON Web Tokens) con soporte para Refresh Tokens y flujos seguros de recuperación de contraseñas. Cifrado de contraseñas utilizando `bcrypt`.
+- **Autorización (RBAC y Ownership)**: Control de Acceso Basado en Roles (Admin, Client, Delivery). Implementación de `OwnershipGuard` para asegurar que los usuarios solo puedan acceder y modificar sus propios recursos.
+- **Protección contra Inyecciones**: Uso de `ValidationPipe` estricto (`whitelist`, `forbidNonWhitelisted`) para sanitizar todas las entradas, previniendo ataques de inyección NoSQL y elevación de privilegios (Role Injection).
+- **Defensas de Red y HTTP**: 
+  - **Helmet**: Configuración de cabeceras HTTP seguras para proteger contra vulnerabilidades web comunes.
+  - **Rate Limiting (Throttler)**: Prevención de ataques de fuerza bruta limitando la tasa de peticiones.
+- **Validación Estricta**: Uso de DTOs con `class-validator` para asegurar que la información entrante cumple siempre con el formato esperado.
 
 ---
 
-## ⚙️ Configuración y Variables de Entorno
+## 🚀 Progreso Actual (Fases Completadas)
 
-Crea un archivo `.env` en la raíz del proyecto backend con la siguiente configuración:
+Las siguientes fases centrales ya están implementadas y probadas (con Tests Unitarios exitosos):
 
-```env
-PORT=3000
-MONGO_URI=mongodb+srv://<usuario>:<password>@<cluster>.mongodb.net/<dbname>?retryWrites=true&wMode=majority
-JWT_SECRET=tu_clave_secreta_super_segura
-```
+- ✅ **Fase 0.1 (Auth)**: 
+  - Login seguro, emisión de Access y Refresh Tokens.
+  - Endpoints protegidos y recuperación de contraseñas.
+- ✅ **Fase 0.2 (Users)**: 
+  - Gestión completa de usuarios y validación de email duplicado.
+  - Paginación de resultados con `PaginationQueryDto`.
+  - Documentación interactiva completa con Swagger.
+  - Prevención de inyección de roles a nivel de creación y actualización.
+
+*Siguiente paso: Fase 0.3 (Módulo Categories).*
 
 ---
 
-## 🛠️ Instalación y Ejecución
+## ⚙️ Inicio Rápido
 
-### Desarrollo Local
+Para iniciar el entorno de desarrollo del backend localmente:
 
 ```bash
-# 1. Instalar dependencias
+cd delivery-backend
 npm install
-
-# 2. Iniciar servidor en modo desarrollo (Watch mode)
 npm run start:dev
 ```
 
-### Ejecución con Docker
+O ejecutando con **Docker**:
 
 ```bash
-# Construir la imagen de Docker
+cd delivery-backend
 docker build -t delivery-backend .
-
-# Correr el contenedor pasando las variables de entorno
 docker run -p 3000:3000 --env-file .env delivery-backend
 ```
 
----
-
-## 📌 Estado del Proyecto
-
-- [x] Arquitectura modular NestJS configurada.
-- [x] Conexión asíncrona a MongoDB Atlas mediante `ConfigService`.
-- [x] CRUD completo de Usuarios, Categorías y Productos.
-- [x] Autenticación JWT y roles de usuario (`ADMIN`, `CLIENT`, `DELIVERY`).
-- [x] Carrito de compras en tiempo real vinculado por usuario.
-- [x] Flujo completo de Pedidos y gestión de estados de orden.
-- [x] Seguridad con Helmet, Rate Limiting (Throttler) y DTO Validations.
-- [x] Contenedorización con Docker lista para despliegue.
-
+*Nota: Asegúrate de configurar correctamente tu archivo `.env` basándote en la documentación del backend antes de ejecutar el servidor.*

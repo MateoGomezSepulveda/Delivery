@@ -1,0 +1,590 @@
+# 🔍 Reporte Completo de Problemas — Delivery Backend
+
+> Total: **8 bugs críticos** · **4 problemas de seguridad** · **6 issues de calidad**
+
+---
+
+# 🔴 Bugs Críticos (8)
+
+Estos rompen funcionalidad o causan comportamiento inesperado.
+
+---
+
+## BUG 1 — JWT Secret hardcodeado (nunca lee el `.env`)
+
+> [!CAUTION]
+> Tu `.env` define `JWT_SECRET=supersecreto` pero el código **nunca lo lee**. Usa el string literal `'JWT_SECRET_KEY'` como secreto.
+
+📍 [auth.module.ts](file:///c:/Users/mateo/OneDrive/Documentos/Proyectos/Delivery/delivery-backend/src/auth/auth.module.ts#L12-L15)
+```typescript
+// ❌ Código actual — usa string literal, NO la variable de entorno
+JwtModule.register({
+  secret: 'JWT_SECRET_KEY',   // ← Esto NO es process.env.JWT_SECRET
+  signOptions: { expiresIn: '1h' },
+}),
+```
+
+📍 [jwt.strategy.ts](file:///c:/Users/mateo/OneDrive/Documentos/Proyectos/Delivery/delivery-backend/src/auth/jwt.strategy.ts#L7-L11)
+```typescript
+// ❌ Mismo problema aquí — debe coincidir con el secret del módulo
+constructor() {
+  super({
+    jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+    secretOrKey: 'JWT_SECRET_KEY',  // ← String literal, no lee .env
+  });
+}
+```
+
+**Impacto:** Si cambias el valor en `.env`, el JWT seguirá firmándose con `'JWT_SECRET_KEY'`. Además ambos archivos deben usar la **misma fuente** para el secreto, y actualmente coinciden por casualidad. Si editas uno y no el otro, los tokens se firmarán con un secreto pero se validarán con otro → **todos los logins fallan**.
+
+```diff
+// ✅ Corrección en auth.module.ts
+- JwtModule.register({
+-   secret: 'JWT_SECRET_KEY',
+-   signOptions: { expiresIn: '1h' },
+- }),
++ JwtModule.registerAsync({
++   inject: [ConfigService],
++   useFactory: (config: ConfigService) => ({
++     secret: config.get<string>('JWT_SECRET'),
++     signOptions: { expiresIn: '1h' },
++   }),
++ }),
+
+// ✅ Corrección en jwt.strategy.ts
+- constructor() {
+-   super({
+-     jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+-     secretOrKey: 'JWT_SECRET_KEY',
+-   });
+- }
++ constructor(private configService: ConfigService) {
++   super({
++     jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
++     secretOrKey: configService.get<string>('JWT_SECRET'),
++   });
++ }
+```
+
+---
+
+## BUG 2 — `price` en Product Schema tiene `{default: true}` en vez de `{required: true}`
+
+> [!CAUTION]
+> Si creas un producto sin enviar `price`, el valor guardado será el booleano `true`, no un número. Esto rompe los cálculos del carrito y órdenes.
+
+📍 [producct.schema.ts](file:///c:/Users/mateo/OneDrive/Documentos/Proyectos/Delivery/delivery-backend/src/products/schemas/producct.schema.ts#L15-L16)
+```typescript
+// ❌ Código actual
+@Prop({default: true})   // ← Esto pone price = true si no se envía
+price: number;
+
+@Prop({default: true})   // ← Este sí está bien, es un booleano
+available: boolean;
+```
+
+**Impacto:** El DTO `CreateProductDto` tiene `@IsNumber()` en price así que la validación lo atrapa... **pero solo si `ValidationPipe` está activo**. Si alguien envía la request sin pasar por el pipe (ej: test directo a la DB), el producto se guarda con `price: true`. Luego en el carrito:
+```
+cart.total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+// → sum + true * 2 = sum + 2  ← precio incorrecto
+```
+
+```diff
+// ✅ Corrección
+- @Prop({default: true})
++ @Prop({required: true})
+  price: number;
+```
+
+---
+
+## BUG 3 — Se usa `NotFoundError` de RxJS en vez de `NotFoundException` de NestJS
+
+> [!WARNING]
+> `NotFoundError` de RxJS no es una `HttpException`. NestJS no sabe cómo manejarla y la convierte en un **500 Internal Server Error** genérico.
+
+📍 [products.service.ts](file:///c:/Users/mateo/OneDrive/Documentos/Proyectos/Delivery/delivery-backend/src/products/products.service.ts#L6-L22)
+```typescript
+// ❌ Código actual
+import { NotFoundError } from 'rxjs';  // ← Import incorrecto
+
+async create(dto: CreateProductDto) {
+  const category = await this.categoriesService.findOne(dto.categoryId);
+  if (!category) {
+    throw new NotFoundError('Category not found');  // ← Esto genera un 500, no un 404
+  }
+  // ...
+}
+```
+
+**Impacto:** Cuando el cliente envía un `categoryId` inválido, la respuesta es:
+```json
+// Lo que el cliente recibe:
+{ "statusCode": 500, "message": "Internal server error" }
+// Lo que DEBERÍA recibir:
+{ "statusCode": 404, "message": "Category not found" }
+```
+
+```diff
+// ✅ Corrección
+- import { NotFoundError } from 'rxjs';
++ // (NotFoundException ya importada de @nestjs/common en la línea 1)
+
+- throw new NotFoundError('Category not found');
++ throw new NotFoundException('Category not found');
+```
+
+---
+
+## BUG 4 — `JwtAuthGuard` sin decorador `@Injectable()`
+
+📍 [jwt-auth.guard.ts](file:///c:/Users/mateo/OneDrive/Documentos/Proyectos/Delivery/delivery-backend/src/auth/jwt-auth.guard.ts)
+```typescript
+// ❌ Código actual — toda la clase:
+import { AuthGuard } from '@nestjs/passport';
+
+export class JwtAuthGuard extends AuthGuard('jwt') {}
+```
+
+**Impacto:** Funciona actualmente con `@UseGuards(JwtAuthGuard)` porque NestJS lo instancia directamente. Pero si intentas usarlo como provider inyectable, o con un `APP_GUARD` global, NestJS no podrá resolverlo.
+
+```diff
+// ✅ Corrección
+  import { AuthGuard } from '@nestjs/passport';
++ import { Injectable } from '@nestjs/common';
+
++ @Injectable()
+  export class JwtAuthGuard extends AuthGuard('jwt') {}
+```
+
+---
+
+## BUG 5 — `RolesGuard` crashea si `user` es undefined
+
+📍 [roles.guard.ts](file:///c:/Users/mateo/OneDrive/Documentos/Proyectos/Delivery/delivery-backend/src/auth/roles.guard.ts#L16-L20)
+```typescript
+// ❌ Código actual
+canActivate(context: ExecutionContext): boolean {
+  const requiredRoles = this.reflector.getAllAndOverride<Role[]>(
+    ROLES_KEY,
+    [context.getHandler(), context.getClass()],
+  );
+
+  if (!requiredRoles) return true;
+
+  const request = context.switchToHttp().getRequest();
+  const user = request.user;          // ← Puede ser undefined
+  return requiredRoles.includes(user.role);  // ← 💥 TypeError: Cannot read properties of undefined
+}
+```
+
+**Impacto:** Si `RolesGuard` se ejecuta sin `JwtAuthGuard` antes (como pasa ahora en `CategoriesController`), `request.user` es `undefined`. El server crashea con un `TypeError` no capturado → **500 Internal Server Error** sin mensaje claro.
+
+```diff
+// ✅ Corrección
+  const user = request.user;
++ if (!user) return false;
+  return requiredRoles.includes(user.role);
+```
+
+---
+
+## BUG 6 — `CategoriesController` — `@Roles()` existe pero no hace nada (sin guards)
+
+> [!CAUTION]
+> Los decoradores `@Roles(Role.ADMIN)` están puestos pero **no hay `@UseGuards()`**. El decorador solo pone metadata; sin el guard, esa metadata nunca se evalúa. Cualquier persona puede crear, editar y eliminar categorías sin autenticarse.
+
+📍 [categories.controller.ts](file:///c:/Users/mateo/OneDrive/Documentos/Proyectos/Delivery/delivery-backend/src/categories/categories.controller.ts)
+```typescript
+// ❌ Código actual
+@Controller('categories')
+export class CategoriesController {
+    constructor(private readonly categoriesService: CategoriesService){}
+
+    @Post()
+    @Roles(Role.ADMIN)  // ← Decorador puesto... pero NUNCA se evalúa
+    create(@Body() body: CreateCategoryDto){
+        return this.categoriesService.create(body);
+    }
+
+    @Get()
+    findAll(){ ... }
+
+    @Patch(':id')
+    @Roles(Role.ADMIN)  // ← Igual aquí, decoración sin efecto
+    update(...){ ... }
+
+    @Delete(':id')
+    @Roles(Role.ADMIN)  // ← Y aquí
+    remove(...){ ... }
+}
+```
+
+**Prueba rápida:** Haz un `POST /categories` sin token — funciona. No debería.
+
+```diff
+// ✅ Corrección — agregar guards a nivel de controller
++ @UseGuards(JwtAuthGuard, RolesGuard)
+  @Controller('categories')
+  export class CategoriesController {
+```
+
+---
+
+## BUG 7 — Password expuesto en respuestas de la API
+
+> [!WARNING]
+> El hash del password se retorna al cliente en 3 de 5 métodos del servicio de usuarios.
+
+📍 [users.service.ts](file:///c:/Users/mateo/OneDrive/Documentos/Proyectos/Delivery/delivery-backend/src/users/users.service.ts)
+```typescript
+// ❌ Métodos que EXPONEN el password:
+
+findAll() {
+  return this.userModel.find();  // ← Retorna password hasheado
+}
+
+async create(userData: CreateUserDto) {
+  const newUser = new this.userModel({ ...userData, password: hashedPassword });
+  return newUser.save();  // ← Retorna password hasheado
+}
+
+async update(id: string, updateData: UpdateUserDto) {
+  return this.userModel.findByIdAndUpdate(id, updateData, { new: true });
+  // ← Retorna password hasheado
+}
+
+// ✅ Este SÍ lo excluye correctamente:
+async findOne(id: string) {
+  return this.userModel.findById(id).select('-password').exec();
+}
+```
+
+**Impacto:** Al registrar un usuario, la respuesta contiene:
+```json
+{
+  "name": "Admin Test",
+  "email": "admin@test.com",
+  "password": "$2b$10$xK7Qz...",  // ← Hash expuesto al cliente
+  "role": "ADMIN"
+}
+```
+
+```diff
+// ✅ Corrección
+  findAll() {
+-   return this.userModel.find();
++   return this.userModel.find().select('-password');
+  }
+
+  async create(userData: CreateUserDto) {
+    const newUser = new this.userModel({ ...userData, password: hashedPassword });
+-   return newUser.save();
++   const saved = await newUser.save();
++   const { password, ...result } = saved.toObject();
++   return result;
+  }
+
+  async update(id: string, updateData: UpdateUserDto) {
+-   return this.userModel.findByIdAndUpdate(id, updateData, { new: true });
++   return this.userModel.findByIdAndUpdate(id, updateData, { new: true }).select('-password');
+  }
+```
+
+---
+
+## BUG 8 — `update()` de Users guarda password en texto plano
+
+📍 [users.service.ts](file:///c:/Users/mateo/OneDrive/Documentos/Proyectos/Delivery/delivery-backend/src/users/users.service.ts#L30-L36)
+```typescript
+// ❌ Código actual
+async update(id: string, updateData: UpdateUserDto) {
+  return this.userModel.findByIdAndUpdate(
+    id,
+    updateData,   // ← Si updateData contiene { password: 'nuevo123' }, se guarda SIN hashear
+    { new: true },
+  );
+}
+```
+
+**Impacto:** Flujo del bug:
+1. Cliente hace `PATCH /users/:id` con `{ "password": "nuevaContraseña" }`
+2. Se guarda `password = "nuevaContraseña"` en texto plano
+3. Al hacer login, `bcrypt.compare("nuevaContraseña", "nuevaContraseña")` falla porque bcrypt espera un hash
+4. El usuario queda **permanentemente bloqueado** de su cuenta
+
+```diff
+// ✅ Corrección
+  async update(id: string, updateData: UpdateUserDto) {
++   if (updateData.password) {
++     updateData.password = await bcrypt.hash(updateData.password, 10);
++   }
+    return this.userModel.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true },
+-   );
++   ).select('-password');
+  }
+```
+
+---
+
+# 🟡 Problemas de Seguridad (4)
+
+---
+
+## SEC 1 — Endpoints de usuarios completamente desprotegidos
+
+📍 [users.controller.ts](file:///c:/Users/mateo/OneDrive/Documentos/Proyectos/Delivery/delivery-backend/src/users/users.controller.ts)
+```typescript
+// ❌ Código actual — solo findAll tiene guards
+@Controller('users')
+export class UsersController {
+
+  @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)  // ✅ Este sí está protegido
+  @Roles(Role.ADMIN)
+  findAll() { ... }
+
+  @Get(':id')              // ❌ SIN PROTECCIÓN — cualquiera puede ver datos de cualquier usuario
+  findOne(@Param('id') id: string) { ... }
+
+  @Post()                  // ❌ SIN PROTECCIÓN — cualquiera puede crear usuarios con rol ADMIN
+  create(@Body() CreateUserDto: CreateUserDto) { ... }
+
+  @Patch(':id')            // ❌ SIN PROTECCIÓN — cualquiera puede modificar cualquier usuario
+  update(...) { ... }
+
+  @Delete(':id')           // ❌ SIN PROTECCIÓN — cualquiera puede eliminar cualquier usuario
+  remove(@Param('id') id: string) { ... }
+}
+```
+
+**Riesgo real:**
+```bash
+# Cualquier persona puede crear un admin sin token:
+curl -X POST http://tu-api.com/users \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Hacker","email":"hack@evil.com","password":"123456","role":"ADMIN"}'
+```
+
+---
+
+## SEC 2 — CORS permite cualquier origen
+
+📍 [main.ts](file:///c:/Users/mateo/OneDrive/Documentos/Proyectos/Delivery/delivery-backend/src/main.ts#L20-L24)
+```typescript
+// ❌ Código actual
+app.enableCors({
+  origin: '*',  // ← Permite requests desde CUALQUIER dominio
+  //methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  //credentials: true,    // ← Esto está comentado
+});
+```
+
+**Riesgo:** Cualquier sitio web malicioso puede hacer requests a tu API desde el navegador del usuario.
+
+---
+
+## SEC 3 — JWT Secret trivial
+
+📍 [.env](file:///c:/Users/mateo/OneDrive/Documentos/Proyectos/Delivery/delivery-backend/.env#L3)
+```env
+JWT_SECRET=supersecreto   # ← Fácil de adivinar por fuerza bruta o diccionario
+```
+
+**Riesgo:** Si alguien descubre el secreto, puede firmar tokens JWT válidos con cualquier rol (incluyendo ADMIN) y tener acceso total a la API.
+
+---
+
+## SEC 4 — Rate limiting con TTL en milisegundos (60ms, no 60 segundos)
+
+📍 [app.module.ts](file:///c:/Users/mateo/OneDrive/Documentos/Proyectos/Delivery/delivery-backend/src/app.module.ts#L16-L21)
+```typescript
+// ❌ Código actual
+ThrottlerModule.forRoot([
+  {
+    ttl: 60,     // ← En @nestjs/throttler v6, esto es 60 MILISEGUNDOS, no segundos
+    limit: 10,   // ← 10 requests cada 60ms = extremadamente restrictivo
+  },
+]),
+```
+
+**Impacto:** Los usuarios legítimos pueden recibir `429 Too Many Requests` después de solo unas pocas requests rápidas. Esto bloquea operaciones normales como cargar una página que hace múltiples API calls al mismo tiempo.
+
+```diff
+// ✅ Corrección
+  ThrottlerModule.forRoot([
+    {
+-     ttl: 60,
++     ttl: 60000,    // 60 segundos en milisegundos
+      limit: 10,
+    },
+  ]),
+```
+
+---
+
+# 🟠 Issues de Calidad de Código (6)
+
+---
+
+## QUALITY 1 — Typo en nombre de archivo: `producct.schema.ts`
+
+📍 [producct.schema.ts](file:///c:/Users/mateo/OneDrive/Documentos/Proyectos/Delivery/delivery-backend/src/products/schemas/producct.schema.ts) — **doble "c"**
+
+Archivos que lo importan con el typo:
+```typescript
+// products.module.ts
+import { Product, ProductSchema } from './schemas/producct.schema';
+
+// cart/schemas/cart.schema.ts
+import { Product } from '../../products/schemas/producct.schema';
+
+// orders/schemas/order.schema.ts
+import { Product } from 'src/products/schemas/producct.schema';
+```
+
+---
+
+## QUALITY 2 — Imports no utilizados en `main.ts`
+
+📍 [main.ts](file:///c:/Users/mateo/OneDrive/Documentos/Proyectos/Delivery/delivery-backend/src/main.ts#L5-L6)
+```typescript
+import { ThrottlerGuard } from '@nestjs/throttler';  // ❌ Nunca se usa
+import { APP_GUARD } from '@nestjs/core';             // ❌ Nunca se usa
+```
+
+---
+
+## QUALITY 3 — `AppController` y `AppService` no registrados en `AppModule`
+
+📍 [app.module.ts](file:///c:/Users/mateo/OneDrive/Documentos/Proyectos/Delivery/delivery-backend/src/app.module.ts#L13-L43)
+```typescript
+// ❌ Código actual — no declara controllers ni AppService
+@Module({
+  imports: [ ... ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+    // ❌ Falta: AppService
+  ],
+  // ❌ Falta: controllers: [AppController],
+})
+export class AppModule {}
+```
+
+**Impacto:** `GET /` retorna 404 porque `AppController` no está registrado.
+
+---
+
+## QUALITY 4 — `UpdateOrderStatusDto` existe pero no se usa
+
+📍 El DTO está correctamente definido en [update-order-status.dto.ts](file:///c:/Users/mateo/OneDrive/Documentos/Proyectos/Delivery/delivery-backend/src/orders/dto/update-order-status.dto.ts):
+```typescript
+// ✅ DTO bien hecho, con validación
+export class UpdateOrderStatusDto {
+  @IsEnum(OrderStatus)
+  status: OrderStatus;
+}
+```
+
+📍 Pero el controller lo **ignora** y usa un tipo inline — [orders.controller.ts](file:///c:/Users/mateo/OneDrive/Documentos/Proyectos/Delivery/delivery-backend/src/orders/orders.controller.ts#L37):
+```typescript
+// ❌ Código actual — sin validación del DTO
+@Patch(':id/status')
+@Roles(Role.ADMIN)
+updateStatus(
+    @Param('id') id: string,
+    @Body() body: { status: OrderStatus },  // ← Tipo inline, no valida con class-validator
+) {
+    return this.ordersService.updateStatus(id, body.status);
+}
+```
+
+**Impacto:** Alguien puede enviar `{ "status": "CUALQUIER_COSA" }` y pasa la validación del controller (no hay `@IsEnum`). El error se atrapa después en el servicio por la máquina de estados, pero es mejor rechazarlo temprano con el DTO.
+
+---
+
+## QUALITY 5 — Parámetro nombrado como la clase (PascalCase) en `UsersController`
+
+📍 [users.controller.ts](file:///c:/Users/mateo/OneDrive/Documentos/Proyectos/Delivery/delivery-backend/src/users/users.controller.ts#L28)
+```typescript
+// ❌ Código actual
+@Post()
+create(@Body() CreateUserDto: CreateUserDto) {  // ← Parámetro = PascalCase = nombre de clase
+    return this.usersService.create(CreateUserDto);
+}
+```
+
+**Impacto:** No es un error funcional, pero viola convenciones de TypeScript y confunde. El parámetro debería ser `createUserDto` (camelCase).
+
+```diff
+- create(@Body() CreateUserDto: CreateUserDto) {
+-     return this.usersService.create(CreateUserDto);
++ create(@Body() createUserDto: CreateUserDto) {
++     return this.usersService.create(createUserDto);
+```
+
+---
+
+## QUALITY 6 — Test intenta transición de estado inválida (`PENDING → DELIVERED`)
+
+📍 [test-endpoints-flow.ts](file:///c:/Users/mateo/OneDrive/Documentos/Proyectos/Delivery/delivery-backend/test/test-endpoints-flow.ts#L173-L182)
+```typescript
+// ❌ Código actual del paso 13
+if (orderId) {
+    console.log(`\n13. Actualizando estado de la orden como Admin (DELIVERED)...`);
+    const updateOrder = await request(`/orders/${orderId}/status`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${adminToken}` },
+      body: { status: 'DELIVERED' },  // ← PENDING → DELIVERED no es válido
+    });
+```
+
+📍 Según la máquina de estados en [orders.service.ts](file:///c:/Users/mateo/OneDrive/Documentos/Proyectos/Delivery/delivery-backend/src/orders/orders.service.ts#L8-L15):
+```typescript
+const validTransitions: Record<OrderStatus, OrderStatus[]> = {
+    [OrderStatus.PENDING]:          [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
+    [OrderStatus.CONFIRMED]:        [OrderStatus.PREPARING, OrderStatus.CANCELLED],
+    [OrderStatus.PREPARING]:        [OrderStatus.OUT_FOR_DELIVERY],
+    [OrderStatus.OUT_FOR_DELIVERY]: [OrderStatus.DELIVERED],
+    [OrderStatus.DELIVERED]:        [],
+    [OrderStatus.CANCELLED]:        [],
+};
+// Ruta válida: PENDING → CONFIRMED → PREPARING → OUT_FOR_DELIVERY → DELIVERED
+```
+
+**Impacto:** El paso 13 del test siempre falla con `400 Bad Request: Cannot change status from PENDING to DELIVERED`.
+
+---
+
+# 📊 Resumen Visual
+
+| #   | Tipo | Severidad | Archivo | Descripción |
+|-----|------|-----------|---------|-------------|
+| B1  | Bug  | 🔴 Crítico | `auth.module.ts` + `jwt.strategy.ts` | JWT secret hardcodeado, no lee `.env` |
+| B2  | Bug  | 🔴 Crítico | `producct.schema.ts` | `price` default `true` en vez de required |
+| B3  | Bug  | 🔴 Crítico | `products.service.ts` | `NotFoundError` (RxJS) → 500 en vez de 404 |
+| B4  | Bug  | 🟡 Medio  | `jwt-auth.guard.ts` | Falta `@Injectable()` |
+| B5  | Bug  | 🔴 Crítico | `roles.guard.ts` | Crash si `user` es undefined |
+| B6  | Bug  | 🔴 Crítico | `categories.controller.ts` | `@Roles()` sin `@UseGuards()` = sin efecto |
+| B7  | Bug  | 🔴 Crítico | `users.service.ts` | Password hash expuesto en responses |
+| B8  | Bug  | 🔴 Crítico | `users.service.ts` | Password se guarda sin hashear en update |
+| S1  | Sec  | 🔴 Crítico | `users.controller.ts` | Endpoints CRUD sin autenticación |
+| S2  | Sec  | 🟡 Medio  | `main.ts` | CORS `origin: '*'` |
+| S3  | Sec  | 🟡 Medio  | `.env` | JWT secret trivial |
+| S4  | Sec  | 🟡 Medio  | `app.module.ts` | Throttle TTL = 60ms (no 60s) |
+| Q1  | Code | 🟢 Bajo   | `producct.schema.ts` | Typo en nombre de archivo |
+| Q2  | Code | 🟢 Bajo   | `main.ts` | Imports no utilizados |
+| Q3  | Code | 🟡 Medio  | `app.module.ts` | Controller/Service no registrados |
+| Q4  | Code | 🟡 Medio  | `orders.controller.ts` | DTO de validación ignorado |
+| Q5  | Code | 🟢 Bajo   | `users.controller.ts` | Parámetro PascalCase |
+| Q6  | Code | 🟡 Medio  | `test-endpoints-flow.ts` | Transición de estado inválida |
+
+---
+
+> **¿Apruebas que proceda a corregir todos estos problemas?** Puedo aplicar los fixes de una vez o ir componente por componente si prefieres revisarlos uno a uno.
