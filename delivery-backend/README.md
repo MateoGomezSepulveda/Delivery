@@ -137,14 +137,13 @@ docker run -p 3000:3000 --env-file .env delivery-backend
 
 ---
 
-## 📌 Estado del Proyecto
+## 📌 Estado del Proyecto (Progreso Real)
 
-- [x] Arquitectura modular NestJS configurada.
-- [x] Conexión asíncrona a MongoDB Atlas mediante `ConfigService`.
-- [x] CRUD completo de Usuarios, Categorías y Productos.
-- [x] Autenticación JWT y roles de usuario (`ADMIN`, `CLIENT`, `DELIVERY`).
-- [x] Carrito de compras en tiempo real vinculado por usuario.
-- [x] Flujo completo de Pedidos y gestión de estados de orden.
-- [x] Seguridad con Helmet, Rate Limiting (Throttler) y DTO Validations.
-- [x] Contenedorización con Docker lista para despliegue.
+- ✅ **Fase 0.1 (Auth)**: Autenticación JWT, Refresh Tokens, y flujos de recuperación de contraseñas.
+- ✅ **Fase 0.2 (Users)**: CRUD de usuarios con validaciones de email duplicado, Ownership Guards, prevención de Inyección de Roles, paginación (`PaginationQueryDto`) y documentación en Swagger.
+- ✅ **Fase 0.3 (Categories)**: Endpoints protegidos, manejo de excepciones (`NotFoundException`), validación de Mongo IDs con `ParseMongoIdPipe`, paginación y Tests Unitarios.
+- 🚧 **Fase 0.4 (Products)**: [EN PROGRESO] Catálogo, referencias a categorías, subida de imágenes, endpoints públicos de búsqueda.
+- ⏳ **Fase 0.5 (Cart & Orders)**: [PENDIENTE] Carrito de compras y gestión de estados de orden.
+
+*Nota: La arquitectura base, conexión a MongoDB, validaciones globales, Rate Limiting y Dockerización ya se encuentran integrados.*
 

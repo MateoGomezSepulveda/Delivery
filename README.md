@@ -38,8 +38,13 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - Paginación de resultados con `PaginationQueryDto`.
   - Documentación interactiva completa con Swagger.
   - Prevención de inyección de roles a nivel de creación y actualización.
+- ✅ **Fase 0.3 (Categories)**:
+  - Rutas de lectura públicas y operaciones protegidas con Guards.
+  - Paginación y búsqueda por nombre.
+  - `ParseMongoIdPipe` para validación de IDs.
+  - Documentación en Swagger y Tests Unitarios completados.
 
-*Siguiente paso: Fase 0.3 (Módulo Categories).*
+*Siguiente paso: Fase 0.4 (Módulo Products).*
 
 ---
 
