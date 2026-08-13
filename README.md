@@ -43,8 +43,13 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - Paginación y búsqueda por nombre.
   - `ParseMongoIdPipe` para validación de IDs.
   - Documentación en Swagger y Tests Unitarios completados.
+- ✅ **Fase 0.4 (Products)**:
+  - Índices de texto en MongoDB para búsquedas full-text.
+  - Paginación compleja con filtros múltiples (rango de precios, categoría, disponibilidad).
+  - Validaciones robustas (`NotFoundException`, `ParseMongoIdPipe`).
+  - Documentación en Swagger y Tests Unitarios completados.
 
-*Siguiente paso: Fase 0.4 (Módulo Products).*
+*Siguiente paso: Fase 0.5 (Módulo Cart).*
 
 ---
 

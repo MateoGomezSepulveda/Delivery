@@ -4,18 +4,18 @@ import { Category } from "src/categories/schemas/category.schema";
 
 export type ProductDocument = Product & Document;
 
-@Schema({timestamps: true})
+@Schema({ timestamps: true })
 export class Product {
-    @Prop({required: true})
+    @Prop({ required: true })
     name: string;
 
-    @Prop({required: true})
+    @Prop({ required: true })
     description: string;
 
-    @Prop({required: true})
+    @Prop({ required: true })
     price: number;
 
-    @Prop({default: true})
+    @Prop({ default: true })
     available: boolean;
 
     @Prop()
@@ -29,3 +29,4 @@ export class Product {
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);
+ProductSchema.index({ name: 'text', description: 'text' });

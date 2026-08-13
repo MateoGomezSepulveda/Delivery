@@ -3,19 +3,16 @@
 **Última actualización:** 11 de Agosto de 2026
 
 ## Última Tarea / Contexto Actual
-- Se completó la **Fase 0.1** (Auth).
-- Se completó la **Fase 0.2** (Users).
-- Se completó la **Fase 0.3** (Categories), arreglando la protección de rutas con `@Public()`, añadiendo `NotFoundException`, agregando paginación, validando Mongo IDs con `ParseMongoIdPipe`, documentando en Swagger y agregando Tests Unitarios exitosos.
+- Se completaron las **Fases 0.1, 0.2 y 0.3** de Auth, Users y Categories.
+- Se completó la **Fase 0.4** (Products), arreglando el typo del schema, añadiendo validaciones `NotFoundException`, implementando `ProductPaginationDto` con filtros por precio y categoría, añadiendo índices de búsqueda de texto de MongoDB (`$text`), agregando `ParseMongoIdPipe` y Swagger, además de las Pruebas Unitarias.
 
 ## Siguiente Paso
-- Iniciar la **Fase 0.4 — Módulo `products/`**. 
-  - Renombrar el archivo `producct.schema.ts` a `product.schema.ts`.
-  - Agregar `NotFoundException` en los métodos correspondientes.
-  - Implementar Paginación con filtros (categoría, precio, disponibilidad).
-  - Agregar índice de texto para búsqueda.
-  - Validar IDs con `ParseMongoIdPipe`.
-  - Documentar con Swagger.
-  - Escribir tests unitarios.
+- Iniciar la **Fase 0.5 — Módulo `cart/`**. 
+  - Crear `RemoveFromCartDto` validando con `@IsMongoId()`.
+  - Validar cantidades > 0 a nivel de servicio.
+  - Crear el método `clearCart()` en el servicio y exponer `DELETE /cart/clear`.
+  - Verificar Swagger en los endpoints.
+  - Escribir tests unitarios (`cart.service.spec.ts`).
 
 ## Reglas y Recordatorios
 - **IMPORTANTE:** Cada vez que terminemos una fase del Roadmap, el asistente debe proporcionar un mensaje de commit detallado, explicando paso a paso lo que se hizo en la fase (así como se ha hecho en los otros commits), y recomendar guardar los cambios antes de avanzar a la siguiente fase.
