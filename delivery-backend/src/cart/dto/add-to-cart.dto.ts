@@ -5,6 +5,6 @@ export class AddToCartDto {
     productId: string;
 
     @IsNumber()
-    @Min(1)
+    @Min(1, { message: 'La cantidad debe ser mayor a cero' })
     quantity: number;
 }

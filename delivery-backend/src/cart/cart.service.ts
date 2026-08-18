@@ -36,9 +36,10 @@ export class CartService {
 
     const cart = await this.getActiveCart(userId);
 
-    const itemIndex = cart.items.findIndex(
-      (item) => item.productId.toString() === productId,
-    );
+    const itemIndex = cart.items.findIndex((item: any) => {
+      const id = item.productId._id || item.productId;
+      return id.toString() === productId;
+    });
 
     if (itemIndex >= 0) {
       cart.items[itemIndex].quantity += quantity;
@@ -61,9 +62,10 @@ export class CartService {
   async removeProduct(userId: string, productId: string) {
     const cart = await this.getActiveCart(userId);
 
-    cart.items = cart.items.filter(
-      (item) => item.productId.toString() !== productId,
-    );
+    cart.items = cart.items.filter((item: any) => {
+      const id = item.productId._id || item.productId;
+      return id.toString() !== productId;
+    });
 
     cart.total = cart.items.reduce(
       (sum, item) => sum + item.price * item.quantity,
