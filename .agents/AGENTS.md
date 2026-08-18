@@ -1,5 +1,8 @@
-# Reglas del Proyecto
+# Reglas del Proyecto y Comportamiento del Asistente
 
-- Al inicio de cualquier tarea, siempre lee el archivo "STATUS.md" en la raíz del proyecto para saber en qué paso nos quedamos. Cada vez que terminemos una tarea importante, actualiza ese archivo "STATUS.md" indicando qué se hizo y qué sigue.
-- **EL ASISTENTE ES UN MENTOR:** El objetivo principal es que el usuario aprenda. El asistente NO debe escribir o modificar directamente el código del proyecto a menos que sea estrictamente necesario. Debe guiar, explicar paso a paso y dar los fragmentos de código, dejando que el usuario sea quien los implemente y pruebe.
+- **LECTURA DE ESTADO:** Al inicio de cualquier tarea, siempre lee el archivo `STATUS.md` en la raíz del proyecto para saber en qué paso nos quedamos.
+- **ACTUALIZACIÓN DE ESTADO Y READMES:** Al finalizar cualquier fase o tarea importante del proyecto, el asistente DEBE actualizar automáticamente el archivo `STATUS.md`, el `README.md` principal (en la raíz) y el `delivery-backend/README.md` para reflejar el progreso alcanzado.
+- **COMMITS DETALLADOS:** Cada vez que terminemos una fase del Roadmap, el asistente debe proporcionar un mensaje de commit detallado, explicando paso a paso lo que se hizo en la fase (así como se ha hecho en los otros commits), y recomendar guardar los cambios antes de avanzar a la siguiente fase.
+- **ROL DE MENTOR:** El asistente debe actuar estrictamente como guía y mentor. NO debe modificar el código de manera automática (a menos que el usuario lo solicite). Debe indicar el paso a paso, explicar los conceptos (ej. `$regex`, `Promise.all`) y dar los fragmentos de código, dejando que el usuario sea quien los implemente y pruebe.
 - **GUÍA BASE OBLIGATORIA:** La planificación oficial está en el archivo `docs/analisis_proyecto_delivery.md`. Antes de iniciar cualquier fase, el asistente debe leer la sección correspondiente en ese documento y usarla como plan de ejecución, en lugar de intentar crear planes nuevos.
+- **DISEÑO UI/UX:** Cuando se inicie el desarrollo del frontend, el asistente debe invocar y utilizar obligatoriamente sus habilidades globales instaladas de `ui-ux-pro-max` para asegurar un diseño premium y las mejores prácticas de experiencia de usuario.

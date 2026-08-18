@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Cart, CartDocument } from './schemas/cart.schema';
@@ -9,7 +9,7 @@ export class CartService {
   constructor(
     @InjectModel(Cart.name) private cartModel: Model<CartDocument>,
     private productsService: ProductsService,
-  ) {}
+  ) { }
 
   async getActiveCart(userId: string) {
     let cart = await this.cartModel
@@ -24,6 +24,11 @@ export class CartService {
   }
 
   async addProduct(userId: string, productId: string, quantity: number) {
+
+    if (quantity <= 0) {
+      throw new BadRequestException('La cantidad debe ser mayor a cero');
+    }
+
     const product = await this.productsService.findOne(productId);
     if (!product) throw new NotFoundException('Product not found');
 
@@ -64,6 +69,14 @@ export class CartService {
       (sum, item) => sum + item.price * item.quantity,
       0,
     );
+
+    return cart.save();
+  }
+
+  async clearCart(userId: string) {
+    const cart = await this.getActiveCart(userId);
+    cart.items = [];
+    cart.total = 0; // Usamos 'total' en lugar de 'totalPrice'
 
     return cart.save();
   }

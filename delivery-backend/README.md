@@ -90,6 +90,7 @@ src/
 | `GET` | `/cart` | JWT | Obtener el carrito del usuario autenticado |
 | `POST` | `/cart/add` | JWT | Agregar/actualizar producto en el carrito |
 | `DELETE` | `/cart/remove` | JWT | Eliminar producto específico del carrito |
+| `DELETE` | `/cart/clear` | JWT | Vaciar el carrito completo |
 
 ### 📦 Pedidos (`/orders`)
 | Método | Endpoint | Protección | Descripción |
@@ -143,7 +144,8 @@ docker run -p 3000:3000 --env-file .env delivery-backend
 - ✅ **Fase 0.2 (Users)**: CRUD de usuarios con validaciones de email duplicado, Ownership Guards, prevención de Inyección de Roles, paginación (`PaginationQueryDto`) y documentación en Swagger.
 - ✅ **Fase 0.3 (Categories)**: Endpoints protegidos, manejo de excepciones (`NotFoundException`), validación de Mongo IDs con `ParseMongoIdPipe`, paginación y Tests Unitarios.
 - ✅ **Fase 0.4 (Products)**: Índices de texto y búsqueda avanzada, paginación con filtros (`ProductPaginationDto`), validaciones y Tests Unitarios.
-- 🚧 **Fase 0.5 (Cart & Orders)**: [EN PROGRESO] Carrito de compras y gestión de estados de orden.
+- ✅ **Fase 0.5 (Cart)**: Carrito de compras con endpoints documentados, validación de cantidad y tests unitarios de cobertura completa.
+- 🚧 **Fase 0.6 (Orders)**: [EN PROGRESO] Creación y gestión de estados de pedidos.
 
 *Nota: La arquitectura base, conexión a MongoDB, validaciones globales, Rate Limiting y Dockerización ya se encuentran integrados.*
 

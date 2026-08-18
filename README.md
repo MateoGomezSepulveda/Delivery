@@ -48,8 +48,13 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - Paginación compleja con filtros múltiples (rango de precios, categoría, disponibilidad).
   - Validaciones robustas (`NotFoundException`, `ParseMongoIdPipe`).
   - Documentación en Swagger y Tests Unitarios completados.
+- ✅ **Fase 0.5 (Cart)**:
+  - Validaciones estrictas de cantidad.
+  - Limpieza del carrito (`clearCart`).
+  - Validaciones de ObjectId con DTOs.
+  - Documentación interactiva completa con Swagger y Pruebas Unitarias.
 
-*Siguiente paso: Fase 0.5 (Módulo Cart).*
+*Siguiente paso: Fase 0.6 (Módulo Orders).*
 
 ---
 
