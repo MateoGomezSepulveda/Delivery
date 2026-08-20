@@ -149,8 +149,9 @@ docker run -p 3000:3000 --env-file .env delivery-backend
 - ✅ **Fase 0.5 (Cart)**: Carrito de compras con endpoints documentados, validación de cantidad y tests unitarios de cobertura completa.
 - ✅ **Fase 0.6 (Orders)**: Paginación con filtros (estado y fechas), detalle de pedido protegido (`GET /orders/:id`), cancelación por cliente (`PATCH /orders/:id/cancel`), vaciado automático del carrito post-checkout, `ParseMongoIdPipe`, Swagger y 14 Tests Unitarios.
 - ✅ **Fase 0.7 (Common)**: `TransformInterceptor` global (contrato `{ success, data, timestamp }`), `HttpExceptionFilter` con `requestId` para trazabilidad, `RequestLoggerMiddleware` para observabilidad, `PaginatedResponse<T>` interface y `paginate()` helper reutilizable.
+- ✅ **Fase 1 (Docker)**: Multi-stage Dockerfile (node:20-alpine, non-root, dumb-init, healthcheck), `.dockerignore` optimizado, y Compose diferenciado para desarrollo y producción.
 
-*Siguiente paso: Fase 1 — Docker Profesional (Dockerfile mejorado, docker-compose dev y prod).*
+*Siguiente paso: Fase 2 — Calidad Global y Observabilidad (Winston, Terminus).*
 
 *Nota: La arquitectura base, conexión a MongoDB, validaciones globales, Rate Limiting y Dockerización ya se encuentran integrados.*
 

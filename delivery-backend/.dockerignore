@@ -1,19 +1,39 @@
 # Dependencias
 node_modules
+npm-debug.log*
 
 # Build output
 dist
+coverage
 
 # Git
 .git
 .gitignore
 
-# Logs
-npm-debug.log
-
 # Docker
 Dockerfile
-docker-compose.yml
+docker-compose*.yml
+.dockerignore
 
-# Variables sensibles
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Entorno
 .env
+.env.*
+
+# Tests
+test
+**/*.spec.ts
+**/*.test.ts
+jest.config.*
+jest-e2e.json
+
+#Docs
+README.md
+docs
+CHANGELOG.md
+LICENSE

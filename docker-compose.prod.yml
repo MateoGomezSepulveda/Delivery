@@ -1,0 +1,35 @@
+services:
+  api:
+    build:
+      context: ./delivery-backend
+      target: production  # 💡 Aquí sí usamos la etapa ligera y segura final
+    ports:
+      - '3000:3000'
+    env_file: ./delivery-backend/.env.production
+    depends_on:
+      - mongo
+      - redis
+    restart: always
+    deploy:
+      replicas: 2         # Corre 2 instancias de la API para soportar más carga
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo-data:/data/db
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
+    volumes:
+      - redis-data:/data
+    restart: always
+
+volumes:
+  mongo-data:
+  redis-data:

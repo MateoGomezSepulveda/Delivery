@@ -65,8 +65,12 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - `HttpExceptionFilter` mejorado: los errores incluyen `requestId` único, `path` y `method` para trazabilidad.
   - `RequestLoggerMiddleware`: registra cada HTTP request con método, ruta, código de estado y tiempo de respuesta.
   - Interface `PaginatedResponse<T>` y función reutilizable `paginate()` para eliminar código duplicado.
+- ✅ **Fase 1 (Docker Profesional)**:
+  - `Dockerfile` Multi-stage build optimizado, seguro (usuario non-root) y con control de procesos (`dumb-init`).
+  - `docker-compose.yml` para desarrollo con API (hot-reload), Mongo, Redis y Mongo Express.
+  - `docker-compose.prod.yml` configurado para alta disponibilidad y límites de recursos en producción.
 
-*Siguiente paso: Fase 1 — Docker Profesional.*
+*Siguiente paso: Fase 2 — Calidad Global y Observabilidad.*
 
 ---
 
