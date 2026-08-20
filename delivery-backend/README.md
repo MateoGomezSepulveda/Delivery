@@ -96,9 +96,11 @@ src/
 | Método | Endpoint | Protección | Descripción |
 | :--- | :--- | :--- | :--- |
 | `POST` | `/orders` | JWT | Crear pedido a partir del carrito actual |
-| `GET` | `/orders/me` | JWT | Historial de pedidos del cliente |
-| `GET` | `/orders` | JWT + Admin | Ver todos los pedidos creados |
-| `PATCH` | `/orders/:id/status` | JWT + Admin | Cambiar estado (`PENDING`, `IN_PREPARATION`, `ON_THE_WAY`, `DELIVERED`, `CANCELLED`) |
+| `GET` | `/orders/me` | JWT | Historial de pedidos del cliente (paginado, con filtros) |
+| `GET` | `/orders/:id` | JWT | Ver detalle de un pedido (dueño o Admin) |
+| `PATCH` | `/orders/:id/cancel` | JWT | Cancelar un pedido propio (solo en estado `PENDING`) |
+| `GET` | `/orders` | JWT + Admin | Ver todos los pedidos (paginado, con filtros) |
+| `PATCH` | `/orders/:id/status` | JWT + Admin | Cambiar estado del pedido (`PENDING` → `CONFIRMED` → `PREPARING` → `OUT_FOR_DELIVERY` → `DELIVERED` / `CANCELLED`) |
 
 ---
 
@@ -145,7 +147,9 @@ docker run -p 3000:3000 --env-file .env delivery-backend
 - ✅ **Fase 0.3 (Categories)**: Endpoints protegidos, manejo de excepciones (`NotFoundException`), validación de Mongo IDs con `ParseMongoIdPipe`, paginación y Tests Unitarios.
 - ✅ **Fase 0.4 (Products)**: Índices de texto y búsqueda avanzada, paginación con filtros (`ProductPaginationDto`), validaciones y Tests Unitarios.
 - ✅ **Fase 0.5 (Cart)**: Carrito de compras con endpoints documentados, validación de cantidad y tests unitarios de cobertura completa.
-- 🚧 **Fase 0.6 (Orders)**: [EN PROGRESO] Creación y gestión de estados de pedidos.
+- ✅ **Fase 0.6 (Orders)**: Paginación con filtros (estado y fechas), detalle de pedido protegido (`GET /orders/:id`), cancelación por cliente (`PATCH /orders/:id/cancel`), vaciado automático del carrito post-checkout, `ParseMongoIdPipe`, Swagger y 14 Tests Unitarios.
+
+*Siguiente paso: Fase 0.7 — Expandir el módulo `common/` (TransformInterceptor, RequestLogger, PaginationUtil).*
 
 *Nota: La arquitectura base, conexión a MongoDB, validaciones globales, Rate Limiting y Dockerización ya se encuentran integrados.*
 

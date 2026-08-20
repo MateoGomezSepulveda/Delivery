@@ -53,8 +53,15 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - Limpieza del carrito (`clearCart`).
   - Validaciones de ObjectId con DTOs.
   - Documentación interactiva completa con Swagger y Pruebas Unitarias.
+- ✅ **Fase 0.6 (Orders)**:
+  - Paginación con filtros de estado y rango de fechas en `findMyOrders()` y `findAllOrders()`.
+  - Nuevo endpoint `GET /orders/:id` con protección de acceso (solo dueño o ADMIN).
+  - Cancelación de pedidos por el cliente (`PATCH /orders/:id/cancel`), restringida a estado `PENDING`.
+  - Vaciado automático del carrito después del checkout (se crea un nuevo carrito `ACTIVE`).
+  - `ParseMongoIdPipe` aplicado en todos los parámetros `:id` del módulo.
+  - Documentación completa en Swagger y 14 tests unitarios pasando.
 
-*Siguiente paso: Fase 0.6 (Módulo Orders).*
+*Siguiente paso: Fase 0.7 (Módulo `common/`).*
 
 ---
 
