@@ -60,8 +60,13 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - Vaciado automático del carrito después del checkout (se crea un nuevo carrito `ACTIVE`).
   - `ParseMongoIdPipe` aplicado en todos los parámetros `:id` del módulo.
   - Documentación completa en Swagger y 14 tests unitarios pasando.
+- ✅ **Fase 0.7 (Common)**:
+  - `TransformInterceptor` global: todas las respuestas exitosas siguen el contrato `{ success: true, data, timestamp }`.
+  - `HttpExceptionFilter` mejorado: los errores incluyen `requestId` único, `path` y `method` para trazabilidad.
+  - `RequestLoggerMiddleware`: registra cada HTTP request con método, ruta, código de estado y tiempo de respuesta.
+  - Interface `PaginatedResponse<T>` y función reutilizable `paginate()` para eliminar código duplicado.
 
-*Siguiente paso: Fase 0.7 (Módulo `common/`).*
+*Siguiente paso: Fase 1 — Docker Profesional.*
 
 ---
 
