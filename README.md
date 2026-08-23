@@ -69,27 +69,42 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - `Dockerfile` Multi-stage build optimizado, seguro (usuario non-root) y con control de procesos (`dumb-init`).
   - `docker-compose.yml` para desarrollo con API (hot-reload), Mongo, Redis y Mongo Express.
   - `docker-compose.prod.yml` configurado para alta disponibilidad y límites de recursos en producción.
+- ✅ **Fase 2 (Calidad Global y Observabilidad)**:
+  - Logging estructurado con `winston` + `nest-winston` y middleware de trazabilidad de requests (`requestId` único).
+  - Health Checks con `@nestjs/terminus` en `GET /api/v1/health` (MongoDB ping + memory heap).
+  - API Versioning con prefijo global `api/v1`.
+  - Validación de variables de entorno al arranque con `Joi`.
+  - Swagger UI interactivo en `GET /api/docs` con soporte de JWT Bearer Auth.
+  - CORS configurado con origins desde variable de entorno `ALLOWED_ORIGINS`.
+  - Plantilla `.env.example` documentada para onboarding de nuevos desarrolladores.
 
-*Siguiente paso: Fase 2 — Calidad Global y Observabilidad.*
+*Siguiente paso: Fase 3 — Testing Completo + CI (Tests unitarios, e2e y GitHub Actions).*
 
 ---
 
 ## ⚙️ Inicio Rápido
 
-Para iniciar el entorno de desarrollo del backend localmente:
+El entorno de desarrollo se gestiona con **Docker Compose**. Desde la raíz del proyecto:
 
 ```bash
-cd delivery-backend
-npm install
-npm run start:dev
+# 1. Levantar todos los servicios (API + MongoDB + Redis + Mongo Express)
+docker compose up -d
+
+# 2. Ver los logs de la API en tiempo real
+docker compose logs -f api
 ```
 
-O ejecutando con **Docker**:
+> **⚠️ Nota:** Si instalas una nueva librería (`npm install <paquete>`), debes reconstruir el contenedor de la API:
+> ```bash
+> docker compose up -d --build api
+> ```
 
-```bash
-cd delivery-backend
-docker build -t delivery-backend .
-docker run -p 3000:3000 --env-file .env delivery-backend
-```
+### URLs del entorno de desarrollo
+| Servicio | URL |
+|----------|-----|
+| API REST | `http://localhost:3000/api/v1` |
+| Swagger UI | `http://localhost:3000/api/docs` |
+| Health Check | `http://localhost:3000/api/v1/health` |
+| Mongo Express | `http://localhost:8081` |
 
-*Nota: Asegúrate de configurar correctamente tu archivo `.env` basándote en la documentación del backend antes de ejecutar el servidor.*
+*Nota: Configura tu `.env` basándote en el archivo `.env.example` del backend antes de ejecutar.*

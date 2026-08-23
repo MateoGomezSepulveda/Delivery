@@ -7,11 +7,15 @@ API RESTful completa para la plataforma de **App Delivery**, desarrollada con **
 ## 🚀 Tecnologías Utilizadas
 
 - **Framework Core:** NestJS (v11) & Node.js
-- **Base de Datos:** MongoDB Atlas / Mongoose (v9)
+- **Base de Datos:** MongoDB / Mongoose (v9)
 - **Autenticación & Encriptación:** JWT (`@nestjs/jwt`, `passport-jwt`) & `bcrypt`
 - **Autorización:** Control de Acceso Basado en Roles (RBAC: `ADMIN`, `CLIENT`, `DELIVERY`)
 - **Validación de Datos:** `class-validator` & `class-transformer` (ValidationPipe estricto)
 - **Seguridad:** `helmet` (HTTP Headers) & `@nestjs/throttler` (Rate Limiting)
+- **Logging:** `winston` + `nest-winston` (logs estructurados en JSON con trazabilidad)
+- **Observabilidad:** `@nestjs/terminus` (Health Checks de MongoDB y memoria)
+- **Documentación:** `@nestjs/swagger` (Swagger UI en `/api/docs`)
+- **Validación de Entorno:** `joi` (valida `.env` al arranque)
 - **Manejo de Errores:** Filtro global de excepciones personalizado (`HttpExceptionFilter`)
 - **Contenedorización:** Docker & Docker Compose
 
@@ -51,6 +55,12 @@ src/
 ---
 
 ## 📡 Módulos y Endpoints de la API
+
+### 💉 Observabilidad (`/health`)
+| Método | Endpoint | Protección | Descripción |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/health` | Pública | Estado del servidor: MongoDB y memoria heap |
+| `GET` | `/api/docs` | Pública | Documentación interactiva Swagger UI |
 
 ### 🔑 Autenticación (`/auth`)
 | Método | Endpoint | Protección | Descripción |
@@ -106,37 +116,56 @@ src/
 
 ## ⚙️ Configuración y Variables de Entorno
 
-Crea un archivo `.env` en la raíz del proyecto backend con la siguiente configuración:
+Copia el archivo `.env.example` en la raíz del backend y configura tus valores:
+
+```bash
+cp .env.example .env
+```
 
 ```env
+# Server
 PORT=3000
-MONGO_URI=mongodb+srv://<usuario>:<password>@<cluster>.mongodb.net/<dbname>?retryWrites=true&wMode=majority
-JWT_SECRET=tu_clave_secreta_super_segura
+NODE_ENV=development
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:4200
+
+# Database
+MONGO_URI=mongodb://admin:admin123@localhost:27017/delivery?authSource=admin
+
+# JWT
+JWT_SECRET=your_super_secret_key_minimum_32_characters_here
+JWT_REFRESH_SECRET=your_refresh_secret_minimum_32_characters
+JWT_ACCESS_EXPIRATION=15m
+JWT_REFRESH_EXPIRATION=7d
 ```
+
+> Si falta alguna variable requerida, la aplicación **no arrancará** y te indicará exactamente cuál falta (validado con `Joi`).
 
 ---
 
 ## 🛠️ Instalación y Ejecución
 
-### Desarrollo Local
+### Desarrollo con Docker (Recomendado)
 
 ```bash
-# 1. Instalar dependencias
-npm install
+# Desde la raíz del proyecto (donde está docker-compose.yml)
 
-# 2. Iniciar servidor en modo desarrollo (Watch mode)
-npm run start:dev
+# 1. Levantar todos los servicios
+docker compose up -d
+
+# 2. Ver logs de la API en tiempo real
+docker compose logs -f api
+
+# 3. Reconstruir solo si cambió el package.json
+docker compose up -d --build api
 ```
 
-### Ejecución con Docker
-
-```bash
-# Construir la imagen de Docker
-docker build -t delivery-backend .
-
-# Correr el contenedor pasando las variables de entorno
-docker run -p 3000:3000 --env-file .env delivery-backend
-```
+### URLs disponibles en desarrollo
+| Servicio | URL |
+|----------|-----|
+| API REST | `http://localhost:3000/api/v1` |
+| Swagger UI | `http://localhost:3000/api/docs` |
+| Health Check | `http://localhost:3000/api/v1/health` |
+| Mongo Express | `http://localhost:8081` |
 
 ---
 
@@ -150,8 +179,6 @@ docker run -p 3000:3000 --env-file .env delivery-backend
 - ✅ **Fase 0.6 (Orders)**: Paginación con filtros (estado y fechas), detalle de pedido protegido (`GET /orders/:id`), cancelación por cliente (`PATCH /orders/:id/cancel`), vaciado automático del carrito post-checkout, `ParseMongoIdPipe`, Swagger y 14 Tests Unitarios.
 - ✅ **Fase 0.7 (Common)**: `TransformInterceptor` global (contrato `{ success, data, timestamp }`), `HttpExceptionFilter` con `requestId` para trazabilidad, `RequestLoggerMiddleware` para observabilidad, `PaginatedResponse<T>` interface y `paginate()` helper reutilizable.
 - ✅ **Fase 1 (Docker)**: Multi-stage Dockerfile (node:20-alpine, non-root, dumb-init, healthcheck), `.dockerignore` optimizado, y Compose diferenciado para desarrollo y producción.
+- ✅ **Fase 2 (Calidad Global y Observabilidad)**: Logging estructurado con Winston, Health Checks con Terminus, API Versioning (`api/v1`), validación de `.env` con Joi, Swagger UI en `/api/docs`, CORS configurado y `.env.example` documentado.
 
-*Siguiente paso: Fase 2 — Calidad Global y Observabilidad (Winston, Terminus).*
-
-*Nota: La arquitectura base, conexión a MongoDB, validaciones globales, Rate Limiting y Dockerización ya se encuentran integrados.*
-
+*Siguiente paso: Fase 3 — Testing Completo + CI.*
