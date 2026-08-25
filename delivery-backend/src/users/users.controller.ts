@@ -1,4 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -9,12 +17,13 @@ import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
 import { UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Public } from '../auth/public.decorator';
 
 @ApiTags('Users')
 @ApiBearerAuth()
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) { }
+  constructor(private readonly usersService: UsersService) {}
 
   @ApiOperation({ summary: 'Obtener todos los usuarios (Solo Admin)' })
   @Roles(Role.ADMIN)
@@ -30,6 +39,7 @@ export class UsersController {
     return this.usersService.findOne(id);
   }
 
+  @Public()
   @ApiOperation({ summary: 'Crear un usuario (Público)' })
   @Post()
   create(@Body() createUserDto: CreateUserDto) {

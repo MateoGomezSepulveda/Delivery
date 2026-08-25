@@ -35,4 +35,3 @@ export class Cart {
 }
 
 export const CartSchema = SchemaFactory.createForClass(Cart);
-

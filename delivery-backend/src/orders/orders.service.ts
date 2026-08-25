@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Order, OrderDocument } from './schemas/order.schema';
 import { Model } from 'mongoose';
@@ -7,172 +11,171 @@ import { OrderStatus } from './order-status.enum';
 import { OrderPaginationDto } from './dto/order-pagination.dto';
 
 const validTransitions: Record<OrderStatus, OrderStatus[]> = {
-    [OrderStatus.PENDING]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
-    [OrderStatus.CONFIRMED]: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
-    [OrderStatus.PREPARING]: [OrderStatus.OUT_FOR_DELIVERY],
-    [OrderStatus.OUT_FOR_DELIVERY]: [OrderStatus.DELIVERED],
-    [OrderStatus.DELIVERED]: [],
-    [OrderStatus.CANCELLED]: [],
+  [OrderStatus.PENDING]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
+  [OrderStatus.CONFIRMED]: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
+  [OrderStatus.PREPARING]: [OrderStatus.OUT_FOR_DELIVERY],
+  [OrderStatus.OUT_FOR_DELIVERY]: [OrderStatus.DELIVERED],
+  [OrderStatus.DELIVERED]: [],
+  [OrderStatus.CANCELLED]: [],
 };
 
 @Injectable()
 export class OrdersService {
-    constructor(
-        @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
-        private cartService: CartService,
-    ) { }
+  constructor(
+    @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
+    private cartService: CartService,
+  ) {}
 
+  async createOrder(userId: string, address: string) {
+    const cart = await this.cartService.getActiveCart(userId);
 
-
-    async createOrder(userId: string, address: string) {
-        const cart = await this.cartService.getActiveCart(userId);
-
-        if (!cart.items.length) {
-            throw new BadRequestException('Cart is empty');
-        }
-
-        const orderItems = cart.items.map((item: any) => ({
-            productId: item.productId._id || item.productId,
-            name: item.productId.name || 'Producto',
-            quantity: item.quantity,
-            price: item.price,
-        }));
-
-        const order = new this.orderModel({
-            userId,
-            items: orderItems,
-            total: cart.total,
-            address,
-        });
-
-        cart.status = 'CHECKED_OUT';
-        await cart.save();
-
-        await this.cartService.getActiveCart(userId);
-
-        return order.save();
+    if (!cart.items.length) {
+      throw new BadRequestException('Cart is empty');
     }
 
-    async findMyOrders(userId: string, paginationDto: OrderPaginationDto) {
-        const { page = 1, limit = 10, status, dateFrom, dateTo } = paginationDto;
-        const skip = (page - 1) * limit;
+    const orderItems = cart.items.map((item: any) => ({
+      productId: item.productId._id || item.productId,
+      name: item.productId.name || 'Producto',
+      quantity: item.quantity,
+      price: item.price,
+    }));
 
-        const filter: any = { userId };
+    const order = new this.orderModel({
+      userId,
+      items: orderItems,
+      total: cart.total,
+      address,
+    });
 
-        if (status) filter.status = status;
-        if (dateFrom || dateTo) {
-            filter.createdAt = {};
-            if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
-            if (dateTo) filter.createdAt.$lte = new Date(dateTo);
-        }
+    cart.status = 'CHECKED_OUT';
+    await cart.save();
 
-        const orders = await this.orderModel
-            .find(filter)
-            .skip(skip)
-            .limit(limit)
-            .sort({ createdAt: -1 })
-            .populate('items.productId');
+    await this.cartService.getActiveCart(userId);
 
-        const total = await this.orderModel.countDocuments(filter);
+    return order.save();
+  }
 
-        return {
-            data: orders,
-            meta: {
-                total,
-                page,
-                lastPage: Math.ceil(total / limit)
-            }
-        };
+  async findMyOrders(userId: string, paginationDto: OrderPaginationDto) {
+    const { page = 1, limit = 10, status, dateFrom, dateTo } = paginationDto;
+    const skip = (page - 1) * limit;
+
+    const filter: any = { userId };
+
+    if (status) filter.status = status;
+    if (dateFrom || dateTo) {
+      filter.createdAt = {};
+      if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
+      if (dateTo) filter.createdAt.$lte = new Date(dateTo);
     }
 
-    async findAllOrders(paginationDto: OrderPaginationDto) {
-        const { page = 1, limit = 10, status, dateFrom, dateTo } = paginationDto;
+    const orders = await this.orderModel
+      .find(filter)
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 })
+      .populate('items.productId');
 
-        const skip = (page - 1) * limit;
+    const total = await this.orderModel.countDocuments(filter);
 
-        const filter: any = {}
+    return {
+      data: orders,
+      meta: {
+        total,
+        page,
+        lastPage: Math.ceil(total / limit),
+      },
+    };
+  }
 
-        if (status) filter.status = status;
+  async findAllOrders(paginationDto: OrderPaginationDto) {
+    const { page = 1, limit = 10, status, dateFrom, dateTo } = paginationDto;
 
-        if (dateFrom || dateTo) {
-            filter.createdAt = {};
-            if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
-            if (dateTo) filter.createdAt.$lte = new Date(dateTo);
-        }
+    const skip = (page - 1) * limit;
 
-        const orders = await this.orderModel
-            .find(filter)
-            .skip(skip)
-            .limit(limit)
-            .sort({ createdAt: -1 })
-            .populate('items.productId')
-            .populate('userId');
+    const filter: any = {};
 
-        const total = await this.orderModel.countDocuments(filter);
+    if (status) filter.status = status;
 
-        return {
-            data: orders,
-            meta: {
-                total,
-                page,
-                lastPage: Math.ceil(total / limit)
-            }
-        };
+    if (dateFrom || dateTo) {
+      filter.createdAt = {};
+      if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
+      if (dateTo) filter.createdAt.$lte = new Date(dateTo);
     }
 
-    async findOne(orderId: string, user: any) {
+    const orders = await this.orderModel
+      .find(filter)
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 })
+      .populate('items.productId')
+      .populate('userId');
 
-        const order = await this.orderModel.findById(orderId)
-            .populate('items.productId')
-            .populate('userId', '-password');
+    const total = await this.orderModel.countDocuments(filter);
 
-        if (!order) {
-            throw new NotFoundException('Order not found');
-        }
+    return {
+      data: orders,
+      meta: {
+        total,
+        page,
+        lastPage: Math.ceil(total / limit),
+      },
+    };
+  }
 
-        const orderUserId = ((order.userId as any)?._id ?? order.userId).toString();
+  async findOne(orderId: string, user: any) {
+    const order = await this.orderModel
+      .findById(orderId)
+      .populate('items.productId')
+      .populate('userId', '-password');
 
-        if (user.role !== 'ADMIN' && orderUserId !== user.userId) {
-            throw new NotFoundException('Order not found');
-        }
-
-        return order;
+    if (!order) {
+      throw new NotFoundException('Order not found');
     }
 
-    async cancelOrderByClient(orderId: string, userId: string) {
-        const order = await this.orderModel.findById(orderId);
+    const orderUserId = ((order.userId as any)?._id ?? order.userId).toString();
 
-        if (!order) throw new NotFoundException('Order not found');
-
-        if (order.userId.toString() !== userId) {
-            throw new NotFoundException('Order not found');
-        }
-        if (order.status !== OrderStatus.PENDING) {
-            throw new BadRequestException('Solo se pueden cancelar pedidos en estado PENDING');
-        }
-        order.status = OrderStatus.CANCELLED;
-        return order.save();
+    if (user.role !== 'ADMIN' && orderUserId !== user.userId) {
+      throw new NotFoundException('Order not found');
     }
 
-    async updateStatus(orderId: string, status: OrderStatus) {
-        const order = await this.orderModel.findById(orderId);
+    return order;
+  }
 
-        if (!order) {
-            throw new NotFoundException('Order not found');
-        }
+  async cancelOrderByClient(orderId: string, userId: string) {
+    const order = await this.orderModel.findById(orderId);
 
-        const currentStatus = order.status;
+    if (!order) throw new NotFoundException('Order not found');
 
-        const allowedTransitions = validTransitions[currentStatus] || [];
+    if (order.userId.toString() !== userId) {
+      throw new NotFoundException('Order not found');
+    }
+    if (order.status !== OrderStatus.PENDING) {
+      throw new BadRequestException(
+        'Solo se pueden cancelar pedidos en estado PENDING',
+      );
+    }
+    order.status = OrderStatus.CANCELLED;
+    return order.save();
+  }
 
-        if (!allowedTransitions.includes(status)) {
-            throw new BadRequestException(
-                `Cannot change status from ${currentStatus} to ${status}`,
-            );
-        }
+  async updateStatus(orderId: string, status: OrderStatus) {
+    const order = await this.orderModel.findById(orderId);
 
-        order.status = status;
-        return order.save();
+    if (!order) {
+      throw new NotFoundException('Order not found');
     }
 
+    const currentStatus = order.status;
+
+    const allowedTransitions = validTransitions[currentStatus] || [];
+
+    if (!allowedTransitions.includes(status)) {
+      throw new BadRequestException(
+        `Cannot change status from ${currentStatus} to ${status}`,
+      );
+    }
+
+    order.status = status;
+    return order.save();
+  }
 }

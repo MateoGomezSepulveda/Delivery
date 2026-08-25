@@ -4,7 +4,6 @@ import { Role } from '../../auth/roles.enum';
 
 @Schema({ timestamps: true })
 export class User {
-
   @Prop({ required: true })
   name: string;
 
@@ -20,4 +19,3 @@ export class User {
 
 export type UserDocument = HydratedDocument<User>;
 export const UserSchema = SchemaFactory.createForClass(User);
-

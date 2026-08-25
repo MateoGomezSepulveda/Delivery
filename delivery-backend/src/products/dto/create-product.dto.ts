@@ -1,25 +1,32 @@
-import { IsBoolean, IsMongoId, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
+import {
+  IsBoolean,
+  IsMongoId,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class CreateProductDto {
-    @IsString()
-    @IsNotEmpty()
-    name: string;
+  @IsString()
+  @IsNotEmpty()
+  name: string;
 
-    @IsNumber()
-    price: number;
+  @IsNumber()
+  price: number;
 
-    @IsMongoId()
-    categoryId: string;
+  @IsMongoId()
+  categoryId: string;
 
-    @IsString()
-    @IsOptional()
-    description?: string;
+  @IsString()
+  @IsOptional()
+  description?: string;
 
-    @IsBoolean()
-    @IsOptional()
-    available?: boolean;
+  @IsBoolean()
+  @IsOptional()
+  available?: boolean;
 
-    @IsString()
-    @IsOptional()
-    image?: string;
+  @IsString()
+  @IsOptional()
+  image?: string;
 }

@@ -24,7 +24,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
       method: request.method,
       error,
       timestamp: new Date().toISOString(),
-
     });
   }
 }

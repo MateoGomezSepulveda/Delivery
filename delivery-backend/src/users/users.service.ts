@@ -7,10 +7,9 @@ import * as bcrypt from 'bcrypt';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 
-
 @Injectable()
 export class UsersService {
-  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) { }
+  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
 
   async findAll(paginationQuery: PaginationQueryDto) {
     const { page = 1, limit = 10, search } = paginationQuery;
@@ -19,18 +18,18 @@ export class UsersService {
 
     const filter = search
       ? {
-        $or: [
-          { name: { $regex: search, $options: 'i' } },
-          { email: { $regex: search, $options: 'i' } },
-        ],
-      }
+          $or: [
+            { name: { $regex: search, $options: 'i' } },
+            { email: { $regex: search, $options: 'i' } },
+          ],
+        }
       : {};
 
     const users = await this.userModel
       .find(filter)
       .limit(limit)
       .skip(skip)
-      .select('-password')
+      .select('-password');
 
     const total = await this.userModel.countDocuments(filter);
 
@@ -61,27 +60,26 @@ export class UsersService {
   }
 
   async update(id: string, updateData: UpdateUserDto) {
-
     if (updateData.role) {
       delete updateData.role;
     }
 
     if (updateData.email) {
-      const userWithEmail = await this.findByEmail(updateData.email)
+      const userWithEmail = await this.findByEmail(updateData.email);
 
       if (userWithEmail && userWithEmail._id.toString() !== id) {
-        throw new BadRequestException("Este correo ya esta registrado en otra cuenta")
+        throw new BadRequestException(
+          'Este correo ya esta registrado en otra cuenta',
+        );
       }
     }
 
     if (updateData.password) {
       updateData.password = await bcrypt.hash(updateData.password, 10);
     }
-    return this.userModel.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true },
-    ).select('-password');
+    return this.userModel
+      .findByIdAndUpdate(id, updateData, { new: true })
+      .select('-password');
   }
 
   async remove(id: string) {
@@ -91,5 +89,4 @@ export class UsersService {
   async findByEmail(email: string) {
     return this.userModel.findOne({ email });
   }
-
 }

@@ -8,8 +8,14 @@ import { RolesGuard } from './roles.guard';
 import { ConfigService } from '@nestjs/config';
 import { SeedService } from './seed.service';
 import { MongooseModule } from '@nestjs/mongoose';
-import { RefreshToken, RefreshTokenSchema } from './schemas/refresh-token.schema';
-import { PasswordReset, PasswordResetSchema } from './schemas/password-reset.schema';
+import {
+  RefreshToken,
+  RefreshTokenSchema,
+} from './schemas/refresh-token.schema';
+import {
+  PasswordReset,
+  PasswordResetSchema,
+} from './schemas/password-reset.schema';
 
 @Module({
   imports: [
@@ -30,5 +36,4 @@ import { PasswordReset, PasswordResetSchema } from './schemas/password-reset.sch
   providers: [AuthService, JwtStrategy, RolesGuard, SeedService],
   exports: [RolesGuard, AuthService],
 })
-export class AuthModule { }
-
+export class AuthModule {}

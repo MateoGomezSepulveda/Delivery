@@ -7,7 +7,7 @@ import { CartModule } from 'src/cart/cart.module';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Order.name, schema: OrderSchema}]),
+    MongooseModule.forFeature([{ name: Order.name, schema: OrderSchema }]),
     CartModule,
   ],
   providers: [OrdersService],

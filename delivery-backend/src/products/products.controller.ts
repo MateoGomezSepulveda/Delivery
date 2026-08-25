@@ -1,4 +1,13 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -12,13 +21,12 @@ import { ApiOperation, ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ProductPaginationDto } from './dto/product-pagination.dto';
 import { Query } from '@nestjs/common';
 
-
 @ApiTags('products')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) { }
+  constructor(private readonly productsService: ProductsService) {}
 
   @Post()
   @Roles(Role.ADMIN)
@@ -43,7 +51,10 @@ export class ProductsController {
   @ApiOperation({ summary: 'Actualizar un producto por ID' })
   @Patch(':id')
   @Roles(Role.ADMIN)
-  update(@Param('id', ParseMongoIdPipe) id: string, @Body() body: UpdateProductDto) {
+  update(
+    @Param('id', ParseMongoIdPipe) id: string,
+    @Body() body: UpdateProductDto,
+  ) {
     return this.productsService.update(id, body);
   }
 

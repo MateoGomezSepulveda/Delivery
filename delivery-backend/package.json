@@ -61,6 +61,7 @@
     "eslint-plugin-prettier": "^5.2.2",
     "globals": "^16.0.0",
     "jest": "^30.0.0",
+    "mongodb-memory-server": "^11.2.0",
     "prettier": "^3.4.2",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
@@ -83,9 +84,31 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "**/*.(t|j)s",
+      "!**/*.module.ts",
+      "!**/*.dto.ts",
+      "!**/*.schema.ts",
+      "!**/*.enum.ts",
+      "!**/*.interface.ts",
+      "!**/*.decorator.ts",
+      "!**/*.strategy.ts",
+      "!**/*.guard.ts",
+      "!**/main.ts",
+      "!**/*.spec.ts",
+      "!**/*.controller.ts",
+      "!**/app.service.ts",
+      "!**/common/**",
+      "!**/health/**"
     ],
     "coverageDirectory": "../coverage",
+    "coverageThreshold": {
+      "global": {
+        "branches": 50,
+        "functions": 50,
+        "lines": 50,
+        "statements": 50
+      }
+    },
     "testEnvironment": "node",
     "moduleNameMapper": {
       "src/(.*)$": "<rootDir>/$1"

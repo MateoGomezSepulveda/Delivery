@@ -1,0 +1,59 @@
+﻿npx : Using NodeJS below 20.19.0
+En línea: 1 Carácter: 1
++ npx jest --config ./test/jest-e2e.json --verbose --no-coverage 2>&1 | ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Using NodeJS below 20.19.0:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+FAIL test/auth.e2e-spec.ts (11.737 s)
+  AuthController (e2e)
+    ├ù Debe registrar un nuevo usuario (POST /api/v1/users) (302 ms)
+    ├ù Debe iniciar sesi├│n y devolver tokens (POST /api/v1/auth/login) (144 ms)
+
+  ÔùÅ AuthController (e2e) ÔÇ║ Debe registrar un nuevo usuario (POST /api/v1/users)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: undefined
+
+    [0m [90m 28 |[39m             [33m.[39mexpect([35m201[39m) [90m// Esperamos c├│digo 201 Created[39m
+     [90m 29 |[39m             [33m.[39mthen((res) [33m=>[39m {
+    [31m[1m>[22m[39m[90m 30 |[39m                 
+expect(res[33m.[39mbody[33m.[39msuccess)[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+     [90m    |[39m                                          [31m[1m^[22m[39m
+     [90m 31 |[39m                 
+expect(res[33m.[39mbody[33m.[39mdata[33m.[39memail)[33m.[39mtoBe(testUser[33m.[39memail)[33m;[39m
+     [90m 32 |[39m             })[33m;[39m
+     [90m 33 |[39m     })[33m;[39m[0m
+
+      at auth.e2e-spec.ts:30:42
+
+  ÔùÅ AuthController (e2e) ÔÇ║ Debe iniciar sesi├│n y devolver tokens (POST /api/v1/auth/login)
+
+    expected 200 "OK", got 201 "Created"
+
+    [0m [90m 40 |[39m                 password[33m:[39m testUser[33m.[39mpassword[33m,[39m
+     [90m 41 |[39m             })
+    [31m[1m>[22m[39m[90m 42 |[39m             [33m.[39mexpect([35m200[39m) [90m// Esperamos c├│digo 200 
+OK[39m
+     [90m    |[39m              [31m[1m^[22m[39m
+     [90m 43 |[39m             [33m.[39mthen((res) [33m=>[39m {
+     [90m 44 |[39m                 
+expect(res[33m.[39mbody[33m.[39msuccess)[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+     [90m 45 |[39m                 [90m// Verificamos que nos haya devuelto los tokens[39m[0m
+
+      at Object.<anonymous> (auth.e2e-spec.ts:42:14)
+      ----
+      at Test._assertStatus (../node_modules/supertest/lib/test.js:309:14)
+      at ../node_modules/supertest/lib/test.js:365:13
+      at Test._assertFunction (../node_modules/supertest/lib/test.js:342:13)
+      at Test.assert (../node_modules/supertest/lib/test.js:195:23)
+      at localAssert (../node_modules/supertest/lib/test.js:138:14)
+      at Server.<anonymous> (../node_modules/supertest/lib/test.js:152:11)
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 2 total
+Snapshots:   0 total
+Time:        12.085 s
+Ran all test suites.

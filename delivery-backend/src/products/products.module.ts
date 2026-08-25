@@ -7,7 +7,7 @@ import { CategoriesModule } from 'src/categories/categories.module';
 import { OrdersModule } from 'src/orders/orders.module';
 
 @Module({
-  imports:[
+  imports: [
     MongooseModule.forFeature([{ name: Product.name, schema: ProductSchema }]),
     forwardRef(() => CategoriesModule),
     OrdersModule,

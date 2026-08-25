@@ -1,6 +1,13 @@
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
-async function request(path: string, options: { method?: string; headers?: Record<string, string>; body?: any } = {}) {
+async function request(
+  path: string,
+  options: {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: any;
+  } = {},
+) {
   const url = `${BASE_URL}${path}`;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -57,7 +64,9 @@ async function runFlowTest() {
   console.log(`   Status: ${loginAdmin.status} ${loginAdmin.ok ? '✅' : '❌'}`);
   const adminToken = loginAdmin.data?.access_token;
   if (!adminToken) {
-    console.error('❌ Error: No se pudo obtener el access_token del Administrador.');
+    console.error(
+      '❌ Error: No se pudo obtener el access_token del Administrador.',
+    );
     return;
   }
   console.log('   Token de Admin obtenido correctamente.');
@@ -67,7 +76,10 @@ async function runFlowTest() {
   const createCat = await request('/categories', {
     method: 'POST',
     headers: { Authorization: `Bearer ${adminToken}` },
-    body: { name: `Comida Rápida ${randomId}`, description: 'Hamburguesas y Papas' },
+    body: {
+      name: `Comida Rápida ${randomId}`,
+      description: 'Hamburguesas y Papas',
+    },
   });
   console.log(`   Status: ${createCat.status} ${createCat.ok ? '✅' : '❌'}`);
   const categoryId = createCat.data?._id;
@@ -94,7 +106,12 @@ async function runFlowTest() {
   console.log(`\n5. Registrando usuario Cliente (${clientEmail})...`);
   const regClient = await request('/users', {
     method: 'POST',
-    body: { name: 'Cliente Test', email: clientEmail, password, role: 'CLIENT' },
+    body: {
+      name: 'Cliente Test',
+      email: clientEmail,
+      password,
+      role: 'CLIENT',
+    },
   });
   console.log(`   Status: ${regClient.status} ${regClient.ok ? '✅' : '❌'}`);
 
@@ -104,7 +121,9 @@ async function runFlowTest() {
     method: 'POST',
     body: { email: clientEmail, password },
   });
-  console.log(`   Status: ${loginClient.status} ${loginClient.ok ? '✅' : '❌'}`);
+  console.log(
+    `   Status: ${loginClient.status} ${loginClient.ok ? '✅' : '❌'}`,
+  );
   const clientToken = loginClient.data?.access_token;
   if (!clientToken) {
     console.error('❌ Error: No se pudo obtener el access_token del Cliente.');
@@ -119,7 +138,9 @@ async function runFlowTest() {
     headers: { Authorization: `Bearer ${clientToken}` },
   });
   console.log(`   Status: ${getProds.status} ${getProds.ok ? '✅' : '❌'}`);
-  console.log(`   Total de productos encontrados: ${Array.isArray(getProds.data) ? getProds.data.length : 0}`);
+  console.log(
+    `   Total de productos encontrados: ${Array.isArray(getProds.data) ? getProds.data.length : 0}`,
+  );
 
   // 8. Agregar Producto al Carrito (Cliente)
   console.log(`\n8. Agregando producto al carrito de compras (Cantidad: 2)...`);
@@ -137,7 +158,10 @@ async function runFlowTest() {
     headers: { Authorization: `Bearer ${clientToken}` },
   });
   console.log(`   Status: ${getCart.status} ${getCart.ok ? '✅' : '❌'}`);
-  console.log('   Contenido del Carrito:', JSON.stringify(getCart.data, null, 2));
+  console.log(
+    '   Contenido del Carrito:',
+    JSON.stringify(getCart.data, null, 2),
+  );
 
   // 10. Crear Orden de Compra / Checkout (Cliente)
   console.log(`\n10. Generando la orden de compra a partir del carrito...`);
@@ -146,10 +170,15 @@ async function runFlowTest() {
     headers: { Authorization: `Bearer ${clientToken}` },
     body: { address: 'Calle 100 # 15-20, Apto 402, Bogotá' },
   });
-  console.log(`   Status: ${createOrder.status} ${createOrder.ok ? '✅' : '❌'}`);
+  console.log(
+    `   Status: ${createOrder.status} ${createOrder.ok ? '✅' : '❌'}`,
+  );
   const orderId = createOrder.data?._id;
   console.log(`   Orden Creada ID: ${orderId}`);
-  console.log('   Detalles de la Orden:', JSON.stringify(createOrder.data, null, 2));
+  console.log(
+    '   Detalles de la Orden:',
+    JSON.stringify(createOrder.data, null, 2),
+  );
 
   // 11. Consultar Mis Órdenes (Cliente)
   console.log(`\n11. Consultando órdenes del usuario cliente (/orders/me)...`);
@@ -157,29 +186,49 @@ async function runFlowTest() {
     method: 'GET',
     headers: { Authorization: `Bearer ${clientToken}` },
   });
-  console.log(`   Status: ${getMyOrders.status} ${getMyOrders.ok ? '✅' : '❌'}`);
-  console.log(`   Total órdenes encontradas para el cliente: ${Array.isArray(getMyOrders.data) ? getMyOrders.data.length : 0}`);
+  console.log(
+    `   Status: ${getMyOrders.status} ${getMyOrders.ok ? '✅' : '❌'}`,
+  );
+  console.log(
+    `   Total órdenes encontradas para el cliente: ${Array.isArray(getMyOrders.data) ? getMyOrders.data.length : 0}`,
+  );
 
   // 12. Verificar que el carrito quedó vacío tras la orden
-  console.log(`\n12. Verificando que el carrito se limpió tras realizar la compra...`);
+  console.log(
+    `\n12. Verificando que el carrito se limpió tras realizar la compra...`,
+  );
   const checkCartEmpty = await request('/cart', {
     method: 'GET',
     headers: { Authorization: `Bearer ${clientToken}` },
   });
-  console.log(`   Status: ${checkCartEmpty.status} ${checkCartEmpty.ok ? '✅' : '❌'}`);
-  console.log('   Items en carrito post-compra:', checkCartEmpty.data?.items?.length || 0);
+  console.log(
+    `   Status: ${checkCartEmpty.status} ${checkCartEmpty.ok ? '✅' : '❌'}`,
+  );
+  console.log(
+    '   Items en carrito post-compra:',
+    checkCartEmpty.data?.items?.length || 0,
+  );
 
   // 13. Actualizar Estado de la Orden (Admin) — Flujo completo
   if (orderId) {
-    const statusFlow = ['CONFIRMED', 'PREPARING', 'OUT_FOR_DELIVERY', 'DELIVERED'];
-    console.log(`\n13. Actualizando estado de la orden como Admin (flujo completo)...`);
+    const statusFlow = [
+      'CONFIRMED',
+      'PREPARING',
+      'OUT_FOR_DELIVERY',
+      'DELIVERED',
+    ];
+    console.log(
+      `\n13. Actualizando estado de la orden como Admin (flujo completo)...`,
+    );
     for (const status of statusFlow) {
       const updateOrder = await request(`/orders/${orderId}/status`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${adminToken}` },
         body: { status },
       });
-      console.log(`   → ${status}: ${updateOrder.status} ${updateOrder.ok ? '✅' : '❌'}`);
+      console.log(
+        `   → ${status}: ${updateOrder.status} ${updateOrder.ok ? '✅' : '❌'}`,
+      );
       if (!updateOrder.ok) {
         console.log('   Error:', updateOrder.data);
         break;

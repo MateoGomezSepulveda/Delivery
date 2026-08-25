@@ -78,7 +78,13 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - CORS configurado con origins desde variable de entorno `ALLOWED_ORIGINS`.
   - Plantilla `.env.example` documentada para onboarding de nuevos desarrolladores.
 
-*Siguiente paso: Fase 3 — Testing Completo + CI (Tests unitarios, e2e y GitHub Actions).*
+- ✅ **Fase 3 (Testing e Integración Continua)**:
+  - Configuración de tests de cobertura (`npm run test:cov`) para ignorar archivos sin lógica.
+  - Integración de `mongodb-memory-server` para pruebas E2E aisladas y seguras.
+  - Tests E2E implementados para el flujo completo de autenticación (`/register` y `/login`).
+  - GitHub Actions CI (`ci.yml`) configurado para ejecutar linter y tests automáticamente en cada push/PR.
+
+*Siguiente paso: Fase 4 — Producción y Despliegue (Opcional, según Roadmap).*
 
 ---
 

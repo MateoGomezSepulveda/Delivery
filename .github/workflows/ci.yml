@@ -1,0 +1,54 @@
+name: Delivery Backend CI
+
+# Cuándo se ejecuta este pipeline
+on:
+  push:
+    branches: [ "master", "develop" ]
+  pull_request:
+    branches: [ "master", "develop" ]
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    
+    # Nos movemos a la carpeta del backend
+    defaults:
+      run:
+        working-directory: ./delivery-backend
+
+    # Configuramos MongoDB en la máquina virtual de GitHub
+    services:
+      mongodb:
+        image: mongo:latest
+        ports:
+          - 27017:27017
+
+    steps:
+    - name: 📥 Clonar repositorio
+      uses: actions/checkout@v4
+
+    - name: ⚙️ Configurar Node.js 20
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: ./delivery-backend/package-lock.json
+
+    - name: 📦 Instalar dependencias
+      run: npm ci
+
+    - name: 🧹 Lint (Calidad de código)
+      run: npm run lint
+
+    - name: 🧪 Tests Unitarios
+      run: npm run test
+
+    - name: 🤖 Tests E2E
+      run: npm run test:e2e
+      env:
+        # Variables de entorno simuladas para los tests
+        MONGO_URI: mongodb://localhost:27017/delivery-test
+        JWT_SECRET: super-secret-test-key
+        PORT: 3000
+        NODE_ENV: test

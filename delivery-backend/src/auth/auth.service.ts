@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
@@ -8,8 +12,14 @@ import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { Role } from './roles.enum';
-import { RefreshToken, RefreshTokenDocument } from './schemas/refresh-token.schema';
-import { PasswordReset, PasswordResetDocument } from './schemas/password-reset.schema';
+import {
+  RefreshToken,
+  RefreshTokenDocument,
+} from './schemas/refresh-token.schema';
+import {
+  PasswordReset,
+  PasswordResetDocument,
+} from './schemas/password-reset.schema';
 
 @Injectable()
 export class AuthService {
@@ -17,8 +27,10 @@ export class AuthService {
     private readonly userService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-    @InjectModel(RefreshToken.name) private refreshTokenModel: Model<RefreshTokenDocument>,
-    @InjectModel(PasswordReset.name) private passwordResetModel: Model<PasswordResetDocument>,
+    @InjectModel(RefreshToken.name)
+    private refreshTokenModel: Model<RefreshTokenDocument>,
+    @InjectModel(PasswordReset.name)
+    private passwordResetModel: Model<PasswordResetDocument>,
   ) {}
 
   async register(registerDto: RegisterDto) {
@@ -49,7 +61,7 @@ export class AuthService {
 
     const access_token = this.jwtService.sign(payload);
     const refresh_token = crypto.randomBytes(40).toString('hex');
-    
+
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // Expiración en 7 días
 
@@ -66,7 +78,9 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string) {
-    const tokenDoc = await this.refreshTokenModel.findOne({ token: refreshToken });
+    const tokenDoc = await this.refreshTokenModel.findOne({
+      token: refreshToken,
+    });
     if (!tokenDoc) {
       throw new UnauthorizedException('Invalid refresh token');
     }
@@ -88,7 +102,7 @@ export class AuthService {
     };
 
     const access_token = this.jwtService.sign(payload);
-    
+
     // Rotate refresh token
     const new_refresh_token = crypto.randomBytes(40).toString('hex');
     const expiresAt = new Date();
@@ -96,7 +110,7 @@ export class AuthService {
 
     await this.refreshTokenModel.updateOne(
       { _id: tokenDoc._id },
-      { token: new_refresh_token, expiresAt }
+      { token: new_refresh_token, expiresAt },
     );
 
     return {
@@ -128,9 +142,14 @@ export class AuthService {
     });
 
     // TODO: En la fase 5 se implementará el envío real por correo.
-    console.log(`[DEVELOPMENT ONLY] Password reset token for ${email}: ${resetToken}`);
-    
-    return { message: 'If the email exists, a reset link was generated.', devToken: resetToken };
+    console.log(
+      `[DEVELOPMENT ONLY] Password reset token for ${email}: ${resetToken}`,
+    );
+
+    return {
+      message: 'If the email exists, a reset link was generated.',
+      devToken: resetToken,
+    };
   }
 
   async resetPassword(token: string, newPassword: string) {
@@ -143,8 +162,10 @@ export class AuthService {
       await this.passwordResetModel.deleteOne({ _id: resetDoc._id });
       throw new BadRequestException('Invalid or expired password reset token');
     }
-    
-    await this.userService.update(resetDoc.user.toString(), { password: newPassword } as any);
+
+    await this.userService.update(resetDoc.user.toString(), {
+      password: newPassword,
+    } as any);
     await this.passwordResetModel.deleteOne({ _id: resetDoc._id });
 
     return { message: 'Password reset successfully' };

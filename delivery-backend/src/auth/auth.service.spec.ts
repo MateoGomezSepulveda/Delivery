@@ -45,8 +45,14 @@ describe('AuthService', () => {
         { provide: UsersService, useValue: mockUsersService },
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
-        { provide: getModelToken(RefreshToken.name), useValue: mockRefreshTokenModel },
-        { provide: getModelToken(PasswordReset.name), useValue: mockPasswordResetModel },
+        {
+          provide: getModelToken(RefreshToken.name),
+          useValue: mockRefreshTokenModel,
+        },
+        {
+          provide: getModelToken(PasswordReset.name),
+          useValue: mockPasswordResetModel,
+        },
       ],
     }).compile();
 

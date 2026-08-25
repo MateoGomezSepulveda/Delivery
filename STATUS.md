@@ -23,8 +23,11 @@
 - **Swagger en Producción:** Desactivar Swagger y volver a Helmet estricto cuando `NODE_ENV=production`.
   - Swagger debe estar disponible solo en `development` y `staging`.
 
+- Se completó la infraestructura base de la **Fase 3** (Testing + CI):
+  - Configuración de Jest para medir cobertura ignorando archivos sin lógica.
+  - Integración de `mongodb-memory-server` para base de datos temporal en E2E.
+  - Implementación de pruebas E2E para el módulo de Auth (`/register` y `/login`).
+  - Creación del pipeline CI con GitHub Actions (`ci.yml`) para ejecutar tests y linter en cada push.
+
 ## Siguiente Paso
-- Iniciar la **Fase 3 — Testing Completo + CI**.
-  - Tests unitarios de todos los services (cobertura > 80%).
-  - Tests e2e del flujo completo con MongoDB Memory Server.
-  - Configurar GitHub Actions para CI (Lint → Tests → Coverage).
+- Ampliar cobertura de Tests E2E (Flujo Carrito → Pedidos) o avanzar a la siguiente fase según el roadmap general.

@@ -26,11 +26,11 @@ import * as Joi from 'joi';
       validationSchema: Joi.object({
         PORT: Joi.number().default(3000),
         NODE_ENV: Joi.string()
-          .valid('development', 'staging', 'production')
+          .valid('development', 'staging', 'production', 'test')
           .default('development'),
         MONGO_URI: Joi.string().required(),
         JWT_SECRET: Joi.string().required(),
-      })
+      }),
     }),
     ThrottlerModule.forRoot([
       {
@@ -69,7 +69,6 @@ import * as Joi from 'joi';
       provide: APP_GUARD,
       useClass: RolesGuard,
     },
-
   ],
 })
 export class AppModule implements NestModule {
