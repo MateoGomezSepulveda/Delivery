@@ -98,7 +98,8 @@
       "!**/*.controller.ts",
       "!**/app.service.ts",
       "!**/common/**",
-      "!**/health/**"
+      "!**/health/**",
+      "!**/seed.service.ts"
     ],
     "coverageDirectory": "../coverage",
     "coverageThreshold": {

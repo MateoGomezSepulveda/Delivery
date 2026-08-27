@@ -83,6 +83,7 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - Integración de `mongodb-memory-server` para pruebas E2E aisladas y seguras.
   - Tests E2E implementados para el flujo completo de autenticación (`/register` y `/login`).
   - GitHub Actions CI (`ci.yml`) configurado para ejecutar linter y tests automáticamente en cada push/PR.
+  - Cobertura global de pruebas unitarias ampliada exitosamente al **>80%** (80.06%).
 
 *Siguiente paso: Fase 4 — Producción y Despliegue (Opcional, según Roadmap).*
 

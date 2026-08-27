@@ -28,6 +28,7 @@
   - Integración de `mongodb-memory-server` para base de datos temporal en E2E.
   - Implementación de pruebas E2E para el módulo de Auth (`/register` y `/login`).
   - Creación del pipeline CI con GitHub Actions (`ci.yml`) para ejecutar tests y linter en cada push.
+  - **[NUEVO]** Se alcanzó y superó la meta del **80% de cobertura global de pruebas unitarias** (80.06%), cubriendo flujos completos en Auth, Cart, Categories, Orders y Products.
 
 ## Siguiente Paso
 - Ampliar cobertura de Tests E2E (Flujo Carrito → Pedidos) o avanzar a la siguiente fase según el roadmap general.

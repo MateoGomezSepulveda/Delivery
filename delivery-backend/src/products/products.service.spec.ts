@@ -10,11 +10,17 @@ describe('ProductsService', () => {
   let service: ProductsService;
   let categoriesService: CategoriesService;
 
-  const mockProductModel = {
-    findById: jest.fn(),
-    findByIdAndUpdate: jest.fn(),
-    findByIdAndDelete: jest.fn(),
-  };
+  const mockSave = jest.fn();
+
+  const mockProductModel = jest.fn().mockImplementation(() => ({
+    save: mockSave,
+  })) as any;
+
+  mockProductModel.findById = jest.fn();
+  mockProductModel.findByIdAndUpdate = jest.fn();
+  mockProductModel.findByIdAndDelete = jest.fn();
+  mockProductModel.find = jest.fn();
+  mockProductModel.countDocuments = jest.fn();
 
   const mockOrderModel = {
     findOne: jest.fn(),
@@ -56,7 +62,21 @@ describe('ProductsService', () => {
         }),
       ).rejects.toThrow(NotFoundException);
     });
-  });
+
+    it('debe crear y retornar el producto si la categoria existe', async () => {
+      const categoriaFalsa = { _id: 'cat-1', name: 'Pizzas' };
+      const productoEsperado = { _id: 'prod-1', name: 'Margarita' };
+
+      mockCategoriesService.findOne.mockResolvedValue(categoriaFalsa);
+      mockSave.mockResolvedValue(productoEsperado);
+
+      const result = await service.create({ name: 'Margarita', categoryId: 'cat-1' } as any);
+
+      expect(mockCategoriesService.findOne).toHaveBeenCalledWith('cat-1');
+      expect(mockSave).toHaveBeenCalled();
+      expect(result).toEqual(productoEsperado);
+    });
+  })
 
   describe('remove', () => {
     it('should throw BadRequestException if product is in an order', async () => {
@@ -79,4 +99,43 @@ describe('ProductsService', () => {
       );
     });
   });
+
+  describe('findOne', () => {
+    it('debe retornar el producto si existe', async () => {
+      const productoFalso = { _id: '123', name: 'Pizza' };
+      mockProductModel.findById.mockReturnValue({ populate: jest.fn().mockResolvedValue(productoFalso) });
+
+      const resultado = await service.findOne('123');
+
+      expect(mockProductModel.findById).toHaveBeenCalledWith('123');
+      expect(resultado).toEqual(productoFalso);
+    })
+
+    it('debe lanzar NotFoundException si elproducto no existe', async () => {
+      mockProductModel.findById.mockReturnValue({ populate: jest.fn().mockResolvedValue(null) });
+
+      await expect(service.findOne('123')).rejects.toThrow(NotFoundException);
+    })
+  })
+
+  describe('update', () => {
+    it('debe actualizar y retornar el producto modificado', async () => {
+      const productoActualizado = { _id: '123', name: 'Pizza Actualizada' };
+      mockProductModel.findById.mockResolvedValue({ _id: '123' });
+      mockProductModel.findByIdAndUpdate.mockResolvedValue(productoActualizado);
+
+      const resultado = await service.update('123', { name: 'Pizza Actualizada' } as any);
+
+      expect(mockProductModel.findByIdAndUpdate).toHaveBeenCalledWith('123', { name: 'Pizza Actualizada' } as any, { new: true });
+      expect(resultado).toEqual(productoActualizado);
+    })
+
+    it('debe lanzar NotFoundException si el producto no existe al actualizar', async () => {
+      mockProductModel.findById.mockResolvedValue(null);
+
+      await expect(service.update('123', { name: 'Pizza Actualizada' } as any)).rejects.toThrow(NotFoundException);
+    })
+  })
+
 });
+
