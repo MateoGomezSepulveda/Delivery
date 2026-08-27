@@ -85,7 +85,14 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - GitHub Actions CI (`ci.yml`) configurado para ejecutar linter y tests automáticamente en cada push/PR.
   - Cobertura global de pruebas unitarias ampliada exitosamente al **>80%** (80.06%).
 
-*Siguiente paso: Fase 4 — Producción y Despliegue (Opcional, según Roadmap).*
+- ✅ **Fase 4 (Seguridad Avanzada)**:
+  - Rate Limiting granular (`@Throttle`) contra ataques de fuerza bruta en Auth.
+  - Audit Logs mediante interceptor global (IP, usuario, método y tiempo).
+  - Sanitización estricta (`express-mongo-sanitize`) contra NoSQL Injection.
+  - Protección de sobrecarga (límite JSON payload de 10mb).
+  - Seguridad condicional: Helmet estricto y Swagger oculto en entorno de producción.
+
+*Siguiente paso: Fase 5 — Refinamiento y Optimización.*
 
 ---
 

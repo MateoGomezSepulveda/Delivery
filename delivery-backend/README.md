@@ -181,5 +181,6 @@ docker compose up -d --build api
 - ✅ **Fase 1 (Docker)**: Multi-stage Dockerfile (node:20-alpine, non-root, dumb-init, healthcheck), `.dockerignore` optimizado, y Compose diferenciado para desarrollo y producción.
 - ✅ **Fase 2 (Calidad Global y Observabilidad)**: Logging estructurado con Winston, Health Checks con Terminus, API Versioning (`api/v1`), validación de `.env` con Joi, Swagger UI en `/api/docs`, CORS configurado y `.env.example` documentado.
 - ✅ **Fase 3 (Testing e Integración Continua)**: Configuración de Jest ignorando dependencias sin lógica (80.06% de cobertura global superado), integración de `mongodb-memory-server` para E2E y pipeline activo en GitHub Actions.
+- ✅ **Fase 4 (Seguridad Avanzada)**: Rate Limiting granular (`@Throttle`), Audit Logs mediante interceptor global, Sanitización estricta (`express-mongo-sanitize`) contra NoSQL Injection, protección de payload (10mb) y seguridad condicional (Helmet estricto y Swagger oculto en producción).
 
-*Siguiente paso: Fase 4 — Producción y Despliegue (Opcional, según Roadmap).*
+*Siguiente paso: Fase 5 — Refinamiento y Optimización.*

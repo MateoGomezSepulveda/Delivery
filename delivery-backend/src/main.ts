@@ -6,9 +6,23 @@ import helmet from 'helmet';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { json } from 'express';
+import ExpressMongoSanitize from 'express-mongo-sanitize';
+import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.use(json({ limit: '10mb' }));
+  app.use((req, res, next) => {
+    Object.defineProperty(req, 'query', {
+      value: req.query,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+    next();
+  });
+  app.use(ExpressMongoSanitize())
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -22,7 +36,7 @@ async function bootstrap() {
   app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
 
   app.useGlobalFilters(new HttpExceptionFilter());
-  app.useGlobalInterceptors(new TransformInterceptor());
+  app.useGlobalInterceptors(new TransformInterceptor(), new AuditLogInterceptor());
   const isDevelopment = process.env.NODE_ENV !== 'production';
 
   if (isDevelopment) {
