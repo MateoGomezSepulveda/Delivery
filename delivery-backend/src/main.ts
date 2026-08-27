@@ -23,33 +23,44 @@ async function bootstrap() {
 
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new TransformInterceptor());
+  const isDevelopment = process.env.NODE_ENV !== 'production';
 
-  app.use(
-    helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          scriptSrc: ["'self'", "'unsafe-inline'"],
-          imgSrc: ["'self'", 'data:', 'https:'],
+  if (isDevelopment) {
+    app.use(
+      helmet({
+        contentSecurityPolicy: {
+          directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", 'data:', 'https:'],
+          },
         },
-      },
-    }),
-  );
+      }),
+    );
+  } else {
+    app.use(helmet());
+  }
+
+
   app.enableCors({
     origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
     credentials: true,
   });
-  const config = new DocumentBuilder()
-    .setTitle('Delivery API')
-    .setDescription('API de delivery')
-    .setVersion('1.0')
-    .addBearerAuth() // habilita el boton el cual autoriza el JWT
-    .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+
+  if (isDevelopment) {
+    const config = new DocumentBuilder()
+      .setTitle('Delivery API')
+      .setDescription('API de delivery')
+      .setVersion('1.0')
+      .addBearerAuth() // habilita el boton el cual autoriza el JWT
+      .build();
+
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   await app.listen(process.env.PORT ?? 3000);
 }

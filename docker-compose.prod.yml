@@ -2,7 +2,7 @@ services:
   api:
     build:
       context: ./delivery-backend
-      target: production  # 💡 Aquí sí usamos la etapa ligera y segura final
+      target: production # 💡 Aquí sí usamos la etapa ligera y segura final
     ports:
       - '3000:3000'
     env_file: ./delivery-backend/.env.production
@@ -11,7 +11,7 @@ services:
       - redis
     restart: always
     deploy:
-      replicas: 2         # Corre 2 instancias de la API para soportar más carga
+      replicas: 2 # Corre 2 instancias de la API para soportar más carga
       resources:
         limits:
           cpus: '0.5'
