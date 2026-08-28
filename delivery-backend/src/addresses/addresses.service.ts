@@ -64,7 +64,7 @@ export class AddressesService {
 
     // Si borró su dirección por defecto, hagamos que la más reciente sea la nueva por defecto
     if (address.isDefault) {
-      const nextAddress = await this.addressModel.findOne({ userId }).sort({ createdAt: -1 });
+      const nextAddress = await this.addressModel.findOne({ userId }).sort({ createdAt: -1 }).exec();
       if (nextAddress) {
         nextAddress.isDefault = true;
         await nextAddress.save();

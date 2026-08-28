@@ -18,6 +18,7 @@ import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './common/logger/winston.config';
 import { HealthModule } from './health/health.module';
 import { AddressesModule } from './addresses/addresses.module';
+import { UploadsModule } from './uploads/uploads.module';
 import * as Joi from 'joi';
 
 @Module({
@@ -55,6 +56,7 @@ import * as Joi from 'joi';
     OrdersModule,
     HealthModule,
     AddressesModule,
+    UploadsModule,
   ],
   controllers: [AppController],
   providers: [

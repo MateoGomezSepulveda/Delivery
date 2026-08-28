@@ -22,3 +22,15 @@
   - Caché de respuestas con Redis.
   - Compresión de respuestas HTTP (Gzip/Brotli).
   - Índices de base de datos adicionales si es necesario.
+
+---
+
+### Fase 5: Integración con AWS y Features Avanzados
+- [x] **Módulo Addresses**: Direcciones de envío (CRUD, isDefault, vinculación con User).
+- [x] **Módulo Uploads (AWS S3)**: Servicio para subir imágenes (avatares, fotos de productos).
+- [ ] **Módulo Payments**: Pasarela de pagos (MercadoPago o Stripe).
+- [ ] **Módulo Notifications**: Push notifications (FCM) o Correos.
+
+## 🛠 Estado Actual
+**Fase 5 en progreso.**
+Acabamos de finalizar exitosamente el **Módulo Uploads**. La API ahora está conectada a Amazon Web Services (AWS S3) para gestionar la subida de imágenes (avatares, productos, etc). Se implementó validación de tipos y tamaños con Multer, y el módulo de direcciones quedó con un 100% de cobertura de pruebas unitarias. La cobertura global supera el 83%.
