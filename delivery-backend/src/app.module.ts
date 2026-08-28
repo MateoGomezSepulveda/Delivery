@@ -17,6 +17,7 @@ import { RequestLoggerMiddleware } from './common/middleware/request-logger.midd
 import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './common/logger/winston.config';
 import { HealthModule } from './health/health.module';
+import { AddressesModule } from './addresses/addresses.module';
 import * as Joi from 'joi';
 
 @Module({
@@ -53,6 +54,7 @@ import * as Joi from 'joi';
     CartModule,
     OrdersModule,
     HealthModule,
+    AddressesModule,
   ],
   controllers: [AppController],
   providers: [
