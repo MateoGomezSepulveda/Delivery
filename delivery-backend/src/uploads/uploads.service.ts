@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import * as crypto from 'crypto';
@@ -12,8 +16,10 @@ export class UploadsService {
   constructor(private readonly configService: ConfigService) {
     this.bucketName = this.configService.get<string>('AWS_S3_BUCKET') || '';
     const region = this.configService.get<string>('AWS_S3_REGION') || '';
-    const accessKeyId = this.configService.get<string>('AWS_ACCESS_KEY_ID') || '';
-    const secretAccessKey = this.configService.get<string>('AWS_SECRET_ACCESS_KEY') || '';
+    const accessKeyId =
+      this.configService.get<string>('AWS_ACCESS_KEY_ID') || '';
+    const secretAccessKey =
+      this.configService.get<string>('AWS_SECRET_ACCESS_KEY') || '';
 
     this.s3Client = new S3Client({
       region,
@@ -24,7 +30,10 @@ export class UploadsService {
     });
   }
 
-  async uploadFile(file: Express.Multer.File, folder: string = 'general'): Promise<string> {
+  async uploadFile(
+    file: Express.Multer.File,
+    folder: string = 'general',
+  ): Promise<string> {
     try {
       // 1. Generar nombre de archivo único
       const fileExtension = file.originalname.split('.').pop();
@@ -49,7 +58,9 @@ export class UploadsService {
       return fileUrl;
     } catch (error) {
       this.logger.error('Error uploading file to S3', error);
-      throw new InternalServerErrorException('Error al subir el archivo a la nube');
+      throw new InternalServerErrorException(
+        'Error al subir el archivo a la nube',
+      );
     }
   }
 }

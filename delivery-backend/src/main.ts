@@ -22,7 +22,7 @@ async function bootstrap() {
     });
     next();
   });
-  app.use(ExpressMongoSanitize())
+  app.use(ExpressMongoSanitize());
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -36,7 +36,10 @@ async function bootstrap() {
   app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
 
   app.useGlobalFilters(new HttpExceptionFilter());
-  app.useGlobalInterceptors(new TransformInterceptor(), new AuditLogInterceptor());
+  app.useGlobalInterceptors(
+    new TransformInterceptor(),
+    new AuditLogInterceptor(),
+  );
   const isDevelopment = process.env.NODE_ENV !== 'production';
 
   if (isDevelopment) {
@@ -56,13 +59,11 @@ async function bootstrap() {
     app.use(helmet());
   }
 
-
   app.enableCors({
     origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
     credentials: true,
   });
-
 
   if (isDevelopment) {
     const config = new DocumentBuilder()

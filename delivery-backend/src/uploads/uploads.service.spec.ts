@@ -50,6 +50,8 @@ describe('UploadsService', () => {
     } as Express.Multer.File;
 
     const url = await service.uploadFile(mockFile, 'products');
-    expect(url).toBe('https://test-bucket.s3.us-east-1.amazonaws.com/products/mocked-uuid.jpg');
+    expect(url).toBe(
+      'https://test-bucket.s3.us-east-1.amazonaws.com/products/mocked-uuid.jpg',
+    );
   });
 });

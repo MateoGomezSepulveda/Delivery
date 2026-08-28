@@ -1,8 +1,23 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { AddressesService } from './addresses.service';
 import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ParseMongoIdPipe } from '../common/pipes/parse-mongo-id.pipe';
 
@@ -11,7 +26,7 @@ import { ParseMongoIdPipe } from '../common/pipes/parse-mongo-id.pipe';
 @UseGuards(JwtAuthGuard)
 @Controller('addresses')
 export class AddressesController {
-  constructor(private readonly addressesService: AddressesService) { }
+  constructor(private readonly addressesService: AddressesService) {}
 
   @Post()
   @ApiOperation({ summary: 'Crear una nueva dirección' })
@@ -23,7 +38,9 @@ export class AddressesController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Obtener todas las direcciones del usuario autenticado' })
+  @ApiOperation({
+    summary: 'Obtener todas las direcciones del usuario autenticado',
+  })
   findAll(@Req() req) {
     const userId = req.user.userId;
     return this.addressesService.findAllByUser(userId);

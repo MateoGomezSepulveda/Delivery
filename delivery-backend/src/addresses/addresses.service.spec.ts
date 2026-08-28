@@ -18,7 +18,7 @@ describe('AddressesService', () => {
   class MockAddressModel {
     constructor(public data?: any) {}
     save = jest.fn().mockResolvedValue(mockAddress);
-    
+
     static find = jest.fn().mockReturnThis();
     static findOne = jest.fn().mockReturnThis();
     static sort = jest.fn().mockReturnThis();
@@ -51,7 +51,7 @@ describe('AddressesService', () => {
     it('should set isDefault to false for other addresses if new address is default', async () => {
       const dto = { title: 'Casa', isDefault: true } as any;
       MockAddressModel.updateMany.mockResolvedValueOnce({} as any);
-      
+
       const result = await service.create('user123', dto);
       expect(MockAddressModel.updateMany).toHaveBeenCalledWith(
         { userId: 'user123' },
@@ -63,7 +63,7 @@ describe('AddressesService', () => {
     it('should set isDefault to true if it is the first address created', async () => {
       const dto = { title: 'Casa', isDefault: false } as any;
       MockAddressModel.countDocuments.mockResolvedValueOnce(0);
-      
+
       const result = await service.create('user123', dto);
       expect(dto.isDefault).toBe(true);
       expect(result).toBeDefined();
@@ -97,12 +97,12 @@ describe('AddressesService', () => {
     it('should update and unset default from others if isDefault is true', async () => {
       const dto = { isDefault: true } as any;
       jest.spyOn(service, 'findOne').mockResolvedValueOnce(mockAddress as any);
-      
+
       await service.update('address123', 'user123', dto);
-      
+
       expect(MockAddressModel.updateMany).toHaveBeenCalledWith(
         { userId: 'user123', _id: { $ne: 'address123' } },
-        { isDefault: false }
+        { isDefault: false },
       );
       expect(mockAddress.save).toHaveBeenCalled();
     });
@@ -112,13 +112,15 @@ describe('AddressesService', () => {
     it('should delete and assign new default if deleted address was default', async () => {
       jest.spyOn(service, 'findOne').mockResolvedValueOnce(mockAddress as any);
       MockAddressModel.deleteOne.mockResolvedValueOnce({} as any);
-      
+
       const mockNextAddress = { ...mockAddress, save: jest.fn() };
       MockAddressModel.exec.mockResolvedValueOnce(mockNextAddress);
 
       await service.remove('address123', 'user123');
-      
-      expect(MockAddressModel.deleteOne).toHaveBeenCalledWith({ _id: 'address123' });
+
+      expect(MockAddressModel.deleteOne).toHaveBeenCalledWith({
+        _id: 'address123',
+      });
       expect(mockNextAddress.isDefault).toBe(true);
       expect(mockNextAddress.save).toHaveBeenCalled();
     });

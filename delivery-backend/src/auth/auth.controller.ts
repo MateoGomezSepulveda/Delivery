@@ -12,7 +12,7 @@ import { Throttle } from '@nestjs/throttler';
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) { }
+  constructor(private authService: AuthService) {}
 
   @Throttle({ default: { limit: 3, ttl: 60000 } })
   @Post('register')

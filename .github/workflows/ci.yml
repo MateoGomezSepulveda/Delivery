@@ -52,3 +52,7 @@ jobs:
         JWT_SECRET: super-secret-test-key
         PORT: 3000
         NODE_ENV: test
+        AWS_S3_REGION: us-east-1
+        AWS_ACCESS_KEY_ID: dummy-key
+        AWS_SECRET_ACCESS_KEY: dummy-secret
+        AWS_S3_BUCKET: dummy-bucket

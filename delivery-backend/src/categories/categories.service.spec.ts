@@ -70,7 +70,6 @@ describe('CategoriesService', () => {
   });
 
   describe('findOne', () => {
-
     // Test 1: El camino feliz
     it('debe retornar la categoría si existe', async () => {
       // 1. PREPARACIÓN (Arrange): Le decimos al mock qué debe responder
@@ -90,9 +89,10 @@ describe('CategoriesService', () => {
       mockCategoryModel.findById.mockResolvedValue(null);
 
       // 2 y 3. ACCIÓN Y VERIFICACIÓN: Comprobamos que lance el error correcto
-      await expect(service.findOne('id-falso')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('id-falso')).rejects.toThrow(
+        NotFoundException,
+      );
     });
-
   });
 
   describe('update', () => {
@@ -101,7 +101,9 @@ describe('CategoriesService', () => {
       const categoriaFalsa = { _id: '123', name: 'Pizzas Italianas' };
       mockCategoryModel.findByIdAndUpdate.mockResolvedValue(categoriaFalsa);
 
-      const resultado = await service.update('123', { name: 'Pizzas Italianas' });
+      const resultado = await service.update('123', {
+        name: 'Pizzas Italianas',
+      });
 
       expect(resultado).toEqual(categoriaFalsa);
     });
@@ -110,12 +112,13 @@ describe('CategoriesService', () => {
     it('debe lanzar NotFoundException si la categoría no existe al actualizar', async () => {
       mockCategoryModel.findByIdAndUpdate.mockResolvedValue(null);
 
-      await expect(service.update('id-falso', { name: 'X' })).rejects.toThrow(NotFoundException);
+      await expect(service.update('id-falso', { name: 'X' })).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('findAll', () => {
-
     it('debe retornar lista paginada de categorias', async () => {
       const mockCategorias = [{ name: 'Pizza' }, { name: 'Empanadas' }];
 
@@ -131,8 +134,6 @@ describe('CategoriesService', () => {
 
       expect(result.data).toEqual(mockCategorias);
       expect(result.meta.total).toBe(2);
-
-    })
-  })
-
+    });
+  });
 });

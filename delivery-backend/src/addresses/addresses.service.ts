@@ -9,7 +9,7 @@ import { Address } from './schemas/address.schema';
 export class AddressesService {
   constructor(
     @InjectModel(Address.name) private readonly addressModel: Model<Address>,
-  ) { }
+  ) {}
 
   async create(userId: string, createAddressDto: CreateAddressDto) {
     if (createAddressDto.isDefault) {
@@ -32,7 +32,10 @@ export class AddressesService {
 
   async findAllByUser(userId: string) {
     // Ordenamos para que la dirección por defecto siempre salga primero
-    return this.addressModel.find({ userId }).sort({ isDefault: -1, createdAt: -1 }).exec();
+    return this.addressModel
+      .find({ userId })
+      .sort({ isDefault: -1, createdAt: -1 })
+      .exec();
   }
 
   async findOne(id: string, userId: string) {
@@ -64,7 +67,10 @@ export class AddressesService {
 
     // Si borró su dirección por defecto, hagamos que la más reciente sea la nueva por defecto
     if (address.isDefault) {
-      const nextAddress = await this.addressModel.findOne({ userId }).sort({ createdAt: -1 }).exec();
+      const nextAddress = await this.addressModel
+        .findOne({ userId })
+        .sort({ createdAt: -1 })
+        .exec();
       if (nextAddress) {
         nextAddress.isDefault = true;
         await nextAddress.save();

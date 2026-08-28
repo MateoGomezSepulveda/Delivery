@@ -235,7 +235,10 @@ describe('AuthService', () => {
       mockUsersService.update.mockResolvedValue({});
       mockPasswordResetModel.deleteOne.mockResolvedValue({});
 
-      const result = await service.resetPassword('valid-reset-token', 'NewPass123!');
+      const result = await service.resetPassword(
+        'valid-reset-token',
+        'NewPass123!',
+      );
 
       expect(mockUsersService.update).toHaveBeenCalled();
       expect(result.message).toBe('Password reset successfully');

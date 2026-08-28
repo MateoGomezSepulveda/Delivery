@@ -70,13 +70,16 @@ describe('ProductsService', () => {
       mockCategoriesService.findOne.mockResolvedValue(categoriaFalsa);
       mockSave.mockResolvedValue(productoEsperado);
 
-      const result = await service.create({ name: 'Margarita', categoryId: 'cat-1' } as any);
+      const result = await service.create({
+        name: 'Margarita',
+        categoryId: 'cat-1',
+      } as any);
 
       expect(mockCategoriesService.findOne).toHaveBeenCalledWith('cat-1');
       expect(mockSave).toHaveBeenCalled();
       expect(result).toEqual(productoEsperado);
     });
-  })
+  });
 
   describe('remove', () => {
     it('should throw BadRequestException if product is in an order', async () => {
@@ -103,20 +106,24 @@ describe('ProductsService', () => {
   describe('findOne', () => {
     it('debe retornar el producto si existe', async () => {
       const productoFalso = { _id: '123', name: 'Pizza' };
-      mockProductModel.findById.mockReturnValue({ populate: jest.fn().mockResolvedValue(productoFalso) });
+      mockProductModel.findById.mockReturnValue({
+        populate: jest.fn().mockResolvedValue(productoFalso),
+      });
 
       const resultado = await service.findOne('123');
 
       expect(mockProductModel.findById).toHaveBeenCalledWith('123');
       expect(resultado).toEqual(productoFalso);
-    })
+    });
 
     it('debe lanzar NotFoundException si elproducto no existe', async () => {
-      mockProductModel.findById.mockReturnValue({ populate: jest.fn().mockResolvedValue(null) });
+      mockProductModel.findById.mockReturnValue({
+        populate: jest.fn().mockResolvedValue(null),
+      });
 
       await expect(service.findOne('123')).rejects.toThrow(NotFoundException);
-    })
-  })
+    });
+  });
 
   describe('update', () => {
     it('debe actualizar y retornar el producto modificado', async () => {
@@ -124,18 +131,24 @@ describe('ProductsService', () => {
       mockProductModel.findById.mockResolvedValue({ _id: '123' });
       mockProductModel.findByIdAndUpdate.mockResolvedValue(productoActualizado);
 
-      const resultado = await service.update('123', { name: 'Pizza Actualizada' } as any);
+      const resultado = await service.update('123', {
+        name: 'Pizza Actualizada',
+      } as any);
 
-      expect(mockProductModel.findByIdAndUpdate).toHaveBeenCalledWith('123', { name: 'Pizza Actualizada' } as any, { new: true });
+      expect(mockProductModel.findByIdAndUpdate).toHaveBeenCalledWith(
+        '123',
+        { name: 'Pizza Actualizada' } as any,
+        { new: true },
+      );
       expect(resultado).toEqual(productoActualizado);
-    })
+    });
 
     it('debe lanzar NotFoundException si el producto no existe al actualizar', async () => {
       mockProductModel.findById.mockResolvedValue(null);
 
-      await expect(service.update('123', { name: 'Pizza Actualizada' } as any)).rejects.toThrow(NotFoundException);
-    })
-  })
-
+      await expect(
+        service.update('123', { name: 'Pizza Actualizada' } as any),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
 });
-

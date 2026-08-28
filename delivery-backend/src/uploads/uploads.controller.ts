@@ -9,7 +9,13 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadsService } from './uploads.service';
-import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiConsumes,
+  ApiBody,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @ApiTags('Uploads')
@@ -39,7 +45,9 @@ export class UploadsController {
       fileFilter: (req, file, callback) => {
         if (!file.originalname.match(/\.(jpg|jpeg|png|webp)$/i)) {
           return callback(
-            new BadRequestException('Solo se permiten imágenes (JPG, PNG, WEBP)'),
+            new BadRequestException(
+              'Solo se permiten imágenes (JPG, PNG, WEBP)',
+            ),
             false,
           );
         }
@@ -61,11 +69,13 @@ export class UploadsController {
     // Asegurarnos de que el folder sea uno de los permitidos
     const allowedFolders = ['products', 'avatars', 'categories', 'general'];
     if (!allowedFolders.includes(folder)) {
-      throw new BadRequestException(`El folder debe ser uno de: ${allowedFolders.join(', ')}`);
+      throw new BadRequestException(
+        `El folder debe ser uno de: ${allowedFolders.join(', ')}`,
+      );
     }
 
     const url = await this.uploadsService.uploadFile(file, folder);
-    
+
     return {
       success: true,
       url,
