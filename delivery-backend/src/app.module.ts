@@ -19,6 +19,7 @@ import { winstonConfig } from './common/logger/winston.config';
 import { HealthModule } from './health/health.module';
 import { AddressesModule } from './addresses/addresses.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { PaymentsModule } from './payments/payments.module';
 import * as Joi from 'joi';
 
 @Module({
@@ -57,6 +58,7 @@ import * as Joi from 'joi';
     HealthModule,
     AddressesModule,
     UploadsModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [

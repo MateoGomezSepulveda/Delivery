@@ -43,6 +43,12 @@ export class Order {
     default: OrderStatus.PENDING,
   })
   status: OrderStatus;
+
+  @Prop()
+  paymentId?: string;
+
+  @Prop()
+  paymentUrl?: string;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

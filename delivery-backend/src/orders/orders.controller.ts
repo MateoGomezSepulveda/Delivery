@@ -69,4 +69,10 @@ export class OrdersController {
   ) {
     return this.ordersService.updateStatus(id, body.status);
   }
+
+  @Post(':id/pay')
+  @ApiOperation({ summary: 'Generar URL de pago para una orden' })
+  payOrder(@Param('id', ParseMongoIdPipe) id: string, @Req() req) {
+    return this.ordersService.payOrder(id, req.user.userId);
+  }
 }

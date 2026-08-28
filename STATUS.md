@@ -1,36 +1,32 @@
 # Estado del Proyecto
 
-**Última actualización:** 23 de Agosto de 2026
+**Última actualización:** 28 de Agosto de 2026
 
 ## Última Tarea / Contexto Actual
 - Se completaron las **Fases 0.1 a 0.7** (Módulos de negocio y utilidades base), blindando la API con autenticación, validaciones, paginación y trazabilidad.
 - Se completó la **Fase 1** (Docker Profesional)
 - Se completó la **Fase 2** (Calidad Global y Observabilidad)
 - Se completó la **Fase 3** (Testing + CI) con más del 80% de cobertura de código.
-- **[NUEVO]** Se completó la **Fase 4** (Seguridad Avanzada):
-  - Implementación de Rate Limiting granular en Auth (`/login` y `/register`).
-  - Interceptor global de Audit Logs.
-  - Sanitización de inputs contra NoSQL Injection (`express-mongo-sanitize` con parche para Express 5).
-  - Límite de payload (10mb).
-  - Desactivación de Swagger y Helmet estricto en producción (`NODE_ENV=production`).
+- Se completó la **Fase 4** (Seguridad Avanzada).
+- **[NUEVO]** Se completó gran parte de la **Fase 5 (Integración con Servicios Externos)**:
+  - Módulo Addresses (CRUD).
+  - Módulo Uploads (AWS S3).
+  - **Módulo Payments (MercadoPago)**: Generación de Preference, Redirecciones (`/success`, `/failure`, `/pending`) y Webhook de notificaciones (`/webhook`).
 
 ## ⚠️ Deuda Técnica — Para Fase de Producción
-- *Ninguna actualmente. La seguridad y configuraciones condicionales de producción fueron implementadas con éxito.*
+- *Cuando se despliegue en producción con un dominio real, no será necesario utilizar túneles temporales y los webhooks de MercadoPago llegarán sin bloqueos.*
 
 ## Siguiente Paso
-- Avanzar a la **Fase 5 (Refinamiento y Optimización)**:
-  - Caché de respuestas con Redis.
-  - Compresión de respuestas HTTP (Gzip/Brotli).
-  - Índices de base de datos adicionales si es necesario.
+- Implementar **Módulo Notifications**: Push notifications (FCM) o envío de correos transaccionales para alertar a los usuarios de cambios de estado en sus órdenes.
 
 ---
 
 ### Fase 5: Integración con AWS y Features Avanzados
 - [x] **Módulo Addresses**: Direcciones de envío (CRUD, isDefault, vinculación con User).
 - [x] **Módulo Uploads (AWS S3)**: Servicio para subir imágenes (avatares, fotos de productos).
-- [ ] **Módulo Payments**: Pasarela de pagos (MercadoPago o Stripe).
+- [x] **Módulo Payments**: Pasarela de pagos con MercadoPago integrada.
 - [ ] **Módulo Notifications**: Push notifications (FCM) o Correos.
 
 ## 🛠 Estado Actual
-**Fase 5 en progreso.**
-Acabamos de finalizar exitosamente el **Módulo Uploads**. La API ahora está conectada a Amazon Web Services (AWS S3) para gestionar la subida de imágenes (avatares, productos, etc). Se implementó validación de tipos y tamaños con Multer, y el módulo de direcciones quedó con un 100% de cobertura de pruebas unitarias. La cobertura global supera el 83%.
+**Fase 5 casi completada.**
+Acabamos de finalizar exitosamente el **Módulo Payments**. La API ahora está conectada a MercadoPago, permitiendo generar enlaces de pago de manera dinámica. Además, se construyeron los endpoints de redirección de estado y el Webhook de notificaciones en tiempo real, permitiendo actualizar automáticamente las órdenes a estado `PAID` al confirmarse el pago.

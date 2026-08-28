@@ -7,16 +7,19 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Order, OrderDocument } from './schemas/order.schema';
 import { Model } from 'mongoose';
 import { CartService } from 'src/cart/cart.service';
+import { PaymentsService } from 'src/payments/payments.service';
 import { OrderStatus } from './order-status.enum';
 import { OrderPaginationDto } from './dto/order-pagination.dto';
 
 const validTransitions: Record<OrderStatus, OrderStatus[]> = {
-  [OrderStatus.PENDING]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
+  [OrderStatus.PENDING]: [OrderStatus.PAID, OrderStatus.CANCELLED],
+  [OrderStatus.PAID]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
   [OrderStatus.CONFIRMED]: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
   [OrderStatus.PREPARING]: [OrderStatus.OUT_FOR_DELIVERY],
   [OrderStatus.OUT_FOR_DELIVERY]: [OrderStatus.DELIVERED],
   [OrderStatus.DELIVERED]: [],
   [OrderStatus.CANCELLED]: [],
+  [OrderStatus.FAILED]: [OrderStatus.PENDING, OrderStatus.CANCELLED],
 };
 
 @Injectable()
@@ -24,7 +27,8 @@ export class OrdersService {
   constructor(
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
     private cartService: CartService,
-  ) {}
+    private paymentsService: PaymentsService,
+  ) { }
 
   async createOrder(userId: string, address: string) {
     const cart = await this.cartService.getActiveCart(userId);
@@ -177,5 +181,28 @@ export class OrdersService {
 
     order.status = status;
     return order.save();
+  }
+
+  async payOrder(orderId: string, userId: string) {
+    const order = await this.findOne(orderId, { userId, role: 'USER' });
+
+    if (
+      order.status !== OrderStatus.PENDING &&
+      order.status !== OrderStatus.FAILED
+    ) {
+      throw new BadRequestException(
+        'Solo se pueden pagar pedidos en estado PENDING o FAILED',
+      );
+    }
+
+    const paymentUrl = await this.paymentsService.createPreference(
+      order,
+      orderId,
+    );
+
+    order.paymentUrl = paymentUrl;
+    await order.save();
+
+    return { paymentUrl };
   }
 }
