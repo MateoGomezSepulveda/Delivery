@@ -22,6 +22,7 @@ import { UploadsModule } from './uploads/uploads.module';
 import { PaymentsModule } from './payments/payments.module';
 import { MailModule } from './mail/mail.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { DeliveryModule } from './delivery/delivery.module';
 import * as Joi from 'joi';
 
 @Module({
@@ -63,6 +64,7 @@ import * as Joi from 'joi';
     PaymentsModule,
     MailModule,
     NotificationsModule,
+    DeliveryModule,
   ],
   controllers: [AppController],
   providers: [

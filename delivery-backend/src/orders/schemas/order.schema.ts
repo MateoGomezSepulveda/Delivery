@@ -28,6 +28,9 @@ export class Order {
   @Prop({ type: Types.ObjectId, ref: User.name, required: true })
   userId: string;
 
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  deliveryId?: string;
+
   @Prop({ type: [OrderItemSchema], required: true })
   items: OrderItem[];
 

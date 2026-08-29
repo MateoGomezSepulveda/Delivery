@@ -92,13 +92,14 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - Protección de sobrecarga (límite JSON payload de 10mb).
   - Seguridad condicional: Helmet estricto y Swagger oculto en entorno de producción.
 
-- ✅ **Fase 5 (Refinamiento y Optimización)**:
-  - **Pagos (MercadoPago)**: Servicio `PaymentsService` y webhook para procesar el éxito del pago.
-  - **Notificaciones (FCM & Mail)**: Sistema asíncrono para enviar push notifications (con `firebase-admin`) y correos (con `nodemailer`) en cada actualización de estado del pedido.
-  - **Máquina de Estados de Pedidos**: Lógica estricta de validación en las transiciones de estado del pedido en `OrdersService`.
-  - Módulos `MailModule` y `NotificationsModule` globales.
+- ⏳ **Fase 5 (Nuevos Módulos Core - En Progreso)**:
+  - ✅ **Addresses**: Direcciones de envío.
+  - ✅ **Uploads**: Subida de imágenes a AWS S3.
+  - ✅ **Payments (MercadoPago)**: Servicio `PaymentsService` y webhook para procesar el éxito del pago.
+  - ✅ **Notifications & Mail**: Sistema asíncrono para enviar push notifications (FCM) y correos (Nodemailer) en cada actualización de estado del pedido.
+  - 🔄 **Pendientes**: `delivery`, `events` (WebSockets), `reviews`, `coupons`.
 
-*Siguiente paso: Fase 6 — Nuevos Módulos (Deliveries, WebSockets, Reviews).*
+*Siguiente paso: Finalizar módulos pendientes de la Fase 5.*
 
 ---
 

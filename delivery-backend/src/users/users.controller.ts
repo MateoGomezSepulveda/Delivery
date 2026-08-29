@@ -18,12 +18,16 @@ import { OwnershipGuard } from '../common/guards/ownership.guard';
 import { UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Public } from '../auth/public.decorator';
+import { ParseMongoIdPipe } from 'src/common/pipes/parse-mongo-id.pipe';
+import { ApiParam } from '@nestjs/swagger';
+import { ChangeRoleDto } from './dto/change-role.dto';
+
 
 @ApiTags('Users')
 @ApiBearerAuth()
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @ApiOperation({ summary: 'Obtener todos los usuarios (Solo Admin)' })
   @Roles(Role.ADMIN)
@@ -59,4 +63,16 @@ export class UsersController {
   remove(@Param('id') id: string) {
     return this.usersService.remove(id);
   }
+
+  @Patch(':id/role')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Cambiar el rol de un usuario (Solo ADMIN)' })
+  @ApiParam({ name: 'id', description: 'ID del usuario' })
+  changeRole(
+    @Param('id', ParseMongoIdPipe) id: string,
+    @Body() dto: ChangeRoleDto,
+  ) {
+    return this.usersService.changeRole(id, dto.role);
+  }
+
 }

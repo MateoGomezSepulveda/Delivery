@@ -6,10 +6,11 @@ import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcrypt';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
+import { Role } from 'src/auth/roles.enum';
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
+  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) { }
 
   async findAll(paginationQuery: PaginationQueryDto) {
     const { page = 1, limit = 10, search } = paginationQuery;
@@ -18,11 +19,11 @@ export class UsersService {
 
     const filter = search
       ? {
-          $or: [
-            { name: { $regex: search, $options: 'i' } },
-            { email: { $regex: search, $options: 'i' } },
-          ],
-        }
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+        ],
+      }
       : {};
 
     const users = await this.userModel
@@ -89,4 +90,11 @@ export class UsersService {
   async findByEmail(email: string) {
     return this.userModel.findOne({ email });
   }
+
+  async changeRole(id: string, role: Role) {
+    return this.userModel
+      .findByIdAndUpdate(id, { role }, { new: true })
+      .select('-password');
+  }
+
 }
