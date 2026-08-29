@@ -4,6 +4,9 @@ import { getModelToken } from '@nestjs/mongoose';
 import { Order } from './schemas/order.schema';
 import { CartService } from 'src/cart/cart.service';
 import { PaymentsService } from 'src/payments/payments.service';
+import { UsersService } from 'src/users/users.service';
+import { MailService } from 'src/mail/mail.service';
+import { NotificationsService } from 'src/notifications/notifications.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { OrderStatus } from './order-status.enum';
 
@@ -71,6 +74,9 @@ describe('OrdersService', () => {
         { provide: getModelToken(Order.name), useValue: MockOrderModel },
         { provide: CartService, useValue: mockCartService },
         { provide: PaymentsService, useValue: { createPreference: jest.fn(), verifyPayment: jest.fn() } },
+        { provide: UsersService, useValue: { findOne: jest.fn().mockResolvedValue({ email: 'test@test.com', fcmTokens: [] }) } },
+        { provide: MailService, useValue: { sendOrderStatusEmail: jest.fn() } },
+        { provide: NotificationsService, useValue: { sendOrderStatusPush: jest.fn() } },
       ],
     }).compile();
 

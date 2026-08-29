@@ -20,6 +20,8 @@ import { HealthModule } from './health/health.module';
 import { AddressesModule } from './addresses/addresses.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { PaymentsModule } from './payments/payments.module';
+import { MailModule } from './mail/mail.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import * as Joi from 'joi';
 
 @Module({
@@ -59,6 +61,8 @@ import * as Joi from 'joi';
     AddressesModule,
     UploadsModule,
     PaymentsModule,
+    MailModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [

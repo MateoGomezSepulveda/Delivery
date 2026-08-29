@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Role } from '../../auth/roles.enum';
+import { ApiProperty } from '@nestjs/swagger';
 
 @Schema({ timestamps: true })
 export class User {
@@ -9,6 +10,16 @@ export class User {
 
   @Prop({ required: true, unique: true })
   email: string;
+
+  @ApiProperty({ description: 'Teléfono del usuario' })
+  @Prop()
+  phone?: string;
+
+  @ApiProperty({
+    description: 'Tokens de FCM para enviar notificaciones push al dispositivo',
+  })
+  @Prop({ type: [String], default: [] })
+  fcmTokens: string[];
 
   @Prop({ required: true })
   password: string;

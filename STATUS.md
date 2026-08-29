@@ -25,7 +25,7 @@
 - [x] **Módulo Addresses**: Direcciones de envío (CRUD, isDefault, vinculación con User).
 - [x] **Módulo Uploads (AWS S3)**: Servicio para subir imágenes (avatares, fotos de productos).
 - [x] **Módulo Payments**: Pasarela de pagos con MercadoPago integrada.
-- [ ] **Módulo Notifications**: Push notifications (FCM) o Correos.
+- [x] **Módulo Notifications**: Push notifications (FCM) y Correos implementados.
 
 ## 🛠 Estado Actual
 **Fase 5 casi completada.**

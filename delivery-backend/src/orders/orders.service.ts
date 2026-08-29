@@ -11,6 +11,10 @@ import { PaymentsService } from 'src/payments/payments.service';
 import { OrderStatus } from './order-status.enum';
 import { OrderPaginationDto } from './dto/order-pagination.dto';
 
+import { MailService } from 'src/mail/mail.service';
+import { NotificationsService } from 'src/notifications/notifications.service';
+import { UsersService } from 'src/users/users.service';
+
 const validTransitions: Record<OrderStatus, OrderStatus[]> = {
   [OrderStatus.PENDING]: [OrderStatus.PAID, OrderStatus.CANCELLED],
   [OrderStatus.PAID]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
@@ -28,6 +32,9 @@ export class OrdersService {
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
     private cartService: CartService,
     private paymentsService: PaymentsService,
+    private usersService: UsersService,
+    private mailService: MailService,
+    private notificationsService: NotificationsService,
   ) {}
 
   async createOrder(userId: string, address: string) {
@@ -180,7 +187,26 @@ export class OrdersService {
     }
 
     order.status = status;
-    return order.save();
+    const savedOrder = await order.save();
+
+    // Enviar notificaciones
+    try {
+      const user = await this.usersService.findOne(order.userId.toString());
+      if (user) {
+        // Enviar Email
+        await this.mailService.sendOrderStatusEmail(user.email, orderId, status);
+        
+        // Enviar Push FCM
+        if (user.fcmTokens && user.fcmTokens.length > 0) {
+          await this.notificationsService.sendOrderStatusPush(user.fcmTokens, orderId, status);
+        }
+      }
+    } catch (error) {
+      // No bloqueamos la actualización de la orden si falla la notificación
+      console.error('Error enviando notificaciones', error);
+    }
+
+    return savedOrder;
   }
 
   async payOrder(orderId: string, userId: string) {
