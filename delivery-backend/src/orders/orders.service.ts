@@ -28,7 +28,7 @@ export class OrdersService {
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
     private cartService: CartService,
     private paymentsService: PaymentsService,
-  ) { }
+  ) {}
 
   async createOrder(userId: string, address: string) {
     const cart = await this.cartService.getActiveCart(userId);

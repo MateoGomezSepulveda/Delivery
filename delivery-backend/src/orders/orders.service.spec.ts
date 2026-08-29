@@ -3,6 +3,7 @@ import { OrdersService } from './orders.service';
 import { getModelToken } from '@nestjs/mongoose';
 import { Order } from './schemas/order.schema';
 import { CartService } from 'src/cart/cart.service';
+import { PaymentsService } from 'src/payments/payments.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { OrderStatus } from './order-status.enum';
 
@@ -69,6 +70,7 @@ describe('OrdersService', () => {
         OrdersService,
         { provide: getModelToken(Order.name), useValue: MockOrderModel },
         { provide: CartService, useValue: mockCartService },
+        { provide: PaymentsService, useValue: { createPreference: jest.fn(), verifyPayment: jest.fn() } },
       ],
     }).compile();
 
@@ -255,9 +257,9 @@ describe('OrdersService', () => {
       };
       mockOrderModel.findById.mockResolvedValue(order);
 
-      await service.updateStatus(mockOrderId, OrderStatus.CONFIRMED);
+      await service.updateStatus(mockOrderId, OrderStatus.PAID);
 
-      expect(order.status).toBe(OrderStatus.CONFIRMED);
+      expect(order.status).toBe(OrderStatus.PAID);
       expect(order.save).toHaveBeenCalled();
     });
 
