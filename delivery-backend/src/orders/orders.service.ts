@@ -14,6 +14,8 @@ import { OrderPaginationDto } from './dto/order-pagination.dto';
 import { MailService } from 'src/mail/mail.service';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { UsersService } from 'src/users/users.service';
+import { EventsGateway } from '../events/events/events.gateway';
+
 
 const validTransitions: Record<OrderStatus, OrderStatus[]> = {
   [OrderStatus.PENDING]: [OrderStatus.PAID, OrderStatus.CANCELLED],
@@ -35,7 +37,8 @@ export class OrdersService {
     private usersService: UsersService,
     private mailService: MailService,
     private notificationsService: NotificationsService,
-  ) {}
+    private eventsGateway: EventsGateway,
+  ) { }
 
   async createOrder(userId: string, address: string) {
     const cart = await this.cartService.getActiveCart(userId);
@@ -195,7 +198,7 @@ export class OrdersService {
       if (user) {
         // Enviar Email
         await this.mailService.sendOrderStatusEmail(user.email, orderId, status);
-        
+
         // Enviar Push FCM
         if (user.fcmTokens && user.fcmTokens.length > 0) {
           await this.notificationsService.sendOrderStatusPush(user.fcmTokens, orderId, status);
@@ -205,6 +208,12 @@ export class OrdersService {
       // No bloqueamos la actualización de la orden si falla la notificación
       console.error('Error enviando notificaciones', error);
     }
+
+    // Emitir evento para actualizacion en tiempo real
+    this.eventsGateway.emitOrderStatusUpdate(
+      savedOrder.userId.toString(),
+      savedOrder,
+    );
 
     return savedOrder;
   }

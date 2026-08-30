@@ -183,4 +183,13 @@ docker compose up -d --build api
 - ✅ **Fase 3 (Testing e Integración Continua)**: Configuración de Jest ignorando dependencias sin lógica (80.06% de cobertura global superado), integración de `mongodb-memory-server` para E2E y pipeline activo en GitHub Actions.
 - ✅ **Fase 4 (Seguridad Avanzada)**: Rate Limiting granular (`@Throttle`), Audit Logs mediante interceptor global, Sanitización estricta (`express-mongo-sanitize`) contra NoSQL Injection, protección de payload (10mb) y seguridad condicional (Helmet estricto y Swagger oculto en producción).
 
-*Siguiente paso: Fase 5 — Refinamiento y Optimización.*
+- ✅ **Fase 5 (Nuevos Módulos Core)**:
+  - ✅ **Addresses**: Direcciones de envío.
+  - ✅ **Uploads**: Subida de imágenes a AWS S3.
+  - ✅ **Payments (MercadoPago)**: Servicio `PaymentsService` y webhook para procesar el éxito del pago.
+  - ✅ **Notifications & Mail**: Sistema asíncrono para enviar push notifications (FCM) y correos (Nodemailer) en cada actualización de estado del pedido.
+  - ✅ **Delivery**: Módulo completo para repartidores (perfil, disponibilidad, geolocalización de entrega y estadísticas).
+  - ✅ **Events**: Integración de WebSockets (`socket.io`) para emitir cambios de estado de órdenes en tiempo real a los clientes.
+  - ⏳ **Pendientes**: `reviews`, `coupons`.
+
+*Siguiente paso: Finalizar módulos pendientes de la Fase 5.*

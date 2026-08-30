@@ -12,12 +12,14 @@
   - Módulo Addresses (CRUD).
   - Módulo Uploads (AWS S3).
   - **Módulo Payments (MercadoPago)**: Generación de Preference, Redirecciones (`/success`, `/failure`, `/pending`) y Webhook de notificaciones (`/webhook`).
+  - **Módulo Delivery**: Perfil de repartidor, disponibilidad, asignación de órdenes y estadísticas.
+  - **Módulo Events (WebSockets)**: Emisión de eventos en tiempo real (`order_status_updated`) a clientes usando `Socket.io`.
 
 ## ⚠️ Deuda Técnica — Para Fase de Producción
 - *Cuando se despliegue en producción con un dominio real, no será necesario utilizar túneles temporales y los webhooks de MercadoPago llegarán sin bloqueos.*
 
 ## Siguiente Paso
-- Implementar los módulos restantes de la Fase 5: `delivery`, `events`, `reviews` y `coupons`.
+- Implementar los módulos restantes de la Fase 5: `reviews` y `coupons`.
 
 ---
 
@@ -26,7 +28,7 @@
 - [x] **Módulo Uploads (AWS S3)**: Servicio para subir imágenes.
 - [x] **Módulo Payments**: Pasarela de pagos con MercadoPago integrada.
 - [x] **Módulo Notifications & Mail**: Push notifications (FCM) y Correos implementados.
-- [ ] **Módulo Delivery**: Perfil y gestión de repartidores.
+- [x] **Módulo Delivery**: Perfil y gestión de repartidores.
 - [ ] **Módulo Events**: WebSockets para notificaciones y tracking en tiempo real.
 - [ ] **Módulo Reviews**: Calificaciones de pedidos finalizados.
 - [ ] **Módulo Coupons**: Gestión de códigos promocionales.

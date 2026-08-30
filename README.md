@@ -97,7 +97,9 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - ✅ **Uploads**: Subida de imágenes a AWS S3.
   - ✅ **Payments (MercadoPago)**: Servicio `PaymentsService` y webhook para procesar el éxito del pago.
   - ✅ **Notifications & Mail**: Sistema asíncrono para enviar push notifications (FCM) y correos (Nodemailer) en cada actualización de estado del pedido.
-  - 🔄 **Pendientes**: `delivery`, `events` (WebSockets), `reviews`, `coupons`.
+  - ✅ **Delivery**: Gestión de repartidores, disponibilidad, geolocalización, aceptación de pedidos y estadísticas. Rol `DELIVERY`.
+  - ✅ **Events (WebSockets)**: Integración con Socket.io en tiempo real. Notificaciones automáticas al cliente cuando su pedido cambia de estado.
+  - ⏳ **Pendientes**: `reviews`, `coupons`.
 
 *Siguiente paso: Finalizar módulos pendientes de la Fase 5.*
 
