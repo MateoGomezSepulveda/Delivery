@@ -22,4 +22,4 @@ import { NotificationsModule } from 'src/notifications/notifications.module';
   controllers: [OrdersController],
   exports: [MongooseModule],
 })
-export class OrdersModule { }
+export class OrdersModule {}

@@ -24,6 +24,8 @@ import { MailModule } from './mail/mail.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { DeliveryModule } from './delivery/delivery.module';
 import { EventsModule } from './events/events.module';
+import { ReviewsModule } from './reviews/reviews.module';
+import { CouponsModule } from './coupons/coupons.module';
 import * as Joi from 'joi';
 
 @Module({
@@ -67,6 +69,8 @@ import * as Joi from 'joi';
     NotificationsModule,
     DeliveryModule,
     EventsModule,
+    ReviewsModule,
+    CouponsModule,
   ],
   controllers: [AppController],
   providers: [

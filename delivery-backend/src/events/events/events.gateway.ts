@@ -23,13 +23,19 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private jwtService: JwtService,
     private configService: ConfigService,
-  ) { }
+  ) {}
 
   async handleConnection(client: Socket) {
     try {
-      this.logger.log(`Handshake query: ${JSON.stringify(client.handshake.query)}`);
-      this.logger.log(`Handshake headers: ${JSON.stringify(client.handshake.headers)}`);
-      this.logger.log(`Handshake auth: ${JSON.stringify(client.handshake.auth)}`);
+      this.logger.log(
+        `Handshake query: ${JSON.stringify(client.handshake.query)}`,
+      );
+      this.logger.log(
+        `Handshake headers: ${JSON.stringify(client.handshake.headers)}`,
+      );
+      this.logger.log(
+        `Handshake auth: ${JSON.stringify(client.handshake.auth)}`,
+      );
 
       let rawToken = client.handshake.headers?.token;
       rawToken = rawToken as string;

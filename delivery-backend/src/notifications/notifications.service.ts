@@ -16,7 +16,9 @@ export class NotificationsService {
         });
       }
     } catch (error) {
-      this.logger.warn('Firebase Admin no pudo inicializarse. Posiblemente falten credenciales.');
+      this.logger.warn(
+        'Firebase Admin no pudo inicializarse. Posiblemente falten credenciales.',
+      );
     }
   }
 
@@ -32,7 +34,9 @@ export class NotificationsService {
         tokens,
       };
       const response = await getMessaging().sendEachForMulticast(message);
-      this.logger.log(`Notificación Push enviada: ${response.successCount} exitosas, ${response.failureCount} fallidas`);
+      this.logger.log(
+        `Notificación Push enviada: ${response.successCount} exitosas, ${response.failureCount} fallidas`,
+      );
     } catch (error) {
       this.logger.error('Error enviando notificación Push', error);
     }

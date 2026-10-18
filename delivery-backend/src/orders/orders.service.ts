@@ -16,7 +16,6 @@ import { NotificationsService } from 'src/notifications/notifications.service';
 import { UsersService } from 'src/users/users.service';
 import { EventsGateway } from '../events/events/events.gateway';
 
-
 const validTransitions: Record<OrderStatus, OrderStatus[]> = {
   [OrderStatus.PENDING]: [OrderStatus.PAID, OrderStatus.CANCELLED],
   [OrderStatus.PAID]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
@@ -38,7 +37,7 @@ export class OrdersService {
     private mailService: MailService,
     private notificationsService: NotificationsService,
     private eventsGateway: EventsGateway,
-  ) { }
+  ) {}
 
   async createOrder(userId: string, address: string) {
     const cart = await this.cartService.getActiveCart(userId);
@@ -197,11 +196,19 @@ export class OrdersService {
       const user = await this.usersService.findOne(order.userId.toString());
       if (user) {
         // Enviar Email
-        await this.mailService.sendOrderStatusEmail(user.email, orderId, status);
+        await this.mailService.sendOrderStatusEmail(
+          user.email,
+          orderId,
+          status,
+        );
 
         // Enviar Push FCM
         if (user.fcmTokens && user.fcmTokens.length > 0) {
-          await this.notificationsService.sendOrderStatusPush(user.fcmTokens, orderId, status);
+          await this.notificationsService.sendOrderStatusPush(
+            user.fcmTokens,
+            orderId,
+            status,
+          );
         }
       }
     } catch (error) {

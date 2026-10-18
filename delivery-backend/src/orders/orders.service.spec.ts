@@ -7,6 +7,7 @@ import { PaymentsService } from 'src/payments/payments.service';
 import { UsersService } from 'src/users/users.service';
 import { MailService } from 'src/mail/mail.service';
 import { NotificationsService } from 'src/notifications/notifications.service';
+import { EventsGateway } from '../events/events/events.gateway';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { OrderStatus } from './order-status.enum';
 
@@ -73,10 +74,27 @@ describe('OrdersService', () => {
         OrdersService,
         { provide: getModelToken(Order.name), useValue: MockOrderModel },
         { provide: CartService, useValue: mockCartService },
-        { provide: PaymentsService, useValue: { createPreference: jest.fn(), verifyPayment: jest.fn() } },
-        { provide: UsersService, useValue: { findOne: jest.fn().mockResolvedValue({ email: 'test@test.com', fcmTokens: [] }) } },
+        {
+          provide: PaymentsService,
+          useValue: { createPreference: jest.fn(), verifyPayment: jest.fn() },
+        },
+        {
+          provide: UsersService,
+          useValue: {
+            findOne: jest
+              .fn()
+              .mockResolvedValue({ email: 'test@test.com', fcmTokens: [] }),
+          },
+        },
         { provide: MailService, useValue: { sendOrderStatusEmail: jest.fn() } },
-        { provide: NotificationsService, useValue: { sendOrderStatusPush: jest.fn() } },
+        {
+          provide: NotificationsService,
+          useValue: { sendOrderStatusPush: jest.fn() },
+        },
+        {
+          provide: EventsGateway,
+          useValue: { emitOrderStatusUpdate: jest.fn() },
+        },
       ],
     }).compile();
 
@@ -259,7 +277,9 @@ describe('OrdersService', () => {
       const order = {
         ...mockOrder,
         status: OrderStatus.PENDING,
-        save: jest.fn().mockResolvedValue(true),
+        save: jest
+          .fn()
+          .mockResolvedValue({ ...mockOrder, status: OrderStatus.PAID }),
       };
       mockOrderModel.findById.mockResolvedValue(order);
 

@@ -35,7 +35,15 @@ src/
 ├── categories/                 # Categorías de productos
 ├── products/                   # Catálogo de productos
 ├── cart/                       # Carrito de compras persistente por usuario
-└── orders/                     # Creación, consulta y cambio de estados de pedidos
+├── orders/                     # Creación, consulta y cambio de estados de pedidos
+├── addresses/                  # Direcciones de envío por usuario
+├── uploads/                    # Subida de imágenes a AWS S3
+├── payments/                   # Pasarela de pagos MercadoPago + webhook
+├── mail/ · notifications/      # Correos (Nodemailer) y push notifications (FCM)
+├── delivery/                   # Perfil y gestión de repartidores
+├── events/                     # WebSockets (Socket.io) para tracking en tiempo real
+├── reviews/                    # Reseñas y calificaciones de productos
+└── coupons/                    # Cupones y códigos promocionales
 ```
 
 ---
@@ -111,6 +119,23 @@ src/
 | `PATCH` | `/orders/:id/cancel` | JWT | Cancelar un pedido propio (solo en estado `PENDING`) |
 | `GET` | `/orders` | JWT + Admin | Ver todos los pedidos (paginado, con filtros) |
 | `PATCH` | `/orders/:id/status` | JWT + Admin | Cambiar estado del pedido (`PENDING` → `CONFIRMED` → `PREPARING` → `OUT_FOR_DELIVERY` → `DELIVERED` / `CANCELLED`) |
+
+### ⭐ Reseñas (`/reviews`)
+| Método | Endpoint | Protección | Descripción |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/reviews` | JWT | Crear reseña (solo pedidos propios en estado `DELIVERED`) |
+| `GET` | `/reviews/product/:productId` | Pública | Listar reseñas de un producto |
+| `DELETE` | `/reviews/:id` | JWT | Eliminar reseña (autor o Admin) |
+
+### 🎟️ Cupones (`/coupons`)
+| Método | Endpoint | Protección | Descripción |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/coupons` | JWT + Admin | Crear cupón (`PERCENTAGE` o `FIXED`) |
+| `GET` | `/coupons` | JWT + Admin | Listar todos los cupones |
+| `GET` | `/coupons/:id` | JWT + Admin | Ver detalle de un cupón |
+| `PATCH` | `/coupons/:id` | JWT + Admin | Actualizar un cupón |
+| `DELETE` | `/coupons/:id` | JWT + Admin | Eliminar un cupón |
+| `POST` | `/coupons/apply` | JWT | Validar y aplicar un cupón sobre el total del pedido |
 
 ---
 
@@ -190,6 +215,8 @@ docker compose up -d --build api
   - ✅ **Notifications & Mail**: Sistema asíncrono para enviar push notifications (FCM) y correos (Nodemailer) en cada actualización de estado del pedido.
   - ✅ **Delivery**: Módulo completo para repartidores (perfil, disponibilidad, geolocalización de entrega y estadísticas).
   - ✅ **Events**: Integración de WebSockets (`socket.io`) para emitir cambios de estado de órdenes en tiempo real a los clientes.
-  - ⏳ **Pendientes**: `reviews`, `coupons`.
+  - ✅ **Reviews**: Reseñas con validación de pedido `DELIVERED`, verificación de que el producto pertenece a la orden, índice único `{ user, product, order }` y moderación por Admin.
+  - ✅ **Coupons**: CRUD de cupones (Admin) y endpoint `apply` con validación de expiración, límite de usos, uso único por usuario, monto mínimo y tope de descuento.
+  - ✅ **CI**: Specs de `delivery`, `events` y `orders` corregidos con mocks; pipeline de GitHub Actions en verde (98 tests unitarios + E2E).
 
-*Siguiente paso: Finalizar módulos pendientes de la Fase 5.*
+*Siguiente paso: Fase 6 — Rendimiento y Escala.*

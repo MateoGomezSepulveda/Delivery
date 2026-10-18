@@ -22,12 +22,11 @@ import { ParseMongoIdPipe } from 'src/common/pipes/parse-mongo-id.pipe';
 import { ApiParam } from '@nestjs/swagger';
 import { ChangeRoleDto } from './dto/change-role.dto';
 
-
 @ApiTags('Users')
 @ApiBearerAuth()
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) { }
+  constructor(private readonly usersService: UsersService) {}
 
   @ApiOperation({ summary: 'Obtener todos los usuarios (Solo Admin)' })
   @Roles(Role.ADMIN)
@@ -74,5 +73,4 @@ export class UsersController {
   ) {
     return this.usersService.changeRole(id, dto.role);
   }
-
 }

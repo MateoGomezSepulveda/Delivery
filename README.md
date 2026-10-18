@@ -92,16 +92,18 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - Protección de sobrecarga (límite JSON payload de 10mb).
   - Seguridad condicional: Helmet estricto y Swagger oculto en entorno de producción.
 
-- ⏳ **Fase 5 (Nuevos Módulos Core - En Progreso)**:
+- ✅ **Fase 5 (Nuevos Módulos Core)**:
   - ✅ **Addresses**: Direcciones de envío.
   - ✅ **Uploads**: Subida de imágenes a AWS S3.
   - ✅ **Payments (MercadoPago)**: Servicio `PaymentsService` y webhook para procesar el éxito del pago.
   - ✅ **Notifications & Mail**: Sistema asíncrono para enviar push notifications (FCM) y correos (Nodemailer) en cada actualización de estado del pedido.
   - ✅ **Delivery**: Gestión de repartidores, disponibilidad, geolocalización, aceptación de pedidos y estadísticas. Rol `DELIVERY`.
   - ✅ **Events (WebSockets)**: Integración con Socket.io en tiempo real. Notificaciones automáticas al cliente cuando su pedido cambia de estado.
-  - ⏳ **Pendientes**: `reviews`, `coupons`.
+  - ✅ **Reviews**: Reseñas y calificaciones (1-5) solo sobre productos de pedidos `DELIVERED`, con índice único anti-duplicados y lectura pública.
+  - ✅ **Coupons**: Cupones promocionales (`PERCENTAGE` / `FIXED`) con monto mínimo, tope de descuento, expiración, límite de usos y un uso por usuario.
+  - ✅ **CI estabilizado**: 15 suites / 98 tests unitarios y E2E pasando en GitHub Actions.
 
-*Siguiente paso: Finalizar módulos pendientes de la Fase 5.*
+*Siguiente paso: Fase 6 — Rendimiento y Escala (Redis cache, colas BullMQ, analytics).*
 
 ---
 
@@ -113,9 +115,25 @@ El entorno de desarrollo se gestiona con **Docker Compose**. Desde la raíz del 
 # 1. Levantar todos los servicios (API + MongoDB + Redis + Mongo Express)
 docker compose up -d
 
-# 2. Ver los logs de la API en tiempo real
+# 2. Si mongo no se levanta
+docker compose rm -f mongo-express
+
+# 3. Ver los logs de la API en tiempo real
 docker compose logs -f api
-```
+
+# 4. Ver test
+npm run test:cov
+
+# 5. Levantar todos los servicios (API + MongoDB + Redis + Mongo Express) Production
+docker compose -f docker-compose.prod.yml up -d
+
+# 6. Apagar todos los servicios
+docker compose -f docker-compose.prod.yml down
+
+# 7. Reiniciar solo la API
+docker compose restart api
+
+
 
 > **⚠️ Nota:** Si instalas una nueva librería (`npm install <paquete>`), debes reconstruir el contenedor de la API:
 > ```bash
@@ -128,6 +146,10 @@ docker compose logs -f api
 | API REST | `http://localhost:3000/api/v1` |
 | Swagger UI | `http://localhost:3000/api/docs` |
 | Health Check | `http://localhost:3000/api/v1/health` |
-| Mongo Express | `http://localhost:8081` |
+| Mongo Express | `http://localhost:8081` | admin-pass
 
 *Nota: Configura tu `.env` basándote en el archivo `.env.example` del backend antes de ejecutar.*
+
+Como ejecutar las test
+
+

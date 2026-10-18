@@ -17,4 +17,4 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
   providers: [EventsGateway],
   exports: [EventsGateway],
 })
-export class EventsModule { }
+export class EventsModule {}
