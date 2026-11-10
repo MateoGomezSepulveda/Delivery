@@ -1,5 +1,7 @@
 import { MongooseModule } from '@nestjs/mongoose';
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { CacheModule } from '@nestjs/cache-manager';
+import KeyvRedis from '@keyv/redis';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { ProductsModule } from './products/products.module';
@@ -26,12 +28,15 @@ import { DeliveryModule } from './delivery/delivery.module';
 import { EventsModule } from './events/events.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { CouponsModule } from './coupons/coupons.module';
+import { QueuesModule } from './queues/queues.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import * as Joi from 'joi';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: [`.env.${process.env.NODE_ENV || 'development'}`, '.env'],
       validationSchema: Joi.object({
         PORT: Joi.number().default(3000),
         NODE_ENV: Joi.string()
@@ -39,7 +44,21 @@ import * as Joi from 'joi';
           .default('development'),
         MONGO_URI: Joi.string().required(),
         JWT_SECRET: Joi.string().required(),
+        REDIS_URL: Joi.string().default('redis://localhost:6379'),
       }),
+    }),
+    CacheModule.registerAsync({
+      isGlobal: true,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const isTest = configService.get<string>('NODE_ENV') === 'test';
+        const redisUrl =
+          configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
+        return {
+          stores: isTest ? undefined : [new KeyvRedis(redisUrl)],
+          ttl: 600 * 1000, // 10 minutos por defecto
+        };
+      },
     }),
     ThrottlerModule.forRoot([
       {
@@ -55,6 +74,7 @@ import * as Joi from 'joi';
       }),
     }),
     WinstonModule.forRoot(winstonConfig),
+    QueuesModule,
     UsersModule,
     AuthModule,
     ProductsModule,
@@ -71,6 +91,7 @@ import * as Joi from 'joi';
     EventsModule,
     ReviewsModule,
     CouponsModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [

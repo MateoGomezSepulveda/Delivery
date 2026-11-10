@@ -101,9 +101,15 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - ✅ **Events (WebSockets)**: Integración con Socket.io en tiempo real. Notificaciones automáticas al cliente cuando su pedido cambia de estado.
   - ✅ **Reviews**: Reseñas y calificaciones (1-5) solo sobre productos de pedidos `DELIVERED`, con índice único anti-duplicados y lectura pública.
   - ✅ **Coupons**: Cupones promocionales (`PERCENTAGE` / `FIXED`) con monto mínimo, tope de descuento, expiración, límite de usos y un uso por usuario.
-  - ✅ **CI estabilizado**: 15 suites / 98 tests unitarios y E2E pasando en GitHub Actions.
 
-*Siguiente paso: Fase 6 — Rendimiento y Escala (Redis cache, colas BullMQ, analytics).*
+- ✅ **Fase 6 (Rendimiento y Escala)**:
+  - ✅ **Cache con Redis**: `@nestjs/cache-manager` + `@keyv/redis` aplicado en Categorías (1h) y Productos (10min).
+  - ✅ **Colas con BullMQ**: Procesamiento en segundo plano (`QueuesService` + `NotificationsProcessor`) para correos y notificaciones push con backoff exponencial.
+  - ✅ **Búsqueda Avanzada e Índices**: Índices compuestos optimizados en MongoDB (`ProductSchema` y `OrderSchema`) y ordenamiento dinámico (`sortBy`, `sortOrder`).
+  - ✅ **Dashboard Analytics**: Módulo `/analytics` con Aggregation Pipelines de MongoDB (KPIs generales, evolución de ventas diarias y top productos más vendidos).
+  - ✅ **Multi-entorno**: Carga dinámica de `.env.development`, `.env.staging` y `.env.production` con sus respectivas plantillas documentadas.
+
+*Siguiente paso: Fase 7 — Deploy a Producción con AWS (ECS Fargate).*
 
 ---
 

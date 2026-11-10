@@ -40,6 +40,8 @@ export class ProductsService {
       minPrice,
       maxPrice,
       available,
+      sortBy,
+      sortOrder = 'desc',
     } = paginationQuery;
     const skip = (page - 1) * limit;
     const filter: any = {};
@@ -57,11 +59,13 @@ export class ProductsService {
       if (minPrice !== undefined) filter.price.$gte = minPrice;
       if (maxPrice !== undefined) filter.price.$lte = maxPrice;
     }
-    const products = await this.productModel
-      .find(filter)
-      .skip(skip)
-      .limit(limit)
-      .populate('categoryId');
+
+    let query = this.productModel.find(filter);
+    if (sortBy && typeof (query as any).sort === 'function') {
+      query = query.sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 });
+    }
+
+    const products = await query.skip(skip).limit(limit).populate('categoryId');
     const total = await this.productModel.countDocuments(filter);
     return {
       data: products,

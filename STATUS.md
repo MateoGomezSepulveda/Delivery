@@ -1,6 +1,6 @@
 # Estado del Proyecto
 
-**Última actualización:** 18 de Octubre de 2026
+**Última actualización:** 10 de Noviembre de 2026
 
 ## Última Tarea / Contexto Actual
 - Se completaron las **Fases 0.1 a 0.7** (Módulos de negocio y utilidades base), blindando la API con autenticación, validaciones, paginación y trazabilidad.
@@ -8,38 +8,33 @@
 - Se completó la **Fase 2** (Calidad Global y Observabilidad)
 - Se completó la **Fase 3** (Testing + CI) con más del 80% de cobertura de código.
 - Se completó la **Fase 4** (Seguridad Avanzada).
-- **[NUEVO]** Se completó la **Fase 5 (Integración con Servicios Externos y Features Core)**:
-  - Módulo Addresses (CRUD).
-  - Módulo Uploads (AWS S3).
-  - **Módulo Payments (MercadoPago)**: Generación de Preference, Redirecciones (`/success`, `/failure`, `/pending`) y Webhook de notificaciones (`/webhook`).
-  - **Módulo Delivery**: Perfil de repartidor, disponibilidad, asignación de órdenes y estadísticas.
-  - **Módulo Events (WebSockets)**: Emisión de eventos en tiempo real (`order_status_updated`) a clientes usando `Socket.io`.
-  - **Módulo Reviews**: Reseñas (1-5) solo para pedidos `DELIVERED`, validando que el producto pertenezca a la orden. Lectura pública y eliminación por autor o Admin.
-  - **Módulo Coupons**: CRUD (Admin) y `POST /coupons/apply` con descuentos `PERCENTAGE`/`FIXED`, monto mínimo, tope, expiración, límite global y uso único por usuario.
-  - **CI reparado**: Los specs de `delivery`, `events` y `orders` no tenían los mocks de sus dependencias (`EventsGateway`, modelos, `JwtService`, `ConfigService`). Ahora pasan 15 suites / 98 tests unitarios + E2E.
+- Se completó la **Fase 5** (Integración con Servicios Externos y Features Core: `addresses`, `uploads`, `payments`, `mail`, `notifications`, `delivery`, `events`, `reviews`, `coupons`).
+- **[NUEVO]** Se completó la **Fase 6 (Rendimiento y Escala)**:
+  - **Cache con Redis**: Configuración global de `@nestjs/cache-manager` con `@keyv/redis`, cacheando `categories` por 1 hora y `products` por 10 minutos (con fallback en memoria para entorno de test).
+  - **Colas con BullMQ (`src/queues/`)**: Procesamiento asíncrono en segundo plano (`NotificationsProcessor`) para el envío de emails y notificaciones push al cambiar el estado de una orden, con 3 reintentos y backoff exponencial.
+  - **Búsqueda Avanzada e Índices de MongoDB**: Índices compuestos optimizados en `ProductSchema` y `OrderSchema`, y soporte de ordenamiento dinámico (`sortBy`, `sortOrder`) en el catálogo de productos.
+  - **Dashboard Analytics (`src/analytics/`)**: Endpoints para Admin con Aggregation Pipelines de MongoDB (`/analytics/dashboard`, `/analytics/top-products`, `/analytics/sales`).
+  - **Multi-entorno**: Soporte dinámico para `.env.development`, `.env.staging`, `.env.production` y plantillas `.example` documentadas.
 
 ## ⚠️ Deuda Técnica — Para Fase de Producción
 - *Cuando se despliegue en producción con un dominio real, no será necesario utilizar túneles temporales y los webhooks de MercadoPago llegarán sin bloqueos.*
 - *Migrar módulo de notificaciones (actualmente en Firebase FCM) a AWS SNS.*
 - *Migrar módulo de correos (actualmente en Nodemailer local/Ethereal) a AWS SES.*
-- *Integrar `coupons` en el checkout de `orders` (guardar `couponCode` y `discount` en la orden). Hoy `apply` registra el uso al validarse, de forma independiente al pedido.*
-- *Agregar tests unitarios para los services de `delivery` y `payments` (hoy solo tienen el test "should be defined").*
+- *Integrar `coupons` en el checkout de `orders` (guardar `couponCode` y `discount` en la orden).*
+- *Agregar tests unitarios adicionales para los services de `delivery` y `payments`.*
 - *Limpiar los 8 warnings de ESLint (`no-unused-vars`).*
 
 ## Siguiente Paso
-- Iniciar la **Fase 6 — Rendimiento y Escala** (Redis cache, colas BullMQ, índices optimizados, dashboard de analytics, multi-entorno) según `docs/analisis_proyecto_delivery.md`.
+- Iniciar la **Fase 7 — Deploy a Producción con AWS (ECS Fargate)** según `docs/analisis_proyecto_delivery.md` (o iniciar el desarrollo del Frontend si se desea antes del despliegue).
 
 ---
 
-### Fase 5: Integración con Servicios Externos y Features Avanzados (Completada ✅)
-- [x] **Módulo Addresses**: Direcciones de envío (CRUD, isDefault, vinculación con User).
-- [x] **Módulo Uploads (AWS S3)**: Servicio para subir imágenes.
-- [x] **Módulo Payments**: Pasarela de pagos con MercadoPago integrada.
-- [x] **Módulo Notifications & Mail**: Push notifications (FCM) y Correos implementados.
-- [x] **Módulo Delivery**: Perfil y gestión de repartidores.
-- [x] **Módulo Events**: WebSockets para notificaciones y tracking en tiempo real.
-- [x] **Módulo Reviews**: Calificaciones de pedidos finalizados.
-- [x] **Módulo Coupons**: Gestión de códigos promocionales.
+### Fase 6: Rendimiento y Escala (Completada ✅)
+- [x] **Redis cache configurado**: Categorías (1h) y Productos (10min) con `@keyv/redis`.
+- [x] **Colas BullMQ funcionando**: `QueuesService` y `NotificationsProcessor` con reintentos exponenciales.
+- [x] **Índices de MongoDB optimizados**: Índices compuestos en `Product` y `Order` + ordenamiento dinámico.
+- [x] **Dashboard de analytics**: Aggregation pipelines para KPIs, ventas diarias y top productos.
+- [x] **Archivos de entorno separados**: `.env.development`, `.env.staging`, `.env.production` + `.example`.
 
 ## 🛠 Estado Actual
-La Fase 5 está completa: todos los módulos core del delivery están implementados, documentados en Swagger y cubiertos por tests. El pipeline de CI vuelve a estar en verde. Lo siguiente es la Fase 6 (Rendimiento y Escala).
+Las Fases 0 a 6 del backend están 100% implementadas, documentadas en Swagger y respaldadas por suites de pruebas unitarias y E2E. El proyecto está listo para la Fase 7 (Despliegue en AWS con ECS Fargate).

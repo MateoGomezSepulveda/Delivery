@@ -7,8 +7,10 @@ import {
   Patch,
   Post,
   UseGuards,
+  UseInterceptors,
   Query,
 } from '@nestjs/common';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 import { CategoriesService } from './categories.service';
 import { Roles } from 'src/auth/roles.decorator';
@@ -37,6 +39,8 @@ export class CategoriesController {
 
   @ApiOperation({ summary: 'Obtener todas las categorias' })
   @Public()
+  @UseInterceptors(CacheInterceptor)
+  @CacheTTL(3600 * 1000)
   @Get()
   findAll(@Query() paginationQuery: PaginationQueryDto) {
     return this.categoriesService.findAll(paginationQuery);
@@ -44,6 +48,8 @@ export class CategoriesController {
 
   @ApiOperation({ summary: 'Obtener una categoria por ID' })
   @Public()
+  @UseInterceptors(CacheInterceptor)
+  @CacheTTL(3600 * 1000)
   @Get(':id')
   findOne(@Param('id', ParseMongoIdPipe) id: string) {
     return this.categoriesService.findOne(id);

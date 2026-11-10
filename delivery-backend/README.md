@@ -43,7 +43,9 @@ src/
 ├── delivery/                   # Perfil y gestión de repartidores
 ├── events/                     # WebSockets (Socket.io) para tracking en tiempo real
 ├── reviews/                    # Reseñas y calificaciones de productos
-└── coupons/                    # Cupones y códigos promocionales
+├── coupons/                    # Cupones y códigos promocionales
+├── queues/                     # Colas en segundo plano con BullMQ y Redis
+└── analytics/                  # Dashboard de KPIs, ventas y top productos (Aggregation Pipelines)
 ```
 
 ---
@@ -137,6 +139,13 @@ src/
 | `DELETE` | `/coupons/:id` | JWT + Admin | Eliminar un cupón |
 | `POST` | `/coupons/apply` | JWT | Validar y aplicar un cupón sobre el total del pedido |
 
+### 📊 Analytics (`/analytics`)
+| Método | Endpoint | Protección | Descripción |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/analytics/dashboard` | JWT + Admin | KPIs generales (ingresos, ticket promedio, usuarios, productos) y órdenes por estado |
+| `GET` | `/analytics/top-products` | JWT + Admin | Ranking de productos más vendidos (unidades e ingresos) |
+| `GET` | `/analytics/sales` | JWT + Admin | Serie histórica de ventas e ingresos agrupados por día |
+
 ---
 
 ## ⚙️ Configuración y Variables de Entorno
@@ -219,4 +228,11 @@ docker compose up -d --build api
   - ✅ **Coupons**: CRUD de cupones (Admin) y endpoint `apply` con validación de expiración, límite de usos, uso único por usuario, monto mínimo y tope de descuento.
   - ✅ **CI**: Specs de `delivery`, `events` y `orders` corregidos con mocks; pipeline de GitHub Actions en verde (98 tests unitarios + E2E).
 
-*Siguiente paso: Fase 6 — Rendimiento y Escala.*
+- ✅ **Fase 6 (Rendimiento y Escala)**:
+  - ✅ **Cache con Redis**: `@nestjs/cache-manager` + `@keyv/redis` en Categorías (TTL 1h) y Productos (TTL 10min).
+  - ✅ **Colas con BullMQ**: `QueuesModule` (`QueuesService` + `NotificationsProcessor`) para envío asíncrono de emails y push notifications con 3 reintentos exponenciales.
+  - ✅ **Búsqueda Avanzada e Índices**: Índices compuestos en `ProductSchema` y `OrderSchema` + ordenamiento dinámico (`sortBy`, `sortOrder`).
+  - ✅ **Dashboard Analytics**: Endpoints de KPIs, ventas diarias y top productos mediante Aggregation Pipelines de MongoDB.
+  - ✅ **Multi-entorno**: Soporte para `.env.development`, `.env.staging` y `.env.production`.
+
+*Siguiente paso: Fase 7 — Deploy a Producción con AWS (ECS Fargate).*

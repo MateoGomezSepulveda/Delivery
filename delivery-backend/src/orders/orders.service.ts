@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Order, OrderDocument } from './schemas/order.schema';
@@ -15,6 +16,7 @@ import { MailService } from 'src/mail/mail.service';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { UsersService } from 'src/users/users.service';
 import { EventsGateway } from '../events/events/events.gateway';
+import { QueuesService } from '../queues/queues.service';
 
 const validTransitions: Record<OrderStatus, OrderStatus[]> = {
   [OrderStatus.PENDING]: [OrderStatus.PAID, OrderStatus.CANCELLED],
@@ -37,6 +39,7 @@ export class OrdersService {
     private mailService: MailService,
     private notificationsService: NotificationsService,
     private eventsGateway: EventsGateway,
+    @Optional() private queuesService?: QueuesService,
   ) {}
 
   async createOrder(userId: string, address: string) {
@@ -191,24 +194,30 @@ export class OrdersService {
     order.status = status;
     const savedOrder = await order.save();
 
-    // Enviar notificaciones
+    // Enviar notificaciones (vía cola BullMQ si está disponible, o directo)
     try {
       const user = await this.usersService.findOne(order.userId.toString());
       if (user) {
-        // Enviar Email
-        await this.mailService.sendOrderStatusEmail(
-          user.email,
-          orderId,
-          status,
-        );
-
-        // Enviar Push FCM
-        if (user.fcmTokens && user.fcmTokens.length > 0) {
-          await this.notificationsService.sendOrderStatusPush(
-            user.fcmTokens,
+        if (this.queuesService) {
+          await this.queuesService.enqueueOrderStatusNotification({
+            email: user.email,
+            fcmTokens: user.fcmTokens,
+            orderId,
+            status,
+          });
+        } else {
+          await this.mailService.sendOrderStatusEmail(
+            user.email,
             orderId,
             status,
           );
+          if (user.fcmTokens && user.fcmTokens.length > 0) {
+            await this.notificationsService.sendOrderStatusPush(
+              user.fcmTokens,
+              orderId,
+              status,
+            );
+          }
         }
       }
     } catch (error) {

@@ -7,7 +7,9 @@ import {
   Patch,
   Post,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { ProductsService } from './products.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -36,6 +38,8 @@ export class ProductsController {
 
   @ApiOperation({ summary: 'Obtener todas los productos' })
   @Public()
+  @UseInterceptors(CacheInterceptor)
+  @CacheTTL(600 * 1000)
   @Get()
   findAll(@Query() paginationQuery: ProductPaginationDto) {
     return this.productsService.findAll(paginationQuery);
@@ -43,6 +47,8 @@ export class ProductsController {
 
   @ApiOperation({ summary: 'Obtener un producto por ID' })
   @Public()
+  @UseInterceptors(CacheInterceptor)
+  @CacheTTL(600 * 1000)
   @Get(':id')
   findOne(@Param('id', ParseMongoIdPipe) id: string) {
     return this.productsService.findOne(id);
