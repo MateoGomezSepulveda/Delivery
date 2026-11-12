@@ -7,7 +7,8 @@ Bienvenido al repositorio principal de la plataforma **App Delivery**. Este proy
 ## 📁 Estructura del Repositorio
 
 - **`delivery-backend/`**: Servidor API RESTful principal. Construido con **NestJS 11**, **MongoDB**, **Mongoose** y contenedorizado con **Docker**. Contiene toda la lógica de negocio, reglas de seguridad y autenticación. Consulta su documentación completa en el [README del backend](./delivery-backend/README.md).
-- **`docs/`**: Documentación adicional de la arquitectura e infraestructura del proyecto.
+- **`delivery-frontend/`**: Aplicación web Multi-Rol (**Cliente**, **Repartidor** y **Administrador**) construida con **React 18**, **TypeScript**, **Vite**, **Tailwind CSS**, **TanStack Query v5** y **Zustand** bajo el sistema de diseño `ui-ux-pro-max`. Consulta su documentación en el [README del frontend](./delivery-frontend/README.md).
+- **`docs/`**: Documentación adicional de la arquitectura, roadmaps ([Backend](./docs/roadmap%20backend%20delivery.md) y [Frontend](./docs/roadmap%20frontend%20delivery.md)) e infraestructura del proyecto.
 - **`STATUS.md`**: Archivo de seguimiento en tiempo real que documenta el progreso actual, fases completadas y siguientes pasos del desarrollo.
 
 ---
@@ -109,7 +110,13 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - ✅ **Dashboard Analytics**: Módulo `/analytics` con Aggregation Pipelines de MongoDB (KPIs generales, evolución de ventas diarias y top productos más vendidos).
   - ✅ **Multi-entorno**: Carga dinámica de `.env.development`, `.env.staging` y `.env.production` con sus respectivas plantillas documentadas.
 
-*Siguiente paso: Fase 7 — Deploy a Producción con AWS (ECS Fargate).*
+- ✅ **Frontend Fase 0 (Arquitectura Base, Design System `ui-ux-pro-max` y Core HTTP)**:
+  - ✅ **Setup React 18 + TypeScript + Vite**: Configuración estricta con alias `@/*` y variables de entorno.
+  - ✅ **Design System (`ui-ux-pro-max`)**: Fuentes `Outfit` y `Plus Jakarta Sans`, paleta semántica Light/Dark Mode y kit de componentes UI (`Button`, `Input`, `Badge`, `Modal`, `Drawer`, `Skeleton`, `EmptyState`).
+  - ✅ **Cliente HTTP (`axios.client.ts`)**: Desenvolvimiento automático de `TransformInterceptor` y cola de rotación silenciosa de Refresh Tokens (`POST /auth/refresh`).
+  - ✅ **Layouts Multi-Rol & Health Check**: `ClientLayout`, `DeliveryLayout` y `AdminLayout` + conexión en vivo con `GET /api/v1/health`.
+
+*Siguiente paso: Frontend Fase 1 — Autenticación, Seguridad de Sesión y Perfil con AWS S3.*
 
 ---
 
