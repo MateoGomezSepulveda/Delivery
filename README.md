@@ -116,7 +116,12 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - ✅ **Cliente HTTP (`axios.client.ts`)**: Desenvolvimiento automático de `TransformInterceptor` y cola de rotación silenciosa de Refresh Tokens (`POST /auth/refresh`).
   - ✅ **Layouts Multi-Rol & Health Check**: `ClientLayout`, `DeliveryLayout` y `AdminLayout` + conexión en vivo con `GET /api/v1/health`.
 
-*Siguiente paso: Frontend Fase 1 — Autenticación, Seguridad de Sesión y Perfil con AWS S3.*
+- ✅ **Frontend Fase 1 (Autenticación, Seguridad de Sesión, RBAC y Perfil con S3)**:
+  - ✅ **Identidad Completa (`/auth`)**: Vistas de Login, Registro con auto-login, Recuperación (`forgot-password`) y Restablecimiento de contraseña (`reset-password`).
+  - ✅ **Guards de Navegación**: `ProtectedRoute` y `RoleGuard` (`CLIENT`, `DELIVERY`, `ADMIN`) con redirección automática por rol.
+  - ✅ **Mi Perfil y Avatar en S3 (`/profile`)**: Edición de datos personales y contraseña (`PATCH /users/:id` con `OwnershipGuard`), subida de avatar a AWS S3 (`POST /uploads/avatars`) y rotación de Refresh Token.
+
+*Siguiente paso: Frontend Fase 2 — Catálogo Gastronómico, Búsqueda Avanzada y Reseñas Públicas.*
 
 ---
 

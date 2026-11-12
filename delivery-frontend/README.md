@@ -45,3 +45,10 @@ npm run build
   - Cliente `axios.client.ts` con inyección de Bearer Token, desenvolvimiento automático de `{ success, data, timestamp }` y cola de rotación silenciosa de Refresh Token (`POST /auth/refresh`).
   - Kit de componentes UI base (`Button`, `Input`, `Badge`, `OrderStatusBadge`, `RoleBadge`, `Modal`, `Drawer`, `Skeleton`, `EmptyState`).
   - Layouts Multi-Rol (`ClientLayout`, `DeliveryLayout`, `AdminLayout`) e indicador de salud en tiempo real conectado a `GET /api/v1/health`.
+
+- ✅ **Fase 1 (Autenticación, Seguridad de Sesión, RBAC y Perfil con S3)**:
+  - Servicios tipados `auth.api.ts`, `users.api.ts` y `uploads.api.ts` + utilidad `jwt.ts` para decodificar claims (`sub`, `email`, `role`, `exp`).
+  - Store persistente `useAuthStore.ts` con hidratación automática de sesión contra `GET /api/v1/users/:id` y cierre de sesión seguro (`POST /api/v1/auth/logout`).
+  - Vistas de identidad en `AuthLayout`: `LoginPage` (con manejo de Rate Limit `429` y redirección por rol), `RegisterPage` (con auto-login), `ForgotPasswordPage` (con soporte `devToken`) y `ResetPasswordPage`.
+  - Guards de navegación `ProtectedRoute` y `RoleGuard` (`CLIENT`, `DELIVERY`, `ADMIN`).
+  - Página `ProfilePage` (`/profile`) con edición de datos personales (`PATCH /users/:id`), cambio de contraseña, prueba manual de rotación de Refresh Token y subida de avatar a AWS S3 (`POST /uploads/avatars`).

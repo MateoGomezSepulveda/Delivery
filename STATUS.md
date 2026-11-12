@@ -5,11 +5,13 @@
 ## Última Tarea / Contexto Actual
 - Se completaron las **Fases 0.1 a 0.7** del Backend (Módulos de negocio y utilidades base), blindando la API con autenticación, validaciones, paginación y trazabilidad.
 - Se completaron las **Fases 1 a 6 del Backend** (Docker Profesional, Observabilidad, Testing >80% + CI, Seguridad Avanzada, 9 Módulos Core nuevos, Cache con Redis, Colas con BullMQ, Índices de MongoDB y Analytics).
-- **[NUEVO] Frontend — Fase 0 Completada (`delivery-frontend/`)**:
-  - **Arquitectura Vite + React 18 + TypeScript**: Configuración estricta con alias `@/*`, variables multi-entorno (`.env.development`, `.env.production`, `.env.example`) y CORS habilitado en el backend para `http://localhost:5173`.
-  - **Design System (`ui-ux-pro-max`)**: Tipografía `Outfit` + `Plus Jakarta Sans`, paleta semántica (`#EA580C` Brand Orange, `#2563EB` Tracking Blue, `#16A34A` Success, `#D97706` Warning), íconos vectoriales `lucide-react` y soporte nativo Light/Dark Mode persistido con Zustand (`useThemeStore`).
-  - **Cliente HTTP Blindado (`axios.client.ts`)**: Desenvolvimiento automático del contrato `{ success, data, timestamp }` del `TransformInterceptor` y **Silent Refresh Token Queue** para rotar tokens ante errores `401` usando `POST /api/v1/auth/refresh`.
-  - **UI Kit & Layouts Multi-Rol**: Componentes base (`Button`, `Input`, `Badge`, `OrderStatusBadge`, `RoleBadge`, `Modal`, `Drawer`, `Skeleton`, `EmptyState`), layouts por rol (`ClientLayout`, `DeliveryLayout`, `AdminLayout`) y monitor de salud en tiempo real conectado a `GET /api/v1/health`.
+- ✅ **Frontend — Fase 0 Completada (`delivery-frontend/`)**:
+  - Arquitectura Vite + React 18 + TypeScript, Design System (`ui-ux-pro-max`), Cliente HTTP (`axios.client.ts` con Refresh Queue), UI Kit base y Layouts Multi-Rol.
+- **[NUEVO] Frontend — Fase 1 Completada (`auth/` + `users/` + `uploads/`)**:
+  - **Clientes API & JWT (`auth.api.ts`, `users.api.ts`, `uploads.api.ts`, `jwt.ts`)**: Integración completa de `POST /auth/login`, `POST /auth/register`, `POST /auth/refresh`, `POST /auth/logout`, `POST /auth/forgot-password`, `POST /auth/reset-password`, `GET/PATCH /users/:id` y `POST /uploads/avatars`.
+  - **Estado de Sesión (`useAuthStore.ts`)**: Hidratación automática del perfil desde MongoDB al iniciar la app, persistencia sincronizada y manejo del evento `auth:session-expired`.
+  - **Flujos de Identidad & Guards (`ProtectedRoute`, `RoleGuard`)**: Vistas `LoginPage`, `RegisterPage`, `ForgotPasswordPage` y `ResetPasswordPage` en `AuthLayout`, manejo de errores `429 Too Many Requests` (`@Throttle`) y protección de rutas por rol (`CLIENT`, `DELIVERY`, `ADMIN`).
+  - **Mi Perfil & AWS S3 (`ProfilePage.tsx`)**: Edición de nombre/correo y contraseña (`OwnershipGuard`), subida de foto de perfil a AWS S3 (`multipart/form-data`, máx 5MB) y botón de prueba de rotación de Refresh Token.
 
 ## ⚠️ Deuda Técnica — Para Fase de Producción
 - *Cuando se despliegue en producción con un dominio real, no será necesario utilizar túneles temporales y los webhooks de MercadoPago llegarán sin bloqueos.*
@@ -20,8 +22,8 @@
 - *Limpiar los 8 warnings de ESLint (`no-unused-vars`).*
 
 ## Siguiente Paso
-- **Probar Fase 0 del Frontend** en el navegador (`http://localhost:5173`) verificando la conexión en vivo con `GET /api/v1/health` y hacer el commit de la Fase 0.
-- **Iniciar Fase 1 del Frontend (`delivery-frontend/`)**: Autenticación (`login`, `register`, `forgot-password`, `reset-password`, `logout`), Guards de navegación por rol (`ProtectedRoute` y `RoleGuard`) y página de Mi Perfil con subida de Avatar a AWS S3 (`POST /uploads/avatars`).
+- **Probar Fase 1 del Frontend** en el navegador (`http://localhost:5173/login`, `/register`, `/forgot-password`, `/profile`) y hacer el commit de la Fase 1.
+- **Iniciar Fase 2 del Frontend (`delivery-frontend/`)**: Catálogo Gastronómico (`GET /categories`, `GET /products` con debounce search, filtros por categoría/precio/disponibilidad, ordenamiento dinámico y paginación) y Modal de Detalle con Reseñas Públicas (`GET /reviews/product/:productId`).
 - *(Nota: La **Fase 7 — Deploy a Producción con AWS (ECS Fargate)** y la **Fase 8 — Kubernetes** quedan programadas para el cierre del proyecto completo, una vez finalizado el Frontend).*
 
 ---

@@ -1,11 +1,16 @@
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   Bike,
   LayoutDashboard,
+  LogIn,
+  LogOut,
   MapPin,
   ShoppingBag,
   Sparkles,
   Store,
+  User as UserIcon,
+  UserPlus,
   UtensilsCrossed,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
@@ -13,13 +18,23 @@ import { ServerStatusBadge } from '@/components/layout/ServerStatusBadge';
 import { Button } from '@/components/ui/Button';
 import { Drawer } from '@/components/ui/Drawer';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { RoleBadge } from '@/components/ui/Badge';
 import { useCartDrawerStore } from '@/store/useCartDrawerStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { cn } from '@/utils/cn';
 
 export function ClientLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { isOpen, openDrawer, closeDrawer, activeAddressLabel } =
     useCartDrawerStore();
+  const { user, isAuthenticated, logout } = useAuthStore();
+
+  const handleLogout = async () => {
+    await logout();
+    toast.success('Sesión cerrada correctamente.');
+    navigate('/login');
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50">
@@ -46,13 +61,13 @@ export function ClientLayout() {
             </Link>
 
             {/* Active Delivery Address Pill */}
-            <div className="hidden md:flex items-center gap-2 rounded-xl bg-slate-100/80 dark:bg-slate-800/70 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60">
+            <div className="hidden xl:flex items-center gap-2 rounded-xl bg-slate-100/80 dark:bg-slate-800/70 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60">
               <MapPin className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 shrink-0" />
-              <span className="truncate max-w-[200px]">{activeAddressLabel}</span>
+              <span className="truncate max-w-[180px]">{activeAddressLabel}</span>
             </div>
           </div>
 
-          {/* Role Layout Switcher (Navigation between portals) */}
+          {/* Role Layout Switcher */}
           <nav className="hidden lg:flex items-center gap-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 p-1 border border-slate-200/60 dark:border-slate-700/60">
             <Link
               to="/"
@@ -64,7 +79,7 @@ export function ClientLayout() {
               )}
             >
               <Store className="w-3.5 h-3.5" />
-              <span>Portal Cliente</span>
+              <span>Cliente</span>
             </Link>
             <Link
               to="/delivery"
@@ -78,24 +93,82 @@ export function ClientLayout() {
               className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
             >
               <LayoutDashboard className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Panel Admin</span>
+              <span>Admin</span>
             </Link>
           </nav>
 
           {/* Right Actions */}
-          <div className="flex items-center gap-2.5">
-            <div className="hidden sm:block">
+          <div className="flex items-center gap-2">
+            <div className="hidden md:block">
               <ServerStatusBadge />
             </div>
             <ThemeToggle />
+
+            {isAuthenticated && user ? (
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/profile"
+                  className={cn(
+                    'inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer',
+                    location.pathname === '/profile'
+                      ? 'border-orange-500 bg-orange-50 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300'
+                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800',
+                  )}
+                >
+                  {user.avatarUrl ? (
+                    <img
+                      src={user.avatarUrl}
+                      alt={user.name}
+                      className="w-5 h-5 rounded-full object-cover"
+                    />
+                  ) : (
+                    <UserIcon className="w-3.5 h-3.5 text-orange-600" />
+                  )}
+                  <span className="max-w-[100px] truncate">{user.name}</span>
+                  <span className="hidden sm:inline-block">
+                    <RoleBadge role={user.role} />
+                  </span>
+                </Link>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleLogout}
+                  title="Cerrar sesión"
+                >
+                  <LogOut className="w-4 h-4 text-slate-500 hover:text-red-600" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link to="/login">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<LogIn className="w-3.5 h-3.5" />}
+                  >
+                    Ingresar
+                  </Button>
+                </Link>
+                <Link to="/register" className="hidden sm:block">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    leftIcon={<UserPlus className="w-3.5 h-3.5" />}
+                  >
+                    Registro
+                  </Button>
+                </Link>
+              </div>
+            )}
+
             <Button
               variant="primary"
               size="sm"
               onClick={openDrawer}
               leftIcon={<ShoppingBag className="w-4 h-4" />}
             >
-              <span>Carrito</span>
-              <span className="ml-1 rounded-full bg-white/20 px-1.5 py-0.2 text-[11px]">
+              <span className="hidden sm:inline">Carrito</span>
+              <span className="rounded-full bg-white/20 px-1.5 py-0.2 text-[11px]">
                 0
               </span>
             </Button>
@@ -151,6 +224,9 @@ export function ClientLayout() {
           <div className="flex items-center gap-4">
             <Link to="/" className="hover:text-orange-600 cursor-pointer">
               Cliente
+            </Link>
+            <Link to="/profile" className="hover:text-orange-600 cursor-pointer">
+              Mi Perfil
             </Link>
             <Link to="/delivery" className="hover:text-blue-600 cursor-pointer">
               Repartidor
