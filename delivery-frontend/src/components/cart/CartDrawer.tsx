@@ -139,10 +139,7 @@ export function CartDrawer() {
                 size="sm"
                 onClick={() => {
                   closeDrawer();
-                  toast.info('Listo para Checkout (Fase 4)', {
-                    description:
-                      'En la Fase 4 conectaremos POST /orders y la pasarela MercadoPago.',
-                  });
+                  navigate('/checkout');
                 }}
                 rightIcon={<ArrowRight className="w-4 h-4" />}
               >

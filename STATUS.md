@@ -9,11 +9,14 @@
   - Arquitectura Vite + React 18 + TypeScript, Design System (`ui-ux-pro-max`), Cliente HTTP (`axios.client.ts` con Refresh Queue), UI Kit base y Layouts Multi-Rol.
 - ✅ **Frontend — Fase 1 Completada (`auth/` + `users/` + `uploads/`)**:
   - Autenticación JWT completa, Guards por rol (`ProtectedRoute`, `RoleGuard`), `ProfilePage` y subida de Avatar a S3 con normalización automática de imágenes `.jfif`/`.jpeg`/`.avif` a `.jpg` mediante `<canvas>`.
-- **[NUEVO] Frontend — Fase 2 y Fase 3 Completadas (`categories/`, `products/`, `reviews/`, `cart/`, `addresses/`, `coupons/`)**:
-  - **Catálogo Gastronómico & Reseñas (`CatalogPage`, `ProductDetailModal`)**: Barra de categorías (`GET /categories`), buscador con `useDebounce` sincronizado con URL Query Params, filtros de precio/disponibilidad, ordenamiento dinámico (`sortBy`, `sortOrder`), paginación, sembrador de catálogo demo en 1 clic (Admin) y reseñas públicas por producto (`GET /reviews/product/:productId`).
-  - **Carrito Persistente (`CartDrawer`)**: Sincronización en tiempo real con `GET /cart`, `POST /cart/add`, `DELETE /cart/remove` y `DELETE /cart/clear`.
-  - **Libreta de Direcciones con Mapa (`AddressesModal`)**: CRUD completo contra `/api/v1/addresses` + geolocalización GPS (`navigator.geolocation`) con geocodificación inversa (OpenStreetMap Nominatim) y vista de mapa interactivo.
-  - **Motor de Cupones Promocionales (`CouponInputBox`)**: Validación en tiempo real contra `POST /api/v1/coupons/apply` calculando descuento (`PERCENTAGE` / `FIXED`) y total final.
+- ✅ **Frontend — Fase 2 y Fase 3 Completadas (`categories/`, `products/`, `reviews/`, `cart/`, `addresses/`, `coupons/`)**:
+  - Catálogo gastronómico con filtros sincronizados con URL, reseñas públicas, carrito persistente (`CartDrawer`), libreta de direcciones con GPS/Mapa OpenStreetMap (`AddressesModal`) y validador de cupones (`CouponInputBox`).
+- **[NUEVO] Frontend — Fase 4 Completada (`orders/` + `payments/` + `reviews/`)**:
+  - **Servicio de Órdenes (`src/api/endpoints/orders.api.ts`)**: Conectado a `POST /orders`, `GET /orders/me`, `GET /orders/:id`, `PATCH /orders/:id/cancel`, `POST /orders/:id/pay`, `GET /orders` (Admin) y `PATCH /orders/:id/status` (Admin).
+  - **Checkout en 3 Pasos (`src/pages/client/CheckoutPage.tsx`)**: Selección de dirección desde la libreta o GPS, revisión de ítems del carrito activo, aplicación de cupón y confirmación con redirección a **MercadoPago Checkout Pro** (`POST /orders/:id/pay`) o seguimiento directo.
+  - **Vistas de Retorno de Pago (`src/pages/client/PaymentResultPage.tsx`)**: Soporte para `/payments/success`, `/payments/pending` y `/payments/failure` con botón de reintento de pago.
+  - **Historial de Mis Pedidos (`src/pages/client/MyOrdersPage.tsx`)**: Listado paginado (`GET /orders/me`) con filtros por estado (`PENDING`, `PAID`, `CONFIRMED`, `PREPARING`, `OUT_FOR_DELIVERY`, `DELIVERED`, `CANCELLED`) y rango de fechas (`dateFrom`, `dateTo`).
+  - **Detalle de Orden, Cancelación y Reseñas Verificadas (`src/pages/client/OrderDetailPage.tsx` + `ReviewFormModal.tsx`)**: Stepper visual de progreso, cancelación por cliente en estado `PENDING` (`PATCH /orders/:id/cancel`), consola rápida de transición de estado para pruebas Admin y calificación de 1 a 5 estrellas por producto entregado (`POST /reviews`).
 
 ## ⚠️ Deuda Técnica — Para Fase de Producción
 - *Cuando se despliegue en producción con un dominio real, no será necesario utilizar túneles temporales y los webhooks de MercadoPago llegarán sin bloqueos.*
@@ -24,8 +27,8 @@
 - *Limpiar los 8 warnings de ESLint (`no-unused-vars`).*
 
 ## Siguiente Paso
-- **Probar Fases 2 y 3 del Frontend** en el navegador (`http://localhost:5173`): sembrar el catálogo demo como Admin, filtrar productos, ver reseñas, agregar ítems al carrito, crear una dirección con GPS/Mapa, aplicar el cupón `BIENVENIDA20` y hacer el commit correspondiente.
-- **Iniciar Fase 4 del Frontend (`delivery-frontend/`)**: Checkout en 3 pasos (`POST /orders`), pasarela de pagos **MercadoPago** (`POST /orders/:id/pay` + vistas `success/failure/pending`), historial de **Mis Pedidos** (`GET /orders/me`), cancelación por cliente (`PATCH /orders/:id/cancel`) y formulario de calificación de productos entregados (`POST /reviews`).
+- **Probar la Fase 4 del Frontend** en el navegador (`http://localhost:5173/checkout` y `http://localhost:5173/orders`) y realizar el commit correspondiente.
+- **Iniciar Fase 5 del Frontend (`delivery-frontend/`)**: Tiempo Real — Conexión WebSocket (`socket.io-client`) con `EventsGateway` (`order_status_updated` y `delivery_location_updated`), mapa de tracking en vivo del repartidor, alertas sonoras con Web Audio API y registro de token Push FCM.
 - *(Nota: La **Fase 7 — Deploy a Producción con AWS (ECS Fargate)** y la **Fase 8 — Kubernetes** quedan programadas para el cierre del proyecto completo, una vez finalizado el Frontend).*
 
 ---

@@ -40,6 +40,8 @@ export type UserRole = 'CLIENT' | 'DELIVERY' | 'ADMIN';
 
 export type OrderStatus =
   | 'PENDING'
+  | 'PAID'
+  | 'FAILED'
   | 'CONFIRMED'
   | 'PREPARING'
   | 'OUT_FOR_DELIVERY'

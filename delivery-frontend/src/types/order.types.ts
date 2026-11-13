@@ -1,3 +1,4 @@
+import type { OrderStatus } from '@/types/api.types';
 import type { Product } from '@/types/catalog.types';
 
 export interface CartItem {
@@ -75,4 +76,48 @@ export interface AppliedCouponResult {
   originalTotal: number;
   discountAmount: number;
   finalTotal: number;
+}
+
+export interface OrderItem {
+  productId: Product | string;
+  name: string;
+  quantity: number;
+  price: number;
+}
+
+export interface OrderUserPopulated {
+  _id: string;
+  name: string;
+  email: string;
+  role?: string;
+}
+
+export interface Order {
+  _id: string;
+  userId: OrderUserPopulated | string;
+  deliveryId?: string;
+  items: OrderItem[];
+  total: number;
+  address: string;
+  status: OrderStatus;
+  paymentId?: string;
+  paymentUrl?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateOrderPayload {
+  address: string;
+}
+
+export interface OrderQueryParams {
+  page?: number;
+  limit?: number;
+  status?: OrderStatus;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export interface PayOrderResponse {
+  paymentUrl: string;
 }

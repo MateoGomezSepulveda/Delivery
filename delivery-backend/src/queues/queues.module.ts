@@ -20,9 +20,16 @@ const isTestEnv = process.env.NODE_ENV === 'test';
             imports: [ConfigModule],
             inject: [ConfigService],
             useFactory: (configService: ConfigService) => {
-              const redisUrl =
+              const mongoUri = configService.get<string>('MONGO_URI') || '';
+              let redisUrl =
                 configService.get<string>('REDIS_URL') ||
                 'redis://localhost:6379';
+              if (
+                mongoUri.includes('@mongo') &&
+                redisUrl.includes('localhost')
+              ) {
+                redisUrl = redisUrl.replace('localhost', 'redis');
+              }
               const parsed = new URL(redisUrl);
               return {
                 connection: {

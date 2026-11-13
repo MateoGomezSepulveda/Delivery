@@ -9,6 +9,8 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ./delivery-backend/src:/app/src    # 💡 Hot reload: los cambios en local se reflejan en Docker
     command: npm run start:dev
@@ -53,6 +55,8 @@ services:
       ME_CONFIG_MONGODB_URL: mongodb://admin:admin123@mongo:27017/
     depends_on:
       mongo:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
 volumes:

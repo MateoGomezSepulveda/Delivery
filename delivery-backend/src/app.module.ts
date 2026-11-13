@@ -52,8 +52,12 @@ import * as Joi from 'joi';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const isTest = configService.get<string>('NODE_ENV') === 'test';
-        const redisUrl =
+        const mongoUri = configService.get<string>('MONGO_URI') || '';
+        let redisUrl =
           configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
+        if (mongoUri.includes('@mongo') && redisUrl.includes('localhost')) {
+          redisUrl = redisUrl.replace('localhost', 'redis');
+        }
         return {
           stores: isTest ? undefined : [new KeyvRedis(redisUrl)],
           ttl: 600 * 1000, // 10 minutos por defecto

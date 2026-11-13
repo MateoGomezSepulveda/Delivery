@@ -7,6 +7,7 @@ import {
   LogIn,
   LogOut,
   MapPin,
+  Package,
   ShoppingBag,
   Store,
   User as UserIcon,
@@ -95,6 +96,18 @@ export function ClientLayout() {
             >
               <Store className="w-3.5 h-3.5" />
               <span>Catálogo</span>
+            </Link>
+            <Link
+              to="/orders"
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer',
+                location.pathname.startsWith('/orders')
+                  ? 'bg-white dark:bg-slate-900 text-orange-600 dark:text-orange-400 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white',
+              )}
+            >
+              <Package className="w-3.5 h-3.5" />
+              <span>Mis Pedidos</span>
             </Link>
             <Link
               to="/delivery"
@@ -209,6 +222,9 @@ export function ClientLayout() {
           <div className="flex items-center gap-4">
             <Link to="/" className="hover:text-orange-600 cursor-pointer">
               Catálogo
+            </Link>
+            <Link to="/orders" className="hover:text-orange-600 cursor-pointer">
+              Mis Pedidos
             </Link>
             <Link to="/profile" className="hover:text-orange-600 cursor-pointer">
               Mi Perfil

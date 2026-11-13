@@ -110,6 +110,7 @@ export function CatalogPage() {
     {
       queryKey: ['categories'],
       queryFn: () => getCategoriesApi({ limit: 50 }),
+      retry: 1,
     },
   );
 
@@ -153,9 +154,13 @@ export function CatalogPage() {
     data: productsResponse,
     isLoading: isLoadingProducts,
     isFetching: isFetchingProducts,
+    isError: isProductsError,
+    error: productsError,
+    refetch: refetchProducts,
   } = useQuery({
     queryKey: ['products', productQueryFilters],
     queryFn: () => getProductsApi(productQueryFilters),
+    retry: 1,
   });
 
   const products = productsResponse?.data ?? [];
@@ -316,6 +321,17 @@ export function CatalogPage() {
               <ProductCardSkeleton key={idx} />
             ))}
           </div>
+        ) : isProductsError ? (
+          <EmptyState
+            icon={<UtensilsCrossed className="w-7 h-7" />}
+            title="No pudimos conectar con el catálogo del servidor"
+            description={`Detalle técnico: ${extractErrorMessage(productsError)}. Asegúrate de que los contenedores de Docker (api, mongo y redis) estén activos.`}
+            action={
+              <Button variant="primary" onClick={() => refetchProducts()}>
+                Reintentar Carga del Catálogo
+              </Button>
+            }
+          />
         ) : products.length === 0 ? (
           <EmptyState
             icon={<UtensilsCrossed className="w-7 h-7" />}

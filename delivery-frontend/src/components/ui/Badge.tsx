@@ -65,9 +65,19 @@ const orderStatusConfig: Record<
   { label: string; variant: BadgeVariant; icon: React.ReactNode }
 > = {
   PENDING: {
-    label: 'Pendiente',
+    label: 'Pendiente de Pago',
     variant: 'warning',
     icon: <Clock className="w-3.5 h-3.5" />,
+  },
+  PAID: {
+    label: 'Pagado',
+    variant: 'success',
+    icon: <CheckCircle2 className="w-3.5 h-3.5" />,
+  },
+  FAILED: {
+    label: 'Pago Fallido',
+    variant: 'danger',
+    icon: <XCircle className="w-3.5 h-3.5" />,
   },
   CONFIRMED: {
     label: 'Confirmado',

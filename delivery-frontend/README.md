@@ -63,3 +63,10 @@ npm run build
   - `CartDrawer` conectado a `GET /cart`, `POST /cart/add`, `DELETE /cart/remove` y `DELETE /cart/clear` con contador en vivo en el Navbar.
   - `AddressesModal` con CRUD completo contra `/api/v1/addresses`, detección de ubicación GPS (`navigator.geolocation`), geocodificación inversa (Nominatim) y mapa interactivo OpenStreetMap.
   - `CouponInputBox` conectado a `POST /api/v1/coupons/apply` calculando ahorro y total final en tiempo real.
+
+- ✅ **Fase 4 (Checkout, Pasarela MercadoPago, Mis Pedidos y Reseñas Verificadas)**:
+  - Servicio `orders.api.ts` conectado a `POST /orders`, `GET /orders/me`, `GET /orders/:id`, `PATCH /orders/:id/cancel`, `POST /orders/:id/pay`, `GET /orders` y `PATCH /orders/:id/status`.
+  - `CheckoutPage` (`/checkout`) en 3 pasos con selección de dirección, resumen del carrito activo, cupón promocional y redirección a MercadoPago Checkout Pro.
+  - `PaymentResultPage` (`/payments/:status`) para las redirecciones `success`, `pending` y `failure` de MercadoPago.
+  - `MyOrdersPage` (`/orders`) con filtros por estado (`OrderStatus`), rango de fechas (`dateFrom`, `dateTo`) y paginación.
+  - `OrderDetailPage` (`/orders/:id`) con stepper de progreso, cancelación por cliente en estado `PENDING`, consola rápida de transición de estados (modo Admin) y `ReviewFormModal` (`POST /reviews`) para calificar productos en órdenes `DELIVERED`.

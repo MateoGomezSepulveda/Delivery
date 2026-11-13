@@ -13,6 +13,10 @@ import { ProtectedRoute } from '@/routes/ProtectedRoute';
 import { RoleGuard } from '@/routes/RoleGuard';
 import { PhaseZeroShowcasePage } from '@/pages/PhaseZeroShowcasePage';
 import { CatalogPage } from '@/pages/client/CatalogPage';
+import { CheckoutPage } from '@/pages/client/CheckoutPage';
+import { MyOrdersPage } from '@/pages/client/MyOrdersPage';
+import { OrderDetailPage } from '@/pages/client/OrderDetailPage';
+import { PaymentResultPage } from '@/pages/client/PaymentResultPage';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage';
@@ -35,10 +39,14 @@ export function AppRouter() {
         <Route element={<ClientLayout />}>
           <Route path="/" element={<CatalogPage />} />
           <Route path="/ui-lab" element={<PhaseZeroShowcasePage />} />
+          <Route path="/payments/:status" element={<PaymentResultPage />} />
 
           {/* Rutas Protegidas de Usuario Autenticado */}
           <Route element={<ProtectedRoute />}>
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/orders" element={<MyOrdersPage />} />
+            <Route path="/orders/:id" element={<OrderDetailPage />} />
           </Route>
         </Route>
 

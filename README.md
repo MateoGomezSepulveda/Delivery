@@ -130,7 +130,13 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - ✅ **Libreta de Direcciones con Mapa (`AddressesModal.tsx`)**: CRUD completo de direcciones (`/addresses`) + botón de GPS en vivo y mapa interactivo OpenStreetMap.
   - ✅ **Motor de Cupones (`CouponInputBox.tsx`)**: Validación de códigos promocionales contra `POST /coupons/apply` en tiempo real.
 
-*Siguiente paso: Frontend Fase 4 — Checkout, Pasarela MercadoPago, Mis Pedidos y Calificaciones.*
+- ✅ **Frontend Fase 4 (Checkout, Pasarela MercadoPago, Mis Pedidos y Calificaciones)**:
+  - ✅ **Checkout en 3 Pasos (`CheckoutPage.tsx`)**: Selección de dirección, revisión de ítems, aplicación de cupón y creación de orden (`POST /orders`).
+  - ✅ **Pasarela MercadoPago (`POST /orders/:id/pay` + `PaymentResultPage.tsx`)**: Redirección a MercadoPago Checkout Pro, simulador Sandbox local y vistas de retorno (`success`, `pending`, `failure`).
+  - ✅ **Historial de Mis Pedidos (`MyOrdersPage.tsx`)**: Filtros por estado y rango de fechas (`GET /orders/me`) con paginación.
+  - ✅ **Seguimiento, Cancelación y Reseñas (`OrderDetailPage.tsx` + `ReviewFormModal.tsx`)**: Stepper de progreso, cancelación en estado `PENDING` (`PATCH /orders/:id/cancel`) y calificación de 1 a 5 estrellas sobre productos entregados (`POST /reviews`).
+
+*Siguiente paso: Frontend Fase 5 — Tiempo Real (WebSockets, Live Tracking en Mapa y Push Notifications).*
 
 ---
 
