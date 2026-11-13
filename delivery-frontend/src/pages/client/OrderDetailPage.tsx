@@ -35,6 +35,7 @@ import { OrderStatusBadge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ReviewFormModal } from '@/components/orders/ReviewFormModal';
+import { LiveTrackingMap } from '@/components/orders/LiveTrackingMap';
 import { cn } from '@/utils/cn';
 
 const TIMELINE_STEPS: {
@@ -351,6 +352,9 @@ export function OrderDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left: Items & Reviews */}
         <div className="lg:col-span-7 space-y-6">
+          {order.status === 'OUT_FOR_DELIVERY' && (
+            <LiveTrackingMap orderId={order._id} />
+          )}
           <section className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-card space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-heading text-lg font-extrabold text-slate-900 dark:text-white">

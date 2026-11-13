@@ -37,8 +37,12 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
         `Handshake auth: ${JSON.stringify(client.handshake.auth)}`,
       );
 
-      let rawToken = client.handshake.headers?.token;
-      rawToken = rawToken as string;
+      // Navegador: el token llega en handshake.auth (los navegadores no pueden
+      // enviar headers personalizados por WebSocket). Se mantiene `headers.token`
+      // para clientes como Postman.
+      const rawToken = (client.handshake.headers?.token ||
+        client.handshake.auth?.token ||
+        client.handshake.query?.token) as string | undefined;
       if (!rawToken) throw new Error('Token no proporcionado');
 
       const token = rawToken.startsWith('Bearer ')
@@ -48,9 +52,10 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const secret = this.configService.get<string>('JWT_SECRET');
       const payload = this.jwtService.verify(token, { secret });
 
-      // Si el token es válido, unimos al cliente a una "sala" privada con su propio ID
-      client.join(payload.userId);
-      this.logger.log(`Cliente conectado exitosamente: ${payload.userId}`);
+      // El JWT usa `sub` como identificador de usuario
+      const userId = String(payload.sub ?? payload.userId);
+      client.join(userId);
+      this.logger.log(`Cliente conectado exitosamente: ${userId}`);
     } catch (error) {
       this.logger.warn(`Conexión rechazada: ${error.message}`);
       client.disconnect();

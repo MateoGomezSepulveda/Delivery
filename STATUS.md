@@ -18,6 +18,11 @@
   - **Historial de Mis Pedidos (`src/pages/client/MyOrdersPage.tsx`)**: Listado paginado (`GET /orders/me`) con filtros por estado (`PENDING`, `PAID`, `CONFIRMED`, `PREPARING`, `OUT_FOR_DELIVERY`, `DELIVERED`, `CANCELLED`) y rango de fechas (`dateFrom`, `dateTo`).
   - **Detalle de Orden, Cancelación y Reseñas Verificadas (`src/pages/client/OrderDetailPage.tsx` + `ReviewFormModal.tsx`)**: Stepper visual de progreso, cancelación por cliente en estado `PENDING` (`PATCH /orders/:id/cancel`), consola rápida de transición de estado para pruebas Admin y calificación de 1 a 5 estrellas por producto entregado (`POST /reviews`).
 
+- **[NUEVO] Frontend — Fase 5 Completada (Tiempo Real: `events/`)**:
+  - `useSocket.ts` (Socket.io autenticado con `auth.token`, reconexión al rotar el JWT), toast + sonido (`utils/sound.ts`, Web Audio API) en `order_status_updated`, y `LiveTrackingMap` en `/orders/:id` cuando la orden está `OUT_FOR_DELIVERY` (`delivery_location_updated`).
+  - Backend: el gateway ahora acepta `handshake.auth.token` y une al usuario a su sala con `payload.sub` (antes usaba `payload.userId`, que no existe en el JWT); `DeliveryService` emite `delivery_location_updated` y `order_status_updated` (accept/deliver).
+  - **Pendiente de Fase 5:** Push FCM (requiere credenciales de Firebase del proyecto web y `serviceAccount` en backend).
+
 ## ⚠️ Deuda Técnica — Para Fase de Producción
 - *Cuando se despliegue en producción con un dominio real, no será necesario utilizar túneles temporales y los webhooks de MercadoPago llegarán sin bloqueos.*
 - *Migrar módulo de notificaciones (actualmente en Firebase FCM) a AWS SNS.*
@@ -27,8 +32,8 @@
 - *Limpiar los 8 warnings de ESLint (`no-unused-vars`).*
 
 ## Siguiente Paso
-- **Probar la Fase 4 del Frontend** en el navegador (`http://localhost:5173/checkout` y `http://localhost:5173/orders`) y realizar el commit correspondiente.
-- **Iniciar Fase 5 del Frontend (`delivery-frontend/`)**: Tiempo Real — Conexión WebSocket (`socket.io-client`) con `EventsGateway` (`order_status_updated` y `delivery_location_updated`), mapa de tracking en vivo del repartidor, alertas sonoras con Web Audio API y registro de token Push FCM.
+- **Probar la Fase 5** (dos pestañas: cliente + admin avanzando estados; repartidor con `PATCH /delivery/location` desde Postman) y hacer commit.
+- **Fase 6 del Frontend**: Portal del Repartidor (perfil, disponibilidad, pedidos disponibles, entrega activa con emisor GPS/simulador, estadísticas).
 - *(Nota: La **Fase 7 — Deploy a Producción con AWS (ECS Fargate)** y la **Fase 8 — Kubernetes** quedan programadas para el cierre del proyecto completo, una vez finalizado el Frontend).*
 
 ---

@@ -64,6 +64,10 @@ npm run build
   - `AddressesModal` con CRUD completo contra `/api/v1/addresses`, detección de ubicación GPS (`navigator.geolocation`), geocodificación inversa (Nominatim) y mapa interactivo OpenStreetMap.
   - `CouponInputBox` conectado a `POST /api/v1/coupons/apply` calculando ahorro y total final en tiempo real.
 
+- ✅ **Fase 5 (Tiempo Real)**:
+  - `useSocket.ts` (Socket.io con JWT en `auth.token`, reconexión al rotar token), `utils/sound.ts` (Web Audio API) y `LiveTrackingMap` en `/orders/:id` para órdenes `OUT_FOR_DELIVERY`.
+  - Pendiente: Push FCM.
+
 - ✅ **Fase 4 (Checkout, Pasarela MercadoPago, Mis Pedidos y Reseñas Verificadas)**:
   - Servicio `orders.api.ts` conectado a `POST /orders`, `GET /orders/me`, `GET /orders/:id`, `PATCH /orders/:id/cancel`, `POST /orders/:id/pay`, `GET /orders` y `PATCH /orders/:id/status`.
   - `CheckoutPage` (`/checkout`) en 3 pasos con selección de dirección, resumen del carrito activo, cupón promocional y redirección a MercadoPago Checkout Pro.

@@ -15,6 +15,7 @@ import { OrderStatus } from 'src/orders/order-status.enum';
 import { CreateDeliveryProfileDto } from './dto/create-delivery-profile.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
 import { UpdateAvailabilityDto } from './dto/update-availability.dto';
+import { EventsGateway } from '../events/events/events.gateway';
 
 @Injectable()
 export class DeliveryService {
@@ -23,6 +24,7 @@ export class DeliveryService {
     private deliveryProfileModel: Model<DeliveryProfileDocument>,
     @InjectModel(Order.name)
     private orderModel: Model<OrderDocument>,
+    private eventsGateway: EventsGateway,
   ) {}
 
   // Crear perfil de repartidor (solo una vez por usuario)
@@ -52,11 +54,26 @@ export class DeliveryService {
 
   // Actualizar ubicación GPS en tiempo real
   async updateLocation(userId: string, dto: UpdateLocationDto) {
-    return this.deliveryProfileModel.findOneAndUpdate(
+    const profile = await this.deliveryProfileModel.findOneAndUpdate(
       { userId },
       { currentLocation: { lat: dto.lat, lng: dto.lng } },
       { new: true },
     );
+
+    // Notificar en vivo a los clientes con pedidos en camino de este repartidor
+    const activeOrders = await this.orderModel.find({
+      deliveryId: userId,
+      status: OrderStatus.OUT_FOR_DELIVERY,
+    });
+    for (const order of activeOrders) {
+      this.eventsGateway.emitDeliveryLocationUpdate(order.userId.toString(), {
+        orderId: order._id.toString(),
+        lat: dto.lat,
+        lng: dto.lng,
+      });
+    }
+
+    return profile;
   }
 
   // Ver pedidos disponibles para recoger (estado PREPARING)
@@ -80,11 +97,18 @@ export class DeliveryService {
         'Este pedido ya fue tomado por otro repartidor.',
       );
 
-    return this.orderModel.findByIdAndUpdate(
+    const updated = await this.orderModel.findByIdAndUpdate(
       orderId,
       { deliveryId: userId, status: OrderStatus.OUT_FOR_DELIVERY },
       { new: true },
     );
+    if (updated) {
+      this.eventsGateway.emitOrderStatusUpdate(
+        updated.userId.toString(),
+        updated,
+      );
+    }
+    return updated;
   }
 
   // Marcar pedido como entregado
@@ -96,11 +120,18 @@ export class DeliveryService {
     if (order.status !== OrderStatus.OUT_FOR_DELIVERY)
       throw new BadRequestException('Este pedido no está en camino.');
 
-    return this.orderModel.findByIdAndUpdate(
+    const updated = await this.orderModel.findByIdAndUpdate(
       orderId,
       { status: OrderStatus.DELIVERED },
       { new: true },
     );
+    if (updated) {
+      this.eventsGateway.emitOrderStatusUpdate(
+        updated.userId.toString(),
+        updated,
+      );
+    }
+    return updated;
   }
 
   // Mis estadísticas como repartidor

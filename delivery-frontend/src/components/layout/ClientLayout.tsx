@@ -22,6 +22,7 @@ import { RoleBadge } from '@/components/ui/Badge';
 import { CartDrawer } from '@/components/cart/CartDrawer';
 import { AddressesModal } from '@/components/addresses/AddressesModal';
 import { useCartDrawerStore } from '@/store/useCartDrawerStore';
+import { useSocket } from '@/hooks/useSocket';
 import { useAuthStore } from '@/store/useAuthStore';
 import { cn } from '@/utils/cn';
 
@@ -31,6 +32,7 @@ export function ClientLayout() {
   const { openDrawer, openAddressModal, activeAddressLabel } =
     useCartDrawerStore();
   const { user, isAuthenticated, logout } = useAuthStore();
+  const { connected: socketConnected } = useSocket();
 
   const { data: cart } = useQuery({
     queryKey: ['cart'],
@@ -131,6 +133,19 @@ export function ClientLayout() {
               <ServerStatusBadge />
             </div>
             <ThemeToggle />
+            {isAuthenticated && (
+              <span
+                title={
+                  socketConnected
+                    ? 'Tiempo real conectado'
+                    : 'Tiempo real desconectado'
+                }
+                className={cn(
+                  'h-2.5 w-2.5 rounded-full',
+                  socketConnected ? 'bg-emerald-500' : 'bg-slate-400',
+                )}
+              />
+            )}
 
             {isAuthenticated && user ? (
               <div className="flex items-center gap-2">

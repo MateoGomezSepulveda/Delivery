@@ -136,7 +136,13 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - ✅ **Historial de Mis Pedidos (`MyOrdersPage.tsx`)**: Filtros por estado y rango de fechas (`GET /orders/me`) con paginación.
   - ✅ **Seguimiento, Cancelación y Reseñas (`OrderDetailPage.tsx` + `ReviewFormModal.tsx`)**: Stepper de progreso, cancelación en estado `PENDING` (`PATCH /orders/:id/cancel`) y calificación de 1 a 5 estrellas sobre productos entregados (`POST /reviews`).
 
-*Siguiente paso: Frontend Fase 5 — Tiempo Real (WebSockets, Live Tracking en Mapa y Push Notifications).*
+- ✅ **Frontend Fase 5 (Tiempo Real)**:
+  - ✅ **WebSockets (`useSocket.ts`)**: Socket.io autenticado con `auth.token`; eventos `order_status_updated` (toast + sonido Web Audio) y `delivery_location_updated`.
+  - ✅ **Tracking en vivo (`LiveTrackingMap.tsx`)**: posición del repartidor en `/orders/:id` cuando la orden está `OUT_FOR_DELIVERY`.
+  - ✅ **Backend**: gateway acepta `auth.token` y usa `sub` del JWT; `DeliveryService` emite ubicación y estados.
+  - ⏳ Push FCM pendiente (requiere credenciales de Firebase).
+
+*Siguiente paso: Frontend Fase 6 — Portal del Repartidor (Rider App).*
 
 ---
 
