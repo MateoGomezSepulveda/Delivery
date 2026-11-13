@@ -27,10 +27,17 @@ npm install
 # 2. Levantar servidor de desarrollo (http://localhost:5173)
 npm run dev
 
-# 3. Verificar tipos TypeScript
+# 3. Verificar linter ESLint y tipos TypeScript
+npm run lint
 npm run typecheck
 
-# 4. Generar build de producción
+# 4. Ejecutar pruebas unitarias y de componentes (Vitest)
+npm run test
+
+# 5. Ejecutar pruebas E2E multirrol (Playwright)
+npm run test:e2e
+
+# 6. Generar build de producción (PWA + bundles divididos)
 npm run build
 ```
 
@@ -80,3 +87,10 @@ npm run build
   - `PaymentResultPage` (`/payments/:status`) para las redirecciones `success`, `pending` y `failure` de MercadoPago.
   - `MyOrdersPage` (`/orders`) con filtros por estado (`OrderStatus`), rango de fechas (`dateFrom`, `dateTo`) y paginación.
   - `OrderDetailPage` (`/orders/:id`) con stepper de progreso, cancelación por cliente en estado `PENDING`, consola rápida de transición de estados (modo Admin) y `ReviewFormModal` (`POST /reviews`) para calificar productos en órdenes `DELIVERED`.
+
+- ✅ **Fase 8 (Calidad, Testing, PWA, Code Splitting y Dockerización)**:
+  - **ESLint 9 (`eslint.config.js`)** + scripts `lint`, `test`, `test:watch` y `test:e2e`.
+  - **Tests Unitarios y de Componentes (Vitest + Testing Library + jsdom)**: `jwt.test.ts`, `formatters.test.ts`, `useAuthStore.test.ts`, `CouponInputBox.test.tsx` y `LoginPage.test.tsx`.
+  - **Tests E2E Multirrol (`e2e/delivery-flow.spec.ts` con Playwright)**: flujo completo Cliente -> Admin -> Repartidor -> Cliente reseña.
+  - **Performance & PWA**: `React.lazy` + `Suspense` en `AppRouter.tsx`, `manualChunks` en `vite.config.ts`, `public/manifest.webmanifest`, íconos SVG (`192`/`512`) y Service Worker (`public/sw.js`).
+  - **Docker Producción (Non-Root)**: `Dockerfile` multi-stage con `nginxinc/nginx-unprivileged:1.27-alpine` en puerto `8080`, `nginx.conf` (Gzip, caché `/assets/`, `/healthz`, SPA fallback) y `.dockerignore`.

@@ -146,7 +146,9 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
 
 - ✅ **Frontend Fase 7 (Panel de Administración y Analytics)**: dashboard con KPIs y gráficas (`/analytics/*`), despacho Kanban de pedidos, CRUD de productos (con subida a S3), categorías, cupones y gestión de usuarios/roles.
 
-*Siguiente paso: Frontend Fase 8 — Testing, PWA y Dockerfile del frontend.*
+- ✅ **Frontend Fase 8 (Testing, ESLint, Code Splitting, PWA y Dockerización)**: suite unitaria con **Vitest + Testing Library** (5 archivos / 15 tests), flujo E2E multirrol con **Playwright**, configuración **ESLint 9**, **Code Splitting** (`React.lazy` + `manualChunks`), soporte **PWA** (`manifest.webmanifest` + Service Worker), `Dockerfile` **Nginx unprivileged** (puerto `8080`), integración en **Docker Compose** y pipeline **GitHub Actions CI (`frontend-ci`)**.
+
+*Siguiente paso: Infraestructura Cloud — Backend Fase 7 (AWS ECS Fargate) y Fase 8 (Kubernetes).*
 
 ---
 
@@ -186,9 +188,11 @@ docker compose restart api
 ### URLs del entorno de desarrollo
 | Servicio | URL |
 |----------|-----|
+| Frontend (Vite Dev) | `http://localhost:5173` |
+| Frontend (Docker Nginx) | `http://localhost:8080` |
 | API REST | `http://localhost:3000/api/v1` |
 | Swagger UI | `http://localhost:3000/api/docs` |
-| Health Check | `http://localhost:3000/api/v1/health` |
+| Health Check API | `http://localhost:3000/api/v1/health` |
 | Mongo Express | `http://localhost:8081` | admin-pass
 
 *Nota: Configura tu `.env` basándote en el archivo `.env.example` del backend antes de ejecutar.*

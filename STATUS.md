@@ -1,6 +1,6 @@
 # Estado del Proyecto
 
-**Última actualización:** 12 de Noviembre de 2026
+**Última actualización:** 13 de Noviembre de 2026
 
 ## Última Tarea / Contexto Actual
 - Se completaron las **Fases 0.1 a 0.7** del Backend (Módulos de negocio y utilidades base), blindando la API con autenticación, validaciones, paginación y trazabilidad.
@@ -33,6 +33,13 @@
   - `AdminLayout` con navegación real y 6 secciones: Dashboard (`/admin`: KPIs, ventas diarias, top productos y pedidos por estado desde `/analytics/*`), Despacho tipo Kanban (`/admin/orders`), Productos con subida de imagen a S3 (`/admin/products`), Categorías, Cupones y Usuarios/Roles (`PATCH /users/:id/role`).
   - Las gráficas son SVG/CSS propios (sin Recharts) para no aumentar el bundle.
 
+- **[NUEVO] Frontend — Fase 8 Completada (Testing, ESLint, Code Splitting, PWA y Dockerización)**:
+  - **ESLint 9 (`eslint.config.js`)**: configuración TypeScript + React Hooks + React Refresh (`0 errors, 0 warnings`), corrigiendo hook condicional en `src/components/ui/Input.tsx`.
+  - **Testing Unitario y de Componentes (Vitest + Testing Library + jsdom)**: 5 suites / 15 tests pasando (`jwt.test.ts`, `formatters.test.ts`, `useAuthStore.test.ts`, `CouponInputBox.test.tsx`, `LoginPage.test.tsx`).
+  - **Testing E2E (`Playwright` en `e2e/delivery-flow.spec.ts`)**: flujo multirrol completo (Cliente crea pedido -> Admin confirma y prepara -> Repartidor acepta y entrega -> Cliente califica con reseña).
+  - **Code Splitting & PWA**: `React.lazy` + `Suspense` en todas las rutas (`AppRouter.tsx`) y `manualChunks` en `vite.config.ts` (entrypoint inicial reducido a ~69.78 kB sin warnings de tamaño) + `manifest.webmanifest`, íconos SVG (`192`/`512`) y Service Worker (`public/sw.js`).
+  - **Dockerización & CI**: `delivery-frontend/Dockerfile` multi-stage con `nginxinc/nginx-unprivileged:1.27-alpine` (non-root, puerto `8080`, `gzip`, caché inmutable en `/assets/`, `/healthz` y fallback SPA en `nginx.conf`), servicio `frontend` integrado en `docker-compose.yml` y `docker-compose.prod.yml`, y job `frontend-ci` en `.github/workflows/ci.yml`.
+
 ## ⚠️ Deuda Técnica — Para Fase de Producción
 - *Cuando se despliegue en producción con un dominio real, no será necesario utilizar túneles temporales y los webhooks de MercadoPago llegarán sin bloqueos.*
 - *Migrar módulo de notificaciones (actualmente en Firebase FCM) a AWS SNS.*
@@ -42,9 +49,8 @@
 - *Limpiar los 8 warnings de ESLint (`no-unused-vars`).*
 
 ## Siguiente Paso
-- **Probar la Fase 7** (sesión ADMIN: `/admin`) y hacer commit.
-- **Fase 8 del Frontend**: Testing (Vitest + Playwright), PWA y Dockerfile (Nginx) del frontend.
-- *(Nota: La **Fase 7 — Deploy a Producción con AWS (ECS Fargate)** y la **Fase 8 — Kubernetes** quedan programadas para el cierre del proyecto completo, una vez finalizado el Frontend).*
+- **Validar integración completa en Docker Compose / Navegador** (`docker compose up -d --build`) y endpoints críticos antes de commitear.
+- **Fase 7 Backend — Deploy a Producción con AWS (ECS Fargate)** y **Fase 8 Backend — Kubernetes**, una vez cerrado el bloque Frontend.
 
 ---
 
