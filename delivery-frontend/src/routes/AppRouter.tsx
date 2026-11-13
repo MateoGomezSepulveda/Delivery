@@ -12,6 +12,7 @@ import {
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
 import { RoleGuard } from '@/routes/RoleGuard';
 import { PhaseZeroShowcasePage } from '@/pages/PhaseZeroShowcasePage';
+import { CatalogPage } from '@/pages/client/CatalogPage';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage';
@@ -32,7 +33,8 @@ export function AppRouter() {
 
         {/* Portal Cliente */}
         <Route element={<ClientLayout />}>
-          <Route path="/" element={<PhaseZeroShowcasePage />} />
+          <Route path="/" element={<CatalogPage />} />
+          <Route path="/ui-lab" element={<PhaseZeroShowcasePage />} />
 
           {/* Rutas Protegidas de Usuario Autenticado */}
           <Route element={<ProtectedRoute />}>

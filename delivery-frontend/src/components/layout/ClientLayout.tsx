@@ -1,4 +1,5 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   Bike,
@@ -7,18 +8,18 @@ import {
   LogOut,
   MapPin,
   ShoppingBag,
-  Sparkles,
   Store,
   User as UserIcon,
   UserPlus,
   UtensilsCrossed,
 } from 'lucide-react';
+import { getCartApi } from '@/api/endpoints/cart.api';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { ServerStatusBadge } from '@/components/layout/ServerStatusBadge';
 import { Button } from '@/components/ui/Button';
-import { Drawer } from '@/components/ui/Drawer';
-import { EmptyState } from '@/components/ui/EmptyState';
 import { RoleBadge } from '@/components/ui/Badge';
+import { CartDrawer } from '@/components/cart/CartDrawer';
+import { AddressesModal } from '@/components/addresses/AddressesModal';
 import { useCartDrawerStore } from '@/store/useCartDrawerStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { cn } from '@/utils/cn';
@@ -26,9 +27,18 @@ import { cn } from '@/utils/cn';
 export function ClientLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isOpen, openDrawer, closeDrawer, activeAddressLabel } =
+  const { openDrawer, openAddressModal, activeAddressLabel } =
     useCartDrawerStore();
   const { user, isAuthenticated, logout } = useAuthStore();
+
+  const { data: cart } = useQuery({
+    queryKey: ['cart'],
+    queryFn: getCartApi,
+    enabled: isAuthenticated,
+  });
+
+  const cartItemCount =
+    cart?.items?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
 
   const handleLogout = async () => {
     await logout();
@@ -41,8 +51,8 @@ export function ClientLayout() {
       {/* Floating Navbar following ui-ux-pro-max rules */}
       <header className="sticky top-4 z-40 px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/85 dark:bg-slate-900/85 backdrop-blur-md shadow-card px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          {/* Brand Logo */}
-          <div className="flex items-center gap-5">
+          {/* Brand Logo + Address Pill */}
+          <div className="flex items-center gap-4">
             <Link
               to="/"
               className="flex items-center gap-2.5 group cursor-pointer"
@@ -60,11 +70,16 @@ export function ClientLayout() {
               </div>
             </Link>
 
-            {/* Active Delivery Address Pill */}
-            <div className="hidden xl:flex items-center gap-2 rounded-xl bg-slate-100/80 dark:bg-slate-800/70 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60">
+            {/* Clickable Active Delivery Address Pill */}
+            <button
+              type="button"
+              onClick={openAddressModal}
+              title="Haz clic para abrir tu libreta de direcciones y mapa"
+              className="hidden md:flex items-center gap-2 rounded-xl bg-slate-100/80 hover:bg-orange-50 dark:bg-slate-800/70 dark:hover:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60 transition-colors cursor-pointer"
+            >
               <MapPin className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 shrink-0" />
-              <span className="truncate max-w-[180px]">{activeAddressLabel}</span>
-            </div>
+              <span className="truncate max-w-[190px]">{activeAddressLabel}</span>
+            </button>
           </div>
 
           {/* Role Layout Switcher */}
@@ -79,7 +94,7 @@ export function ClientLayout() {
               )}
             >
               <Store className="w-3.5 h-3.5" />
-              <span>Cliente</span>
+              <span>Catálogo</span>
             </Link>
             <Link
               to="/delivery"
@@ -99,7 +114,7 @@ export function ClientLayout() {
 
           {/* Right Actions */}
           <div className="flex items-center gap-2">
-            <div className="hidden md:block">
+            <div className="hidden xl:block">
               <ServerStatusBadge />
             </div>
             <ThemeToggle />
@@ -169,7 +184,7 @@ export function ClientLayout() {
             >
               <span className="hidden sm:inline">Carrito</span>
               <span className="rounded-full bg-white/20 px-1.5 py-0.2 text-[11px]">
-                0
+                {cartItemCount}
               </span>
             </Button>
           </div>
@@ -181,39 +196,9 @@ export function ClientLayout() {
         <Outlet />
       </main>
 
-      {/* Slide-over Cart Drawer Base */}
-      <Drawer
-        isOpen={isOpen}
-        onClose={closeDrawer}
-        title="Tu Carrito de Compras"
-        subtitle={`Entrega en: ${activeAddressLabel}`}
-        footer={
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-500 dark:text-slate-400">
-                Subtotal estimado
-              </span>
-              <span className="font-heading text-lg font-bold text-slate-900 dark:text-white">
-                $0
-              </span>
-            </div>
-            <Button
-              variant="primary"
-              className="w-full"
-              onClick={closeDrawer}
-              leftIcon={<Sparkles className="w-4 h-4" />}
-            >
-              Explorar Catálogo
-            </Button>
-          </div>
-        }
-      >
-        <EmptyState
-          icon={<ShoppingBag className="w-7 h-7" />}
-          title="Tu carrito está vacío"
-          description="En la Fase 3 conectaremos este Drawer con GET /api/v1/cart y mutaciones optimistas en tiempo real."
-        />
-      </Drawer>
+      {/* Slide-over Cart Drawer & Addresses Modal */}
+      <CartDrawer />
+      <AddressesModal />
 
       {/* Footer */}
       <footer className="border-t border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 py-6">
@@ -223,10 +208,13 @@ export function ClientLayout() {
           </p>
           <div className="flex items-center gap-4">
             <Link to="/" className="hover:text-orange-600 cursor-pointer">
-              Cliente
+              Catálogo
             </Link>
             <Link to="/profile" className="hover:text-orange-600 cursor-pointer">
               Mi Perfil
+            </Link>
+            <Link to="/ui-lab" className="hover:text-orange-600 cursor-pointer">
+              UI Lab
             </Link>
             <Link to="/delivery" className="hover:text-blue-600 cursor-pointer">
               Repartidor

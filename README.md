@@ -119,9 +119,18 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
 - ✅ **Frontend Fase 1 (Autenticación, Seguridad de Sesión, RBAC y Perfil con S3)**:
   - ✅ **Identidad Completa (`/auth`)**: Vistas de Login, Registro con auto-login, Recuperación (`forgot-password`) y Restablecimiento de contraseña (`reset-password`).
   - ✅ **Guards de Navegación**: `ProtectedRoute` y `RoleGuard` (`CLIENT`, `DELIVERY`, `ADMIN`) con redirección automática por rol.
-  - ✅ **Mi Perfil y Avatar en S3 (`/profile`)**: Edición de datos personales y contraseña (`PATCH /users/:id` con `OwnershipGuard`), subida de avatar a AWS S3 (`POST /uploads/avatars`) y rotación de Refresh Token.
+  - ✅ **Mi Perfil y Avatar en S3 (`/profile`)**: Edición de datos personales y contraseña (`PATCH /users/:id` con `OwnershipGuard`), subida de avatar a AWS S3 (`POST /uploads/avatars`) con normalización automática de `.jfif`/`.jpeg` a `.jpg` y rotación de Refresh Token.
 
-*Siguiente paso: Frontend Fase 2 — Catálogo Gastronómico, Búsqueda Avanzada y Reseñas Públicas.*
+- ✅ **Frontend Fase 2 (Catálogo Gastronómico, Búsqueda Avanzada y Reseñas Públicas)**:
+  - ✅ **Explorador de Menú (`CatalogPage.tsx`)**: Carrusel de categorías (`GET /categories`), buscador con *debounce* sincronizado con la URL, filtros por precio/disponibilidad, ordenamiento dinámico (`sortBy`, `sortOrder`) y paginación.
+  - ✅ **Detalle de Producto y Reseñas (`ProductDetailModal.tsx`)**: Ficha de producto (`GET /products/:id`) y listado de reseñas verificadas (`GET /reviews/product/:productId`) con cálculo de promedio de estrellas.
+
+- ✅ **Frontend Fase 3 (Carrito Persistente, Direcciones con Mapa y Cupones)**:
+  - ✅ **Cart Drawer (`CartDrawer.tsx`)**: Sincronizado con `GET /cart`, `POST /cart/add`, `DELETE /cart/remove` y `DELETE /cart/clear`.
+  - ✅ **Libreta de Direcciones con Mapa (`AddressesModal.tsx`)**: CRUD completo de direcciones (`/addresses`) + botón de GPS en vivo y mapa interactivo OpenStreetMap.
+  - ✅ **Motor de Cupones (`CouponInputBox.tsx`)**: Validación de códigos promocionales contra `POST /coupons/apply` en tiempo real.
+
+*Siguiente paso: Frontend Fase 4 — Checkout, Pasarela MercadoPago, Mis Pedidos y Calificaciones.*
 
 ---
 

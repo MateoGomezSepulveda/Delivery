@@ -7,11 +7,13 @@
 - Se completaron las **Fases 1 a 6 del Backend** (Docker Profesional, Observabilidad, Testing >80% + CI, Seguridad Avanzada, 9 Módulos Core nuevos, Cache con Redis, Colas con BullMQ, Índices de MongoDB y Analytics).
 - ✅ **Frontend — Fase 0 Completada (`delivery-frontend/`)**:
   - Arquitectura Vite + React 18 + TypeScript, Design System (`ui-ux-pro-max`), Cliente HTTP (`axios.client.ts` con Refresh Queue), UI Kit base y Layouts Multi-Rol.
-- **[NUEVO] Frontend — Fase 1 Completada (`auth/` + `users/` + `uploads/`)**:
-  - **Clientes API & JWT (`auth.api.ts`, `users.api.ts`, `uploads.api.ts`, `jwt.ts`)**: Integración completa de `POST /auth/login`, `POST /auth/register`, `POST /auth/refresh`, `POST /auth/logout`, `POST /auth/forgot-password`, `POST /auth/reset-password`, `GET/PATCH /users/:id` y `POST /uploads/avatars`.
-  - **Estado de Sesión (`useAuthStore.ts`)**: Hidratación automática del perfil desde MongoDB al iniciar la app, persistencia sincronizada y manejo del evento `auth:session-expired`.
-  - **Flujos de Identidad & Guards (`ProtectedRoute`, `RoleGuard`)**: Vistas `LoginPage`, `RegisterPage`, `ForgotPasswordPage` y `ResetPasswordPage` en `AuthLayout`, manejo de errores `429 Too Many Requests` (`@Throttle`) y protección de rutas por rol (`CLIENT`, `DELIVERY`, `ADMIN`).
-  - **Mi Perfil & AWS S3 (`ProfilePage.tsx`)**: Edición de nombre/correo y contraseña (`OwnershipGuard`), subida de foto de perfil a AWS S3 (`multipart/form-data`, máx 5MB) y botón de prueba de rotación de Refresh Token.
+- ✅ **Frontend — Fase 1 Completada (`auth/` + `users/` + `uploads/`)**:
+  - Autenticación JWT completa, Guards por rol (`ProtectedRoute`, `RoleGuard`), `ProfilePage` y subida de Avatar a S3 con normalización automática de imágenes `.jfif`/`.jpeg`/`.avif` a `.jpg` mediante `<canvas>`.
+- **[NUEVO] Frontend — Fase 2 y Fase 3 Completadas (`categories/`, `products/`, `reviews/`, `cart/`, `addresses/`, `coupons/`)**:
+  - **Catálogo Gastronómico & Reseñas (`CatalogPage`, `ProductDetailModal`)**: Barra de categorías (`GET /categories`), buscador con `useDebounce` sincronizado con URL Query Params, filtros de precio/disponibilidad, ordenamiento dinámico (`sortBy`, `sortOrder`), paginación, sembrador de catálogo demo en 1 clic (Admin) y reseñas públicas por producto (`GET /reviews/product/:productId`).
+  - **Carrito Persistente (`CartDrawer`)**: Sincronización en tiempo real con `GET /cart`, `POST /cart/add`, `DELETE /cart/remove` y `DELETE /cart/clear`.
+  - **Libreta de Direcciones con Mapa (`AddressesModal`)**: CRUD completo contra `/api/v1/addresses` + geolocalización GPS (`navigator.geolocation`) con geocodificación inversa (OpenStreetMap Nominatim) y vista de mapa interactivo.
+  - **Motor de Cupones Promocionales (`CouponInputBox`)**: Validación en tiempo real contra `POST /api/v1/coupons/apply` calculando descuento (`PERCENTAGE` / `FIXED`) y total final.
 
 ## ⚠️ Deuda Técnica — Para Fase de Producción
 - *Cuando se despliegue en producción con un dominio real, no será necesario utilizar túneles temporales y los webhooks de MercadoPago llegarán sin bloqueos.*
@@ -22,8 +24,8 @@
 - *Limpiar los 8 warnings de ESLint (`no-unused-vars`).*
 
 ## Siguiente Paso
-- **Probar Fase 1 del Frontend** en el navegador (`http://localhost:5173/login`, `/register`, `/forgot-password`, `/profile`) y hacer el commit de la Fase 1.
-- **Iniciar Fase 2 del Frontend (`delivery-frontend/`)**: Catálogo Gastronómico (`GET /categories`, `GET /products` con debounce search, filtros por categoría/precio/disponibilidad, ordenamiento dinámico y paginación) y Modal de Detalle con Reseñas Públicas (`GET /reviews/product/:productId`).
+- **Probar Fases 2 y 3 del Frontend** en el navegador (`http://localhost:5173`): sembrar el catálogo demo como Admin, filtrar productos, ver reseñas, agregar ítems al carrito, crear una dirección con GPS/Mapa, aplicar el cupón `BIENVENIDA20` y hacer el commit correspondiente.
+- **Iniciar Fase 4 del Frontend (`delivery-frontend/`)**: Checkout en 3 pasos (`POST /orders`), pasarela de pagos **MercadoPago** (`POST /orders/:id/pay` + vistas `success/failure/pending`), historial de **Mis Pedidos** (`GET /orders/me`), cancelación por cliente (`PATCH /orders/:id/cancel`) y formulario de calificación de productos entregados (`POST /reviews`).
 - *(Nota: La **Fase 7 — Deploy a Producción con AWS (ECS Fargate)** y la **Fase 8 — Kubernetes** quedan programadas para el cierre del proyecto completo, una vez finalizado el Frontend).*
 
 ---

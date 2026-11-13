@@ -56,9 +56,12 @@ export function ProfilePage() {
     setIsUploadingAvatar(true);
     try {
       const uploaded = await uploadImageToS3Api(file, 'avatars');
-      setUserAvatar(user._id, uploaded.url);
-      toast.success('¡Avatar subido a AWS S3 con éxito!', {
-        description: uploaded.url,
+      // Guardamos el DataURL optimizado para visualización inmediata (evita errores 403 si el bucket S3 es privado)
+      setUserAvatar(user._id, uploaded.previewDataUrl || uploaded.url);
+      toast.success('¡Foto de perfil actualizada con éxito!', {
+        description: uploaded.url.startsWith('http')
+          ? `Subida a S3: ${uploaded.url}`
+          : 'Imagen normalizada a JPG y guardada en tu perfil.',
       });
     } catch (error) {
       toast.error('No se pudo subir la imagen a S3', {
@@ -192,7 +195,7 @@ export function ProfilePage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/*,.jfif,.jpeg,.jpg,.png,.webp,.avif"
               onChange={handleAvatarFileChange}
               className="hidden"
             />
