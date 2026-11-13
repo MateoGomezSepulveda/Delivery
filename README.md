@@ -142,7 +142,11 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - ✅ **Backend**: gateway acepta `auth.token` y usa `sub` del JWT; `DeliveryService` emite ubicación y estados.
   - ⏳ Push FCM pendiente (requiere credenciales de Firebase).
 
-*Siguiente paso: Frontend Fase 6 — Portal del Repartidor (Rider App).*
+- ✅ **Frontend Fase 6 (Portal del Repartidor)**: onboarding de perfil, switch Online/Offline, pedidos disponibles, ruta activa con emisor GPS real/simulador y métricas (`/delivery/*`).
+
+- ✅ **Frontend Fase 7 (Panel de Administración y Analytics)**: dashboard con KPIs y gráficas (`/analytics/*`), despacho Kanban de pedidos, CRUD de productos (con subida a S3), categorías, cupones y gestión de usuarios/roles.
+
+*Siguiente paso: Frontend Fase 8 — Testing, PWA y Dockerfile del frontend.*
 
 ---
 

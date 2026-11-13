@@ -3,6 +3,7 @@ import { DeliveryService } from './delivery.service';
 import { getModelToken } from '@nestjs/mongoose';
 import { DeliveryProfile } from './schemas/delivery-profile.schema';
 import { Order } from 'src/orders/schemas/order.schema';
+import { EventsGateway } from 'src/events/events/events.gateway';
 
 describe('DeliveryService', () => {
   let service: DeliveryService;
@@ -25,6 +26,13 @@ describe('DeliveryService', () => {
             find: jest.fn(),
             findById: jest.fn(),
             countDocuments: jest.fn(),
+          },
+        },
+        {
+          provide: EventsGateway,
+          useValue: {
+            emitOrderStatusUpdate: jest.fn(),
+            emitDeliveryLocationUpdate: jest.fn(),
           },
         },
       ],

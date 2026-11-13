@@ -64,6 +64,12 @@ npm run build
   - `AddressesModal` con CRUD completo contra `/api/v1/addresses`, detección de ubicación GPS (`navigator.geolocation`), geocodificación inversa (Nominatim) y mapa interactivo OpenStreetMap.
   - `CouponInputBox` conectado a `POST /api/v1/coupons/apply` calculando ahorro y total final en tiempo real.
 
+- ✅ **Fase 6 (Portal del Repartidor)**:
+  - `delivery.api.ts`, `DeliveryLayout` (onboarding + disponibilidad), `/delivery` (pedidos disponibles), `/delivery/active` (emisor GPS/simulador) y `/delivery/stats`.
+
+- ✅ **Fase 7 (Panel de Administración y Analytics)**:
+  - `analytics.api.ts` y páginas `/admin` (dashboard), `/admin/orders` (Kanban), `/admin/products`, `/admin/categories`, `/admin/coupons` y `/admin/users`.
+
 - ✅ **Fase 5 (Tiempo Real)**:
   - `useSocket.ts` (Socket.io con JWT en `auth.token`, reconexión al rotar token), `utils/sound.ts` (Web Audio API) y `LiveTrackingMap` en `/orders/:id` para órdenes `OUT_FOR_DELIVERY`.
   - Pendiente: Push FCM.

@@ -61,6 +61,13 @@ export class DeliveryController {
     return this.deliveryService.getAvailableOrders();
   }
 
+  @Get('orders/active')
+  @Roles(Role.DELIVERY)
+  @ApiOperation({ summary: 'Ver mis pedidos actualmente en camino' })
+  getActiveOrders(@Request() req) {
+    return this.deliveryService.getActiveOrders(req.user.userId);
+  }
+
   @Patch('orders/:id/accept')
   @Roles(Role.DELIVERY)
   @ApiOperation({ summary: 'Aceptar y tomar un pedido' })

@@ -5,9 +5,14 @@ import { Button } from '@/components/ui/Button';
 interface PaginationBarProps {
   meta: PaginationMeta;
   onPageChange: (page: number) => void;
+  itemLabel?: string;
 }
 
-export function PaginationBar({ meta, onPageChange }: PaginationBarProps) {
+export function PaginationBar({
+  meta,
+  onPageChange,
+  itemLabel = 'productos',
+}: PaginationBarProps) {
   if (meta.lastPage <= 1) return null;
 
   const pages = Array.from({ length: meta.lastPage }, (_, i) => i + 1);
@@ -16,7 +21,7 @@ export function PaginationBar({ meta, onPageChange }: PaginationBarProps) {
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-slate-200/80 dark:border-slate-800">
       <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
         Mostrando página <strong>{meta.page}</strong> de{' '}
-        <strong>{meta.lastPage}</strong> ({meta.total} productos en total)
+        <strong>{meta.lastPage}</strong> ({meta.total} {itemLabel} en total)
       </p>
 
       <div className="flex items-center gap-1.5">

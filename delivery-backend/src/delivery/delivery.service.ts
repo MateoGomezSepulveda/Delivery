@@ -84,6 +84,14 @@ export class DeliveryService {
       .sort({ createdAt: 1 }); // El más antiguo primero
   }
 
+  // Pedidos que el repartidor tiene actualmente en camino
+  async getActiveOrders(userId: string) {
+    return this.orderModel
+      .find({ deliveryId: userId, status: OrderStatus.OUT_FOR_DELIVERY })
+      .populate('userId', 'name email')
+      .sort({ updatedAt: -1 });
+  }
+
   // Aceptar un pedido (el repartidor lo toma)
   async acceptOrder(userId: string, orderId: string) {
     const order = await this.orderModel.findById(orderId);

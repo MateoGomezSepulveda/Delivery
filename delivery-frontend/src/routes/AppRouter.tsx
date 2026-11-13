@@ -1,14 +1,17 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { AuthLayout } from '@/components/layout/AuthLayout';
-import {
-  DeliveryLayout,
-  DeliveryLayoutPreview,
-} from '@/components/layout/DeliveryLayout';
-import {
-  AdminLayout,
-  AdminLayoutPreview,
-} from '@/components/layout/AdminLayout';
+import { DeliveryLayout } from '@/components/layout/DeliveryLayout';
+import { RiderAvailableOrdersPage } from '@/pages/delivery/RiderAvailableOrdersPage';
+import { RiderActiveRoutePage } from '@/pages/delivery/RiderActiveRoutePage';
+import { RiderStatsPage } from '@/pages/delivery/RiderStatsPage';
+import { AdminLayout } from '@/components/layout/AdminLayout';
+import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage';
+import { AdminOrdersPage } from '@/pages/admin/AdminOrdersPage';
+import { AdminProductsPage } from '@/pages/admin/AdminProductsPage';
+import { AdminCategoriesPage } from '@/pages/admin/AdminCategoriesPage';
+import { AdminCouponsPage } from '@/pages/admin/AdminCouponsPage';
+import { AdminUsersPage } from '@/pages/admin/AdminUsersPage';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
 import { RoleGuard } from '@/routes/RoleGuard';
 import { PhaseZeroShowcasePage } from '@/pages/PhaseZeroShowcasePage';
@@ -54,7 +57,9 @@ export function AppRouter() {
         <Route element={<ProtectedRoute />}>
           <Route element={<RoleGuard allowedRoles={['DELIVERY', 'ADMIN']} />}>
             <Route path="/delivery" element={<DeliveryLayout />}>
-              <Route index element={<DeliveryLayoutPreview />} />
+              <Route index element={<RiderAvailableOrdersPage />} />
+              <Route path="active" element={<RiderActiveRoutePage />} />
+              <Route path="stats" element={<RiderStatsPage />} />
             </Route>
           </Route>
         </Route>
@@ -63,7 +68,12 @@ export function AppRouter() {
         <Route element={<ProtectedRoute />}>
           <Route element={<RoleGuard allowedRoles={['ADMIN']} />}>
             <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<AdminLayoutPreview />} />
+              <Route index element={<AdminDashboardPage />} />
+              <Route path="orders" element={<AdminOrdersPage />} />
+              <Route path="products" element={<AdminProductsPage />} />
+              <Route path="categories" element={<AdminCategoriesPage />} />
+              <Route path="coupons" element={<AdminCouponsPage />} />
+              <Route path="users" element={<AdminUsersPage />} />
             </Route>
           </Route>
         </Route>

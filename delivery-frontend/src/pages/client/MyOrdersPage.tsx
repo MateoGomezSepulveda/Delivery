@@ -301,6 +301,7 @@ export function MyOrdersPage() {
       {meta.lastPage > 1 && (
         <PaginationBar
           meta={meta}
+          itemLabel="pedidos"
           onPageChange={(newPage) => setPage(newPage)}
         />
       )}

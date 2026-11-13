@@ -23,6 +23,16 @@
   - Backend: el gateway ahora acepta `handshake.auth.token` y une al usuario a su sala con `payload.sub` (antes usaba `payload.userId`, que no existe en el JWT); `DeliveryService` emite `delivery_location_updated` y `order_status_updated` (accept/deliver).
   - **Pendiente de Fase 5:** Push FCM (requiere credenciales de Firebase del proyecto web y `serviceAccount` en backend).
 
+- **[NUEVO] Frontend — Fase 6 Completada (`delivery/`)**:
+  - `DeliveryLayout` con onboarding (`POST /delivery/profile` si `GET` devuelve 404), switch Online/Offline (`PATCH /delivery/availability`) y navegación inferior.
+  - `/delivery` pedidos disponibles (auto-refresh 10 s, `PATCH .../accept`), `/delivery/active` (emisor GPS real + simulador de ruta vía `PATCH /delivery/location`, `PATCH .../deliver`) y `/delivery/stats`.
+  - Backend: nuevo `GET /delivery/orders/active` (pedidos OUT_FOR_DELIVERY del repartidor).
+  - Nota: los endpoints `/delivery/*` solo permiten rol `DELIVERY` (un ADMIN recibe 403).
+
+- **[NUEVO] Frontend — Fase 7 Completada (Panel de Administración y Analytics)**:
+  - `AdminLayout` con navegación real y 6 secciones: Dashboard (`/admin`: KPIs, ventas diarias, top productos y pedidos por estado desde `/analytics/*`), Despacho tipo Kanban (`/admin/orders`), Productos con subida de imagen a S3 (`/admin/products`), Categorías, Cupones y Usuarios/Roles (`PATCH /users/:id/role`).
+  - Las gráficas son SVG/CSS propios (sin Recharts) para no aumentar el bundle.
+
 ## ⚠️ Deuda Técnica — Para Fase de Producción
 - *Cuando se despliegue en producción con un dominio real, no será necesario utilizar túneles temporales y los webhooks de MercadoPago llegarán sin bloqueos.*
 - *Migrar módulo de notificaciones (actualmente en Firebase FCM) a AWS SNS.*
@@ -32,8 +42,8 @@
 - *Limpiar los 8 warnings de ESLint (`no-unused-vars`).*
 
 ## Siguiente Paso
-- **Probar la Fase 5** (dos pestañas: cliente + admin avanzando estados; repartidor con `PATCH /delivery/location` desde Postman) y hacer commit.
-- **Fase 6 del Frontend**: Portal del Repartidor (perfil, disponibilidad, pedidos disponibles, entrega activa con emisor GPS/simulador, estadísticas).
+- **Probar la Fase 7** (sesión ADMIN: `/admin`) y hacer commit.
+- **Fase 8 del Frontend**: Testing (Vitest + Playwright), PWA y Dockerfile (Nginx) del frontend.
 - *(Nota: La **Fase 7 — Deploy a Producción con AWS (ECS Fargate)** y la **Fase 8 — Kubernetes** quedan programadas para el cierre del proyecto completo, una vez finalizado el Frontend).*
 
 ---
