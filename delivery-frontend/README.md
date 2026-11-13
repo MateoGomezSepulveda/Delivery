@@ -66,7 +66,7 @@ npm run build
   - Componentes `CategoryPills`, `ProductFiltersBar`, `ProductCard`, `PaginationBar` y `ProductDetailModal` con promedio de estrellas y reseñas públicas (`GET /reviews/product/:productId`).
 
 - ✅ **Fase 3 (Carrito Persistente, Libreta de Direcciones con Mapa y Cupones)**:
-  - Servicios `cart.api.ts`, `addresses.api.ts` y `coupons.api.ts`.
+  - Servicios `cart.api.ts`, `addresses.api.ts` y `coupons.api.ts` + hook `useCartMutations.ts` (mutaciones optimistas con snapshot y rollback automático).
   - `CartDrawer` conectado a `GET /cart`, `POST /cart/add`, `DELETE /cart/remove` y `DELETE /cart/clear` con contador en vivo en el Navbar.
   - `AddressesModal` con CRUD completo contra `/api/v1/addresses`, detección de ubicación GPS (`navigator.geolocation`), geocodificación inversa (Nominatim) y mapa interactivo OpenStreetMap.
   - `CouponInputBox` conectado a `POST /api/v1/coupons/apply` calculando ahorro y total final en tiempo real.
@@ -75,11 +75,11 @@ npm run build
   - `delivery.api.ts`, `DeliveryLayout` (onboarding + disponibilidad), `/delivery` (pedidos disponibles), `/delivery/active` (emisor GPS/simulador) y `/delivery/stats`.
 
 - ✅ **Fase 7 (Panel de Administración y Analytics)**:
-  - `analytics.api.ts` y páginas `/admin` (dashboard), `/admin/orders` (Kanban), `/admin/products`, `/admin/categories`, `/admin/coupons` y `/admin/users`.
+  - `analytics.api.ts` y páginas `/admin` (dashboard), `/admin/orders` (vista dual **Kanban | Tabla**, búsqueda por `#ID`/cliente/correo/dirección y filtro por estado), `/admin/products`, `/admin/categories`, `/admin/coupons` y `/admin/users`.
 
-- ✅ **Fase 5 (Tiempo Real)**:
-  - `useSocket.ts` (Socket.io con JWT en `auth.token`, reconexión al rotar token), `utils/sound.ts` (Web Audio API) y `LiveTrackingMap` en `/orders/:id` para órdenes `OUT_FOR_DELIVERY`.
-  - Pendiente: Push FCM.
+- ✅ **Fase 5 (Tiempo Real + Notificaciones de Navegador / SW)**:
+  - `useSocket.ts` (Socket.io con JWT en `auth.token`, reconexión al rotar token), `utils/sound.ts` (Web Audio API), `utils/browserNotifications.ts` (notificación de navegador cuando la pestaña está oculta + configuración en `ProfilePage`), `public/sw.js` (`notificationclick`), plantilla `public/firebase-messaging-sw.js` y `LiveTrackingMap` en `/orders/:id` para órdenes `OUT_FOR_DELIVERY`.
+  - Pendiente para Push FCM remoto: credenciales Firebase en backend/frontend y habilitar `fcmTokens` en DTOs de usuarios del backend.
 
 - ✅ **Fase 4 (Checkout, Pasarela MercadoPago, Mis Pedidos y Reseñas Verificadas)**:
   - Servicio `orders.api.ts` conectado a `POST /orders`, `GET /orders/me`, `GET /orders/:id`, `PATCH /orders/:id/cancel`, `POST /orders/:id/pay`, `GET /orders` y `PATCH /orders/:id/status`.
@@ -89,8 +89,8 @@ npm run build
   - `OrderDetailPage` (`/orders/:id`) con stepper de progreso, cancelación por cliente en estado `PENDING`, consola rápida de transición de estados (modo Admin) y `ReviewFormModal` (`POST /reviews`) para calificar productos en órdenes `DELIVERED`.
 
 - ✅ **Fase 8 (Calidad, Testing, PWA, Code Splitting y Dockerización)**:
-  - **ESLint 9 (`eslint.config.js`)** + scripts `lint`, `test`, `test:watch` y `test:e2e`.
-  - **Tests Unitarios y de Componentes (Vitest + Testing Library + jsdom)**: `jwt.test.ts`, `formatters.test.ts`, `useAuthStore.test.ts`, `CouponInputBox.test.tsx` y `LoginPage.test.tsx`.
+  - **ESLint 9 (`eslint.config.js`)** + scripts `lint`, `typecheck`, `test`, `test:watch` y `test:e2e`.
+  - **Tests Unitarios y de Componentes (Vitest + Testing Library + jsdom)**: 8 archivos / 23 tests (`jwt.test.ts`, `formatters.test.ts`, `useAuthStore.test.ts`, `useCartMutations.test.tsx`, `CouponInputBox.test.tsx`, `LoginPage.test.tsx`, `CheckoutPage.test.tsx` y `AdminOrdersPage.test.tsx`).
   - **Tests E2E Multirrol (`e2e/delivery-flow.spec.ts` con Playwright)**: flujo completo Cliente -> Admin -> Repartidor -> Cliente reseña.
-  - **Performance & PWA**: `React.lazy` + `Suspense` en `AppRouter.tsx`, `manualChunks` en `vite.config.ts`, `public/manifest.webmanifest`, íconos SVG (`192`/`512`) y Service Worker (`public/sw.js`).
-  - **Docker Producción (Non-Root)**: `Dockerfile` multi-stage con `nginxinc/nginx-unprivileged:1.27-alpine` en puerto `8080`, `nginx.conf` (Gzip, caché `/assets/`, `/healthz`, SPA fallback) y `.dockerignore`.
+  - **Performance & PWA**: `React.lazy` + `Suspense` en `AppRouter.tsx`, `manualChunks` en `vite.config.ts`, `public/manifest.webmanifest`, íconos SVG (`192`/`512`) y Service Workers (`public/sw.js` + `public/firebase-messaging-sw.js`).
+  - **Docker Producción (Non-Root)**: `Dockerfile` multi-stage con `nginxinc/nginx-unprivileged:1.27-alpine` en puerto `8080`, `nginx.conf` (Gzip, caché `/assets/`, no-cache para SWs, `/healthz`, SPA fallback) y `.dockerignore`.

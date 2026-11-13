@@ -1,6 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
 import {
   ArrowRight,
   MapPin,
@@ -9,13 +8,8 @@ import {
   Sparkles,
   Trash2,
 } from 'lucide-react';
-import {
-  addToCartApi,
-  clearCartApi,
-  getCartApi,
-  removeFromCartApi,
-} from '@/api/endpoints/cart.api';
-import { extractErrorMessage } from '@/api/axios.client';
+import { getCartApi } from '@/api/endpoints/cart.api';
+import { useCartMutations } from '@/hooks/useCartMutations';
 import type { Product } from '@/types/catalog.types';
 import { useCartDrawerStore } from '@/store/useCartDrawerStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -27,7 +21,6 @@ import { CouponInputBox } from '@/components/cart/CouponInputBox';
 
 export function CartDrawer() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
   const {
     isOpen,
@@ -35,7 +28,6 @@ export function CartDrawer() {
     openAddressModal,
     activeAddressLabel,
     appliedCoupon,
-    setAppliedCoupon,
   } = useCartDrawerStore();
 
   const { data: cart, isLoading } = useQuery({
@@ -44,48 +36,7 @@ export function CartDrawer() {
     enabled: isAuthenticated,
   });
 
-  const addMutation = useMutation({
-    mutationFn: ({
-      productId,
-      quantity,
-    }: {
-      productId: string;
-      quantity: number;
-    }) => addToCartApi(productId, quantity),
-    onSuccess: (updatedCart) => {
-      queryClient.setQueryData(['cart'], updatedCart);
-    },
-    onError: (err) => {
-      toast.error('No se pudo actualizar el carrito', {
-        description: extractErrorMessage(err),
-      });
-    },
-  });
-
-  const removeMutation = useMutation({
-    mutationFn: (productId: string) => removeFromCartApi(productId),
-    onSuccess: (updatedCart) => {
-      queryClient.setQueryData(['cart'], updatedCart);
-      if (!updatedCart.items?.length) {
-        setAppliedCoupon(null);
-      }
-      toast.success('Producto eliminado del carrito');
-    },
-    onError: (err) => {
-      toast.error('Error al remover producto', {
-        description: extractErrorMessage(err),
-      });
-    },
-  });
-
-  const clearMutation = useMutation({
-    mutationFn: clearCartApi,
-    onSuccess: (updatedCart) => {
-      queryClient.setQueryData(['cart'], updatedCart);
-      setAppliedCoupon(null);
-      toast.success('Carrito vaciado correctamente');
-    },
-  });
+  const { addMutation, removeMutation, clearMutation } = useCartMutations();
 
   const items = cart?.items ?? [];
   const subtotal = cart?.total ?? 0;

@@ -14,7 +14,7 @@ import {
   getProductsApi,
   seedDemoCatalogApi,
 } from '@/api/endpoints/products.api';
-import { addToCartApi } from '@/api/endpoints/cart.api';
+import { useCartMutations } from '@/hooks/useCartMutations';
 import { extractErrorMessage } from '@/api/axios.client';
 import type {
   Product,
@@ -188,25 +188,12 @@ export function CatalogPage() {
     },
   });
 
-  const addToCartMutation = useMutation({
-    mutationFn: ({
-      productId,
-      quantity,
-    }: {
-      productId: string;
-      quantity: number;
-    }) => addToCartApi(productId, quantity),
-    onSuccess: (updatedCart, variables) => {
-      queryClient.setQueryData(['cart'], updatedCart);
+  const { addMutation: addToCartMutation } = useCartMutations({
+    onAddSuccess: (_updatedCart, variables) => {
       toast.success('¡Producto agregado a tu carrito!', {
         description: `Se agregaron ${variables.quantity} unidad(es) correctamente.`,
       });
       openDrawer();
-    },
-    onError: (err) => {
-      toast.error('No se pudo agregar al carrito', {
-        description: extractErrorMessage(err),
-      });
     },
   });
 
@@ -216,7 +203,7 @@ export function CatalogPage() {
       navigate('/login');
       return;
     }
-    addToCartMutation.mutate({ productId: product._id, quantity });
+    addToCartMutation.mutate({ productId: product._id, quantity, product });
   };
 
   return (

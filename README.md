@@ -126,7 +126,7 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - ✅ **Detalle de Producto y Reseñas (`ProductDetailModal.tsx`)**: Ficha de producto (`GET /products/:id`) y listado de reseñas verificadas (`GET /reviews/product/:productId`) con cálculo de promedio de estrellas.
 
 - ✅ **Frontend Fase 3 (Carrito Persistente, Direcciones con Mapa y Cupones)**:
-  - ✅ **Cart Drawer (`CartDrawer.tsx`)**: Sincronizado con `GET /cart`, `POST /cart/add`, `DELETE /cart/remove` y `DELETE /cart/clear`.
+  - ✅ **Cart Drawer (`CartDrawer.tsx` + `useCartMutations.ts`)**: Sincronizado con `GET /cart`, `POST /cart/add`, `DELETE /cart/remove` y `DELETE /cart/clear` con actualizaciones optimistas (*Optimistic UI*) y rollback automático ante errores.
   - ✅ **Libreta de Direcciones con Mapa (`AddressesModal.tsx`)**: CRUD completo de direcciones (`/addresses`) + botón de GPS en vivo y mapa interactivo OpenStreetMap.
   - ✅ **Motor de Cupones (`CouponInputBox.tsx`)**: Validación de códigos promocionales contra `POST /coupons/apply` en tiempo real.
 
@@ -136,17 +136,18 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - ✅ **Historial de Mis Pedidos (`MyOrdersPage.tsx`)**: Filtros por estado y rango de fechas (`GET /orders/me`) con paginación.
   - ✅ **Seguimiento, Cancelación y Reseñas (`OrderDetailPage.tsx` + `ReviewFormModal.tsx`)**: Stepper de progreso, cancelación en estado `PENDING` (`PATCH /orders/:id/cancel`) y calificación de 1 a 5 estrellas sobre productos entregados (`POST /reviews`).
 
-- ✅ **Frontend Fase 5 (Tiempo Real)**:
-  - ✅ **WebSockets (`useSocket.ts`)**: Socket.io autenticado con `auth.token`; eventos `order_status_updated` (toast + sonido Web Audio) y `delivery_location_updated`.
+- ✅ **Frontend Fase 5 (Tiempo Real y Notificaciones)**:
+  - ✅ **WebSockets (`useSocket.ts`)**: Socket.io autenticado con `auth.token`; eventos `order_status_updated` (toast + sonido Web Audio + notificación nativa del navegador en segundo plano con `browserNotifications.ts`) y `delivery_location_updated`.
+  - ✅ **Service Workers & Perfil (`sw.js`, `firebase-messaging-sw.js`, `ProfilePage.tsx`)**: manejo de `notificationclick`, activación/prueba desde el perfil y cabeceras `no-cache` en `nginx.conf`.
   - ✅ **Tracking en vivo (`LiveTrackingMap.tsx`)**: posición del repartidor en `/orders/:id` cuando la orden está `OUT_FOR_DELIVERY`.
   - ✅ **Backend**: gateway acepta `auth.token` y usa `sub` del JWT; `DeliveryService` emite ubicación y estados.
-  - ⏳ Push FCM pendiente (requiere credenciales de Firebase).
+  - ⏳ Push FCM remoto pendiente de credenciales de Firebase (`serviceAccount` en backend) y campo `fcmTokens` en DTOs de usuario.
 
 - ✅ **Frontend Fase 6 (Portal del Repartidor)**: onboarding de perfil, switch Online/Offline, pedidos disponibles, ruta activa con emisor GPS real/simulador y métricas (`/delivery/*`).
 
-- ✅ **Frontend Fase 7 (Panel de Administración y Analytics)**: dashboard con KPIs y gráficas (`/analytics/*`), despacho Kanban de pedidos, CRUD de productos (con subida a S3), categorías, cupones y gestión de usuarios/roles.
+- ✅ **Frontend Fase 7 (Panel de Administración y Analytics)**: dashboard con KPIs y gráficas (`/analytics/*`), despacho dual **Kanban | Tabla** de pedidos con búsqueda y filtro por estado (`/admin/orders`), CRUD de productos (con subida a S3), categorías, cupones y gestión de usuarios/roles.
 
-- ✅ **Frontend Fase 8 (Testing, ESLint, Code Splitting, PWA y Dockerización)**: suite unitaria con **Vitest + Testing Library** (5 archivos / 15 tests), flujo E2E multirrol con **Playwright**, configuración **ESLint 9**, **Code Splitting** (`React.lazy` + `manualChunks`), soporte **PWA** (`manifest.webmanifest` + Service Worker), `Dockerfile` **Nginx unprivileged** (puerto `8080`), integración en **Docker Compose** y pipeline **GitHub Actions CI (`frontend-ci`)**.
+- ✅ **Frontend Fase 8 (Testing, ESLint, Code Splitting, PWA y Dockerización)**: suite unitaria con **Vitest + Testing Library** (8 archivos / 23 tests), flujo E2E multirrol con **Playwright**, configuración **ESLint 9**, **Code Splitting** (`React.lazy` + `manualChunks`), soporte **PWA** (`manifest.webmanifest` + Service Workers), `Dockerfile` **Nginx unprivileged** (puerto `8080`), integración en **Docker Compose** y pipeline **GitHub Actions CI (`frontend-ci`)**.
 
 *Siguiente paso: Infraestructura Cloud — Backend Fase 7 (AWS ECS Fargate) y Fase 8 (Kubernetes).*
 

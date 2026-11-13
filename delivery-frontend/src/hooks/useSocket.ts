@@ -4,6 +4,7 @@ import { io, type Socket } from 'socket.io-client';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/useAuthStore';
 import { playNotificationSound } from '@/utils/sound';
+import { showOrderStatusNotification } from '@/utils/browserNotifications';
 import type { Order } from '@/types/order.types';
 import type { OrderStatus } from '@/types/api.types';
 
@@ -67,6 +68,14 @@ export function useSocket(): { connected: boolean } {
         description: STATUS_MESSAGES[order.status] ?? order.status,
       });
       playNotificationSound();
+
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        void showOrderStatusNotification(
+          `Pedido #${order._id.slice(-6).toUpperCase()}`,
+          STATUS_MESSAGES[order.status] ?? order.status,
+          order._id,
+        );
+      }
     });
 
     socket.on('delivery_location_updated', (loc: DeliveryLocation) => {

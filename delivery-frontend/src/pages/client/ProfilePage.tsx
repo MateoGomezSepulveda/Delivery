@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
+  Bell,
   Camera,
   CheckCircle2,
   KeyRound,
@@ -18,9 +19,16 @@ import { updateUserApi } from '@/api/endpoints/users.api';
 import { uploadImageToS3Api } from '@/api/endpoints/uploads.api';
 import { refreshTokensApi } from '@/api/endpoints/auth.api';
 import { extractErrorMessage, getStoredTokens } from '@/api/axios.client';
+import {
+  getNotificationPermission,
+  isFirebaseWebConfigured,
+  requestBrowserNotificationPermission,
+  showOrderStatusNotification,
+  type BrowserNotificationPermission,
+} from '@/utils/browserNotifications';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { RoleBadge } from '@/components/ui/Badge';
+import { Badge, RoleBadge } from '@/components/ui/Badge';
 
 export function ProfilePage() {
   const navigate = useNavigate();
@@ -37,6 +45,8 @@ export function ProfilePage() {
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isRefreshingToken, setIsRefreshingToken] = useState(false);
+  const [notifPermission, setNotifPermission] =
+    useState<BrowserNotificationPermission>(() => getNotificationPermission());
 
   if (!user) return null;
 
@@ -323,6 +333,69 @@ export function ProfilePage() {
             Actualizar Contraseña
           </Button>
         </form>
+      </div>
+
+      {/* Browser Notifications & FCM Readiness Card */}
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <Bell className="w-4 h-4 text-orange-600" />
+              <span>Notificaciones del Navegador (Web / Push SW)</span>
+            </h3>
+            {notifPermission === 'granted' ? (
+              <Badge variant="success">Activas en este navegador</Badge>
+            ) : notifPermission === 'denied' ? (
+              <Badge variant="danger">Bloqueadas en navegador</Badge>
+            ) : notifPermission === 'unsupported' ? (
+              <Badge variant="neutral">No soportado</Badge>
+            ) : (
+              <Badge variant="warning">Permiso pendiente</Badge>
+            )}
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Recibe alertas del estado de tu pedido en segundo plano vía{' '}
+            <code>sw.js</code> / WebSocket.{' '}
+            {isFirebaseWebConfigured()
+              ? 'Variables Firebase Web detectadas.'
+              : 'Push remoto FCM opcional pendiente de credenciales VITE_FIREBASE_*.'}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {notifPermission !== 'granted' && notifPermission !== 'unsupported' && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={async () => {
+                const next = await requestBrowserNotificationPermission();
+                setNotifPermission(next);
+                if (next === 'granted') {
+                  toast.success('Notificaciones activadas en tu navegador');
+                } else {
+                  toast.info('Permiso de notificaciones no concedido');
+                }
+              }}
+              leftIcon={<Bell className="w-4 h-4" />}
+            >
+              Activar Alertas
+            </Button>
+          )}
+          {notifPermission === 'granted' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                await showOrderStatusNotification(
+                  'DeliveryPro — Prueba de Alerta',
+                  'Las notificaciones de pedidos están funcionando correctamente.',
+                );
+              }}
+              leftIcon={<Bell className="w-4 h-4" />}
+            >
+              Probar Notificación
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Security & Token Rotation Diagnostic Card */}

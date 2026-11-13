@@ -147,10 +147,10 @@ delivery-frontend/
 | 6 | **Layouts Multi-Rol y Health Check** | Crear `ClientLayout` (Navbar flotante + CartDrawer + Footer), `DeliveryLayout` (Mobile-first con Bottom Navigation) y `AdminLayout` (Sidebar colapsable + Topbar). Conectar un indicador discreto de estado del servidor contra `GET /api/v1/health`. |
 
 ### ✅ Checklist Fase 0
-- [ ] Proyecto `delivery-frontend` corriendo en `http://localhost:5173` y CORS permitido en el backend (`ALLOWED_ORIGINS`).
-- [ ] Tema Claro / Oscuro funcionando sin parpadeos y respetando contraste WCAG AA.
-- [ ] `axios.client.ts` desenvolviendo `{ success, data, timestamp }` y rotando el Refresh Token automáticamente.
-- [ ] Kit de componentes UI base renderizando con íconos SVG de `lucide-react`.
+- [x] Proyecto `delivery-frontend` corriendo en `http://localhost:5173` y CORS permitido en el backend (`ALLOWED_ORIGINS`).
+- [x] Tema Claro / Oscuro funcionando sin parpadeos y respetando contraste WCAG AA.
+- [x] `axios.client.ts` desenvolviendo `{ success, data, timestamp }` y rotando el Refresh Token automáticamente.
+- [x] Kit de componentes UI base renderizando con íconos SVG de `lucide-react`.
 
 ---
 
@@ -177,11 +177,11 @@ delivery-frontend/
 | 6 | **Logout Seguro** | Al cerrar sesión, invocar `POST /auth/logout` enviando el `refreshToken` para invalidarlo en MongoDB, limpiar la caché de `TanStack Query` y vaciar el `useAuthStore`. |
 
 ### ✅ Checklist Fase 1
-- [ ] Registro e inicio de sesión completos con validaciones Zod.
-- [ ] Rotación transparente de `accessToken` al expirar (15 min) usando `POST /auth/refresh`.
-- [ ] Flujo completo de recuperación y reseteo de contraseña probado de punta a punta.
-- [ ] Redirección y bloqueo de rutas según rol (`CLIENT`, `DELIVERY`, `ADMIN`).
-- [ ] Actualización de perfil y subida de avatar a S3 funcionando.
+- [x] Registro e inicio de sesión completos con validaciones Zod.
+- [x] Rotación transparente de `accessToken` al expirar (15 min) usando `POST /auth/refresh`.
+- [x] Flujo completo de recuperación y reseteo de contraseña probado de punta a punta.
+- [x] Redirección y bloqueo de rutas según rol (`CLIENT`, `DELIVERY`, `ADMIN`).
+- [x] Actualización de perfil y subida de avatar a S3 funcionando.
 
 ---
 
@@ -207,10 +207,10 @@ delivery-frontend/
 | 6 | **Modal / Vista de Detalle de Producto + Reseñas Públicas** | Al hacer clic en un plato (`GET /products/:id`), mostrar su descripción completa, selector de cantidad y cargar en paralelo sus reseñas públicas (`GET /reviews/product/:productId`) calculando el promedio de estrellas y distribución de calificaciones. |
 
 ### ✅ Checklist Fase 2
-- [ ] Carrusel de categorías y grilla de productos renderizando datos reales cacheados en Redis.
-- [ ] Búsqueda por texto, filtro por categoría, rango de precios y ordenamiento sincronizados con la URL.
-- [ ] Paginación funcionando correctamente con los metadatos del backend.
-- [ ] Vista de detalle del producto mostrando reseñas y promedio de calificación.
+- [x] Carrusel de categorías y grilla de productos renderizando datos reales cacheados en Redis.
+- [x] Búsqueda por texto, filtro por categoría, rango de precios y ordenamiento sincronizados con la URL.
+- [x] Paginación funcionando correctamente con los metadatos del backend.
+- [x] Vista de detalle del producto mostrando reseñas y promedio de calificación.
 
 ---
 
@@ -234,9 +234,9 @@ delivery-frontend/
 | 5 | **Validador de Cupones Promocionales (`CouponInputBox`)** | Campo de código promocional que llama a `POST /coupons/apply` con `{ code, orderTotal }`. Mostrar animación de éxito con el monto ahorrado (`discount` y `finalTotal`) o el motivo exacto de rechazo del backend (cupón expirado, monto mínimo no alcanzado, ya usado por este usuario). |
 
 ### ✅ Checklist Fase 3
-- [ ] Agregar, incrementar, disminuir, eliminar productos y vaciar carrito funcionando en tiempo real con el backend.
-- [ ] Creación, edición, eliminación y selección de direcciones de envío con mapa interactivo.
-- [ ] Aplicación de cupones (`PERCENTAGE` y `FIXED`) calculando el descuento real antes del checkout.
+- [x] Agregar, incrementar, disminuir, eliminar productos y vaciar carrito funcionando en tiempo real con el backend (incluye *Optimistic UI* con rollback en `useCartMutations.ts`).
+- [x] Creación, edición, eliminación y selección de direcciones de envío con mapa interactivo (implementado con GPS + OpenStreetMap embed y geocodificación inversa).
+- [x] Aplicación de cupones (`PERCENTAGE` y `FIXED`) calculando el descuento real antes del checkout.
 
 ---
 
@@ -261,11 +261,11 @@ delivery-frontend/
 | 6 | **Calificación de Productos Entregados (`ReviewFormModal`)** | Cuando una orden alcanza el estado `DELIVERED`, habilitar en cada ítem de la orden el botón *"Calificar Producto"* (selector interactivo de 1 a 5 estrellas + comentario) conectado a `POST /reviews` (que en el backend valida que el pedido esté `DELIVERED` y evita duplicados mediante el índice único `{ user, product, order }`). |
 
 ### ✅ Checklist Fase 4
-- [ ] Checkout creando la orden en MongoDB y vaciando el carrito activo en el frontend.
-- [ ] Flujo de pago con MercadoPago Sandbox redirigiendo y procesando el estado de la orden.
-- [ ] Historial de pedidos del cliente con filtros de estado/fecha y paginación.
-- [ ] Cancelación de pedido propio en estado `PENDING` funcionando.
-- [ ] Creación de reseñas sobre productos de órdenes `DELIVERED` funcionando y validando no-duplicados.
+- [x] Checkout creando la orden en MongoDB y vaciando el carrito activo en el frontend.
+- [x] Flujo de pago con MercadoPago Sandbox redirigiendo y procesando el estado de la orden.
+- [x] Historial de pedidos del cliente con filtros de estado/fecha y paginación.
+- [x] Cancelación de pedido propio en estado `PENDING` funcionando.
+- [x] Creación de reseñas sobre productos de órdenes `DELIVERED` funcionando y validando no-duplicados.
 
 ---
 
@@ -289,10 +289,10 @@ delivery-frontend/
 | 4 | **Integración de Push Notifications (Firebase FCM)** | Configurar `firebase-messaging-sw.js` para solicitar permiso de notificaciones al navegador, obtener el token FCM y guardarlo en el usuario (`PATCH /users/:id`), permitiendo recibir las notificaciones push que encola **BullMQ (`NotificationsProcessor`)** incluso cuando la pestaña está en segundo plano. |
 
 ### ✅ Checklist Fase 5
-- [ ] Conexión WebSocket autenticada uniéndose a la sala privada del `userId` en `EventsGateway`.
-- [ ] Cambio de estado de una orden reflejándose en menos de 1 segundo en la pantalla del cliente sin refrescar.
-- [ ] Movimiento del repartidor viéndose en tiempo real sobre el mapa interactivo.
-- [ ] Notificaciones Toast + sonido + Push FCM funcionando.
+- [x] Conexión WebSocket autenticada uniéndose a la sala privada del `userId` en `EventsGateway`.
+- [x] Cambio de estado de una orden reflejándose en menos de 1 segundo en la pantalla del cliente sin refrescar.
+- [x] Movimiento del repartidor viéndose en tiempo real sobre el mapa interactivo.
+- [ ] Notificaciones Toast + sonido + Push FCM remoto (`Web Notifications API` + `notificationclick` en `sw.js` + plantilla `firebase-messaging-sw.js` listos; Push FCM remoto pendiente de credenciales Firebase y campo `fcmTokens` en `UpdateUserDto` del backend).
 
 ---
 
@@ -320,11 +320,11 @@ delivery-frontend/
 | 5 | **Confirmación de Entrega y Dashboard de Estadísticas** | Botón de confirmación *"Marcar como Entregado"* (`PATCH /delivery/orders/:id/deliver`) y vista `RiderStatsPage` conectada a `GET /delivery/stats` mostrando total de entregas completadas, calificación y rendimiento en tarjetas Bento. |
 
 ### ✅ Checklist Fase 6
-- [ ] Creación y lectura de perfil de repartidor funcionando para usuarios con rol `DELIVERY`.
-- [ ] Toggle de disponibilidad Online/Offline actualizando estado en el backend.
-- [ ] Aceptación de pedidos disponibles cambiando el estado a `OUT_FOR_DELIVERY`.
-- [ ] Transmisión de coordenadas GPS (real con `navigator.geolocation` y simulada) moviendo el mapa del cliente en vivo.
-- [ ] Cierre de entrega (`deliver`) y vista de estadísticas del repartidor funcionando.
+- [x] Creación y lectura de perfil de repartidor funcionando para usuarios con rol `DELIVERY`.
+- [x] Toggle de disponibilidad Online/Offline actualizando estado en el backend.
+- [x] Aceptación de pedidos disponibles cambiando el estado a `OUT_FOR_DELIVERY`.
+- [x] Transmisión de coordenadas GPS (real con `navigator.geolocation` y simulada) moviendo el mapa del cliente en vivo.
+- [x] Cierre de entrega (`deliver`) y vista de estadísticas del repartidor funcionando.
 
 ---
 
@@ -350,11 +350,11 @@ delivery-frontend/
 | 5 | **Administración de Usuarios y Roles (`AdminUsersPage`)** | Tabla paginada conectada a `GET /users` con buscador, selector para ascender o cambiar el rol de cualquier usuario (`PATCH /users/:id/role` entre `CLIENT`, `DELIVERY` y `ADMIN`) y eliminación segura (`DELETE /users/:id`). |
 
 ### ✅ Checklist Fase 7
-- [ ] Dashboard de Analytics renderizando KPIs, curva de ventas diarias y top productos reales desde MongoDB Aggregation Pipelines.
-- [ ] Gestión de estados de órdenes desde Admin notificando en vivo al cliente por WebSocket y BullMQ.
-- [ ] CRUD completo de Productos y Categorías con subida de imágenes reales a AWS S3.
-- [ ] CRUD completo de Cupones Promocionales.
-- [ ] Gestión de usuarios y cambio de roles (`CLIENT` ↔ `DELIVERY` ↔ `ADMIN`) funcionando.
+- [x] Dashboard de Analytics renderizando KPIs, curva de ventas diarias y top productos reales desde MongoDB Aggregation Pipelines (con gráficas SVG/CSS propias sin peso extra).
+- [x] Gestión de estados de órdenes desde Admin notificando en vivo al cliente por WebSocket y BullMQ (con vista dual **Kanban | Tabla**, búsqueda por `#ID`/cliente/dirección y filtro por estado).
+- [x] CRUD completo de Productos y Categorías con subida de imágenes reales a AWS S3.
+- [x] CRUD completo de Cupones Promocionales.
+- [x] Gestión de usuarios y cambio de roles (`CLIENT` ↔ `DELIVERY` ↔ `ADMIN`) funcionando.
 
 ---
 
@@ -373,10 +373,10 @@ delivery-frontend/
 | 5 | **Pipeline CI del Frontend (GitHub Actions)** | Agregar job de `lint`, `typecheck` (`tsc --noEmit`), `test` y `build` del frontend en `.github/workflows/ci.yml`. |
 
 ### ✅ Checklist Fase 8
-- [ ] Suite de pruebas en Vitest y Playwright pasando en verde.
-- [ ] Build de producción (`npm run build`) sin errores de TypeScript (`0 errors`) y con Code Splitting por rol.
-- [ ] App instalable como PWA en móvil y escritorio.
-- [ ] Contenedor Docker del frontend corriendo integrado junto al backend, MongoDB y Redis con `docker compose up -d`.
+- [x] Suite de pruebas en Vitest (8 archivos / 23 tests) y Playwright E2E pasando en verde.
+- [x] Build de producción (`npm run build`) sin errores de TypeScript (`0 errors`) y con Code Splitting por rol.
+- [x] App instalable como PWA en móvil y escritorio.
+- [x] Contenedor Docker del frontend corriendo integrado junto al backend, MongoDB y Redis con `docker compose up -d`.
 
 ---
 
