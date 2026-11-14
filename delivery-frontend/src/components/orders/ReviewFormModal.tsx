@@ -21,8 +21,8 @@ const RATING_LABELS: Record<number, string> = {
   1: '1 Estrella — Necesita mejorar mucho',
   2: '2 Estrellas — Regular',
   3: '3 Estrellas — Bueno, cumplió',
-  4: '4 Estrellas — Muy rico y recomendado',
-  5: '5 Estrellas — ¡Excelente experiencia gastronómica!',
+  4: '4 Estrellas — Muy bueno y recomendado',
+  5: '5 Estrellas — ¡Excelente calidad y servicio!',
 };
 
 export function ReviewFormModal({
@@ -145,7 +145,7 @@ export function ReviewFormModal({
             maxLength={500}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="¿Qué te pareció el sabor, la temperatura y la porción de este plato?"
+            placeholder="¿Qué te pareció la calidad del producto, el empaque y la rapidez de la entrega?"
             className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3.5 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition-all resize-none"
           />
         </div>

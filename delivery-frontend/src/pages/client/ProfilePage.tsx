@@ -14,7 +14,6 @@ import {
   LogOut,
   Mail,
   Package,
-  RefreshCw,
   ShieldCheck,
   Sparkles,
   Tag,
@@ -34,7 +33,6 @@ import { extractErrorMessage, getStoredTokens } from '@/api/axios.client';
 import type { VehicleType } from '@/types/delivery.types';
 import {
   getNotificationPermission,
-  isFirebaseWebConfigured,
   requestBrowserNotificationPermission,
   showOrderStatusNotification,
   type BrowserNotificationPermission,
@@ -107,7 +105,6 @@ export function ProfilePage() {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const [isRefreshingToken, setIsRefreshingToken] = useState(false);
   const [notifPermission, setNotifPermission] =
     useState<BrowserNotificationPermission>(() => getNotificationPermission());
 
@@ -191,12 +188,10 @@ export function ProfilePage() {
       // Guardamos el DataURL optimizado para visualización inmediata (evita errores 403 si el bucket S3 es privado)
       setUserAvatar(user._id, uploaded.previewDataUrl || uploaded.url);
       toast.success('¡Foto de perfil actualizada con éxito!', {
-        description: uploaded.url.startsWith('http')
-          ? `Subida a S3: ${uploaded.url}`
-          : 'Imagen normalizada a JPG y guardada en tu perfil.',
+        description: 'Tu nueva imagen ya está visible en tu cuenta.',
       });
     } catch (error) {
-      toast.error('No se pudo subir la imagen a S3', {
+      toast.error('No se pudo actualizar la foto de perfil', {
         description: extractErrorMessage(error),
       });
     } finally {
@@ -224,9 +219,7 @@ export function ProfilePage() {
         name: updatedUser.name,
         email: updatedUser.email,
       });
-      toast.success('Datos de perfil actualizados', {
-        description: 'Validado por OwnershipGuard en PATCH /api/v1/users/:id',
-      });
+      toast.success('Datos de perfil actualizados correctamente');
     } catch (error) {
       toast.error('Error al actualizar perfil', {
         description: extractErrorMessage(error),
@@ -254,39 +247,13 @@ export function ProfilePage() {
       });
       setNewPassword('');
       setConfirmPassword('');
-      toast.success('¡Contraseña actualizada correctamente!', {
-        description: 'Re-hasheada con bcrypt en el servidor.',
-      });
+      toast.success('¡Contraseña actualizada correctamente!');
     } catch (error) {
       toast.error('Error al cambiar contraseña', {
         description: extractErrorMessage(error),
       });
     } finally {
       setIsSavingPassword(false);
-    }
-  };
-
-  const handleManualTokenRefresh = async () => {
-    const { refreshToken } = getStoredTokens();
-    if (!refreshToken) {
-      toast.error('No hay refreshToken almacenado.');
-      return;
-    }
-
-    setIsRefreshingToken(true);
-    try {
-      const rotated = await refreshTokensApi(refreshToken);
-      setSession(rotated, user);
-      toast.success('¡Rotación de Refresh Token exitosa!', {
-        description:
-          'POST /api/v1/auth/refresh emitió un nuevo par access_token + refresh_token.',
-      });
-    } catch (error) {
-      toast.error('Error al rotar Refresh Token', {
-        description: extractErrorMessage(error),
-      });
-    } finally {
-      setIsRefreshingToken(false);
     }
   };
 
@@ -343,9 +310,6 @@ export function ProfilePage() {
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {user.email}
             </p>
-            <p className="text-xs font-mono text-slate-400 dark:text-slate-500">
-              ID MongoDB: {user._id}
-            </p>
           </div>
         </div>
 
@@ -385,7 +349,7 @@ export function ProfilePage() {
             onClick={() => fileInputRef.current?.click()}
             leftIcon={<UploadCloud className="w-4 h-4 text-orange-600" />}
           >
-            Subir Avatar a S3
+            Cambiar Foto
           </Button>
           <Button
             variant="danger"
@@ -466,8 +430,8 @@ export function ProfilePage() {
                   </h2>
                   <p className="text-sm text-blue-100 max-w-2xl">
                     Puedes trabajar entregando pedidos desde la{' '}
-                    <strong>Rider App</strong> cuando quieras y, además, al pedir
-                    comida para ti como cliente recibes automáticamente un{' '}
+                    <strong>Rider App</strong> cuando quieras y, además, al hacer
+                    pedidos para ti como cliente recibes automáticamente un{' '}
                     <strong>10% de descuento</strong> en tus primeros 4 pedidos de
                     cada mes.
                   </p>
@@ -535,7 +499,7 @@ export function ProfilePage() {
                     leftIcon={<Tag className="w-4 h-4" />}
                     className="border-white/40 bg-white/10 text-white hover:bg-white/20"
                   >
-                    Pedir Comida con mi 10% OFF
+                    Pedir en el Catálogo con mi 10% OFF
                   </Button>
                 </Link>
               </div>
@@ -631,7 +595,7 @@ export function ProfilePage() {
                     Beneficio incluido al activarte hoy:
                   </span>
                   <span>
-                    Seguirás pudiendo pedir comida en el catálogo como siempre,
+                    Seguirás pudiendo comprar en el catálogo como siempre,
                     pero el sistema te descontará automáticamente el{' '}
                     <strong>10%</strong> en tus primeros 4 pedidos de cada mes.
                   </span>
@@ -666,7 +630,7 @@ export function ProfilePage() {
                 <div>
                   <h2 className="text-base font-bold">Información Personal</h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Endpoint: <code>PATCH /api/v1/users/:id</code>
+                    Actualiza tu nombre y correo electrónico de contacto
                   </p>
                 </div>
               </div>
@@ -707,7 +671,7 @@ export function ProfilePage() {
                 <div>
                   <h2 className="text-base font-bold">Seguridad y Contraseña</h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Re-encriptación automática con <code>bcrypt</code>
+                    Mantén tu cuenta protegida actualizando tu clave
                   </p>
                 </div>
               </div>
@@ -741,13 +705,13 @@ export function ProfilePage() {
             </form>
           </div>
 
-          {/* Browser Notifications & FCM Readiness Card */}
+          {/* Browser Notifications Card */}
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-sm font-bold flex items-center gap-2">
                   <Bell className="w-4 h-4 text-orange-600" />
-                  <span>Notificaciones del Navegador (Web / Push SW)</span>
+                  <span>Notificaciones de tu Pedido</span>
                 </h3>
                 {notifPermission === 'granted' ? (
                   <Badge variant="success">Activas en este navegador</Badge>
@@ -760,11 +724,8 @@ export function ProfilePage() {
                 )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Recibe alertas del estado de tu pedido en segundo plano vía{' '}
-                <code>sw.js</code> / WebSocket.{' '}
-                {isFirebaseWebConfigured()
-                  ? 'Variables Firebase Web detectadas.'
-                  : 'Push remoto FCM opcional pendiente de credenciales VITE_FIREBASE_*.'}
+                Recibe avisos instantáneos cuando tu pedido sea confirmado, esté
+                en camino o llegue a tu dirección.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -803,32 +764,6 @@ export function ProfilePage() {
                 </Button>
               )}
             </div>
-          </div>
-
-          {/* Security & Token Rotation Diagnostic Card */}
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <h3 className="text-sm font-bold flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>
-                  Rotación de Refresh Token Activa (15 min Access / 7 días Refresh)
-                </span>
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Además de la rotación automática ante errores 401, puedes probar
-                manualmente el endpoint <code>POST /api/v1/auth/refresh</code>{' '}
-                aquí:
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              isLoading={isRefreshingToken}
-              onClick={handleManualTokenRefresh}
-              leftIcon={<RefreshCw className="w-4 h-4" />}
-            >
-              Probar Rotación de Token
-            </Button>
           </div>
         </>
       )}

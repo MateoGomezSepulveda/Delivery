@@ -4,10 +4,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   Flame,
-  Layers,
+  ShieldCheck,
   Sparkles,
   Store,
-  UtensilsCrossed,
+  Truck,
+  Wine,
 } from 'lucide-react';
 import { getCategoriesApi } from '@/api/endpoints/categories.api';
 import {
@@ -155,7 +156,6 @@ export function CatalogPage() {
     isLoading: isLoadingProducts,
     isFetching: isFetchingProducts,
     isError: isProductsError,
-    error: productsError,
     refetch: refetchProducts,
   } = useQuery({
     queryKey: ['products', productQueryFilters],
@@ -170,19 +170,19 @@ export function CatalogPage() {
     lastPage: 1,
   };
 
-  // Mutación para sembrar catálogo demo si la base de datos está vacía
+  // Mutación para cargar catálogo inicial si aún no hay productos
   const seedMutation = useMutation({
     mutationFn: seedDemoCatalogApi,
     onSuccess: () => {
-      toast.success('¡Catálogo Gourmet sembrado en MongoDB!', {
+      toast.success('¡Catálogo inicial cargado!', {
         description:
-          'Se crearon 4 categorías y 8 platos reales en tu base de datos.',
+          'Se agregaron las categorías y productos de licorería, cigarrillos y charcutería.',
       });
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
     },
     onError: (err) => {
-      toast.error('No se pudo sembrar el catálogo demo', {
+      toast.error('No se pudo cargar el catálogo inicial', {
         description: extractErrorMessage(err),
       });
     },
@@ -208,45 +208,36 @@ export function CatalogPage() {
 
   return (
     <div className="space-y-8">
-      {/* Appetizing Hero Marketplace Banner */}
+      {/* Hero Marketplace Banner — Licorería, Cigarrillos & Charcutería */}
       <section className="relative overflow-hidden rounded-3xl border border-orange-200/70 dark:border-orange-900/40 bg-gradient-to-r from-orange-600 via-orange-500 to-red-600 p-6 sm:p-10 text-white shadow-warm">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="max-w-2xl space-y-3">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/15 backdrop-blur-md px-3.5 py-1 text-xs font-semibold">
-              <Flame className="w-3.5 h-3.5" />
-              <span>Catálogo en Tiempo Real · Redis Cache + Índices MongoDB</span>
+              <Wine className="w-3.5 h-3.5" />
+              <span>Licorería, Cigarrillos, Quesos & Pasabocas a Domicilio</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight">
-              Sabores extraordinarios, entregados calientes en tu puerta.
+              Tus licores favoritos, cigarrillos y quesos selectos, directo a tu puerta.
             </h1>
             <p className="text-orange-50 text-sm sm:text-base leading-relaxed">
-              Explora nuestras categorías, filtra por rango de precios, ordena
-              dinámicamente y consulta las reseñas verificadas de cada plato.
+              Encuentra whiskies, rones, aguardientes, cervezas bien frías, vinos,
+              cigarrillos, quesos madurados y pasabocas para compartir en minutos.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
-            {user?.role === 'ADMIN' && (
-              <Button
-                variant="outline"
-                isLoading={seedMutation.isPending}
-                onClick={() => seedMutation.mutate()}
-                leftIcon={<Sparkles className="w-4 h-4" />}
-                className="border-white/30 bg-white text-orange-700 hover:bg-orange-50 dark:bg-slate-900 dark:text-white"
-              >
-                Sembrar Platos Demo (Admin)
-              </Button>
-            )}
-            <Link to="/ui-lab">
-              <Button
-                variant="outline"
-                size="sm"
-                leftIcon={<Layers className="w-4 h-4" />}
-                className="border-white/35 bg-white/10 text-white hover:bg-white/20"
-              >
-                Ver UI Lab (Fase 0)
-              </Button>
-            </Link>
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <div className="inline-flex items-center gap-2 rounded-2xl border border-white/25 bg-white/10 backdrop-blur-md px-3.5 py-2 text-xs font-semibold text-white">
+              <Truck className="w-4 h-4 text-orange-100 shrink-0" />
+              <span>Entrega Rápida</span>
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-2xl border border-white/25 bg-white/10 backdrop-blur-md px-3.5 py-2 text-xs font-semibold text-white">
+              <ShieldCheck className="w-4 h-4 text-orange-100 shrink-0" />
+              <span>Licores 100% Originales</span>
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-2xl border border-white/25 bg-white/10 backdrop-blur-md px-3.5 py-2 text-xs font-semibold text-white">
+              <Flame className="w-4 h-4 text-orange-100 shrink-0" />
+              <span>Cigarrillos, Quesos & Más</span>
+            </div>
           </div>
         </div>
       </section>
@@ -256,7 +247,7 @@ export function CatalogPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
             <Store className="w-5 h-5 text-orange-600" />
-            <span>Categorías Gastronómicas</span>
+            <span>Categorías de Productos</span>
           </h2>
           {isFetchingProducts && (
             <span className="text-xs font-semibold text-orange-600 dark:text-orange-400 animate-pulse">
@@ -310,9 +301,9 @@ export function CatalogPage() {
           </div>
         ) : isProductsError ? (
           <EmptyState
-            icon={<UtensilsCrossed className="w-7 h-7" />}
-            title="No pudimos conectar con el catálogo del servidor"
-            description={`Detalle técnico: ${extractErrorMessage(productsError)}. Asegúrate de que los contenedores de Docker (api, mongo y redis) estén activos.`}
+            icon={<Wine className="w-7 h-7" />}
+            title="No pudimos cargar el catálogo en este momento"
+            description="Por favor verifica tu conexión e intenta cargar nuevamente nuestros productos."
             action={
               <Button variant="primary" onClick={() => refetchProducts()}>
                 Reintentar Carga del Catálogo
@@ -321,23 +312,23 @@ export function CatalogPage() {
           />
         ) : products.length === 0 ? (
           <EmptyState
-            icon={<UtensilsCrossed className="w-7 h-7" />}
+            icon={<Wine className="w-7 h-7" />}
             title={
               hasActiveFilters
-                ? 'No encontramos platos con esos filtros'
-                : 'Aún no hay productos cargados en el catálogo'
+                ? 'No encontramos productos con esos filtros'
+                : 'Aún no hay productos disponibles en el catálogo'
             }
             description={
               hasActiveFilters
                 ? 'Intenta ampliar el rango de precios, cambiar la categoría o limpiar la búsqueda.'
                 : user?.role === 'ADMIN'
-                  ? 'Haz clic en el botón de abajo para poblar automáticamente tu base de datos MongoDB con 4 categorías y 8 platos gourmet de prueba.'
-                  : 'Inicia sesión con tu cuenta Administrador (admin@delivery.com) para sembrar el catálogo inicial con 1 clic.'
+                  ? 'Haz clic en el botón de abajo para cargar las categorías de licores, cervezas, cigarrillos, quesos y snacks.'
+                  : 'Pronto tendremos nuevos licores, cigarrillos, quesos y pasabocas disponibles para ti.'
             }
             action={
               hasActiveFilters ? (
                 <Button variant="primary" onClick={handleResetFilters}>
-                  Mostrar Todo el Menú
+                  Ver Todo el Catálogo
                 </Button>
               ) : user?.role === 'ADMIN' ? (
                 <Button
@@ -346,12 +337,12 @@ export function CatalogPage() {
                   onClick={() => seedMutation.mutate()}
                   leftIcon={<Sparkles className="w-4 h-4" />}
                 >
-                  Sembrar Catálogo Gourmet en MongoDB
+                  Cargar Catálogo de Licorería
                 </Button>
               ) : (
                 <Link to="/login">
                   <Button variant="primary">
-                    Iniciar Sesión como Admin para Poblar Catálogo
+                    Iniciar Sesión
                   </Button>
                 </Link>
               )

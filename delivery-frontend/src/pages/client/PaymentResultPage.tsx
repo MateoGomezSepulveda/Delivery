@@ -80,7 +80,7 @@ export function PaymentResultPage() {
                 ¡Tu pago fue procesado con éxito!
               </h1>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Hemos recibido la confirmación de tu pago. El restaurante ya puede preparar tu pedido.
+                Hemos recibido la confirmación de tu pago. Ya estamos alistando tu pedido para enviarlo a tu dirección.
               </p>
             </div>
           </>
@@ -100,7 +100,7 @@ export function PaymentResultPage() {
                 Tu pago está siendo procesado
               </h1>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Tan pronto la entidad financiera confirme la transacción vía Webhook, actualizaremos el estado de tu orden.
+                Tan pronto la entidad financiera confirme la transacción, actualizaremos el estado de tu orden.
               </p>
             </div>
           </>

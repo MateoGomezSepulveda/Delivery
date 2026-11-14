@@ -369,7 +369,7 @@ test.describe('Flujo E2E Multirrol DeliveryPro', () => {
 
     await expect(page).toHaveURL('/');
     await page.goto('/orders/order100001');
-    await page.getByRole('button', { name: /calificar plato/i }).click();
+    await page.getByRole('button', { name: /calificar producto/i }).click();
 
     await page.getByRole('button', { name: 'Calificar con 5 estrellas' }).click();
     await page.locator('#review-comment').fill('Excelente sabor y entrega puntual.');

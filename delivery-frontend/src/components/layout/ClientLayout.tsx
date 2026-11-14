@@ -10,7 +10,7 @@ import {
   ShoppingBag,
   User as UserIcon,
   UserPlus,
-  UtensilsCrossed,
+  Wine,
 } from 'lucide-react';
 import { getCartApi } from '@/api/endpoints/cart.api';
 import { Button } from '@/components/ui/Button';
@@ -57,7 +57,7 @@ export function ClientLayout() {
               className="flex items-center gap-2.5 group cursor-pointer"
             >
               <div className="h-10 w-10 rounded-xl bg-orange-600 dark:bg-orange-500 text-white flex items-center justify-center shadow-warm transition-transform duration-200 group-hover:scale-105">
-                <UtensilsCrossed className="w-5 h-5" />
+                <Wine className="w-5 h-5" />
               </div>
               <div>
                 <span className="font-heading text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">
@@ -205,7 +205,7 @@ export function ClientLayout() {
       <footer className="border-t border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 py-6">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
           <p>
-            © 2026 <strong>DeliveryPro</strong> — Arquitectura React 18 + TypeScript + NestJS 11.
+            © 2026 <strong>DeliveryPro</strong> — Licores, Cigarrillos, Quesos y Charcutería a Domicilio.
           </p>
           <div className="flex items-center gap-4">
             <Link to="/" className="hover:text-orange-600 cursor-pointer">

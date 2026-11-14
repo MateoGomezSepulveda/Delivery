@@ -34,11 +34,6 @@ const ResetPasswordPage = lazy(() =>
 const CatalogPage = lazy(() =>
   import('@/pages/client/CatalogPage').then(pickExport('CatalogPage')),
 );
-const PhaseZeroShowcasePage = lazy(() =>
-  import('@/pages/PhaseZeroShowcasePage').then(
-    pickExport('PhaseZeroShowcasePage'),
-  ),
-);
 const PaymentResultPage = lazy(() =>
   import('@/pages/client/PaymentResultPage').then(
     pickExport('PaymentResultPage'),
@@ -125,7 +120,6 @@ export function AppRouter() {
           {/* Portal Cliente */}
           <Route element={<ClientLayout />}>
             <Route path="/" element={<CatalogPage />} />
-            <Route path="/ui-lab" element={<PhaseZeroShowcasePage />} />
             <Route path="/payments/:status" element={<PaymentResultPage />} />
 
             {/* Rutas Protegidas de Usuario Autenticado */}

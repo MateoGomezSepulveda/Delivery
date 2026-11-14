@@ -1,4 +1,4 @@
-import { Eye, Plus, ShoppingBag, UtensilsCrossed } from 'lucide-react';
+import { Eye, Plus, ShoppingBag, Wine } from 'lucide-react';
 import type { Category, Product } from '@/types/catalog.types';
 import { formatCurrency } from '@/utils/formatters';
 import { Badge } from '@/components/ui/Badge';
@@ -11,8 +11,8 @@ interface ProductCardProps {
   onAddToCart?: (product: Product) => void;
 }
 
-const FALLBACK_FOOD_IMAGE =
-  'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80';
+const FALLBACK_PRODUCT_IMAGE =
+  'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=900&q=80';
 
 export function ProductCard({
   product,
@@ -39,14 +39,14 @@ export function ProductCard({
             alt={product.name}
             loading="lazy"
             onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src = FALLBACK_FOOD_IMAGE;
+              (e.currentTarget as HTMLImageElement).src = FALLBACK_PRODUCT_IMAGE;
             }}
             className="h-full w-full object-cover transition-opacity duration-200 group-hover:opacity-95"
           />
         ) : (
           <div className="h-full w-full flex flex-col items-center justify-center text-slate-400 gap-2">
-            <UtensilsCrossed className="w-8 h-8 text-orange-500/70" />
-            <span className="text-xs font-medium">Plato Artesanal</span>
+            <Wine className="w-8 h-8 text-orange-500/70" />
+            <span className="text-xs font-medium">Producto Selecto</span>
           </div>
         )}
 
@@ -92,7 +92,7 @@ export function ProductCard({
               variant="outline"
               size="icon"
               onClick={() => onSelectProduct(product)}
-              title="Ver detalle e ingredientes y reseñas"
+              title="Ver detalles y opiniones del producto"
             >
               <Eye className="w-4 h-4" />
             </Button>

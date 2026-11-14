@@ -30,8 +30,8 @@ interface ProductDetailModalProps {
   onAddToCart?: (product: Product, quantity: number) => void;
 }
 
-const FALLBACK_FOOD_IMAGE =
-  'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80';
+const FALLBACK_PRODUCT_IMAGE =
+  'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=900&q=80';
 
 export function ProductDetailModal({
   product,
@@ -81,7 +81,7 @@ export function ProductDetailModal({
       isOpen={Boolean(product)}
       onClose={onClose}
       title={product.name}
-      description={categoryName || 'Detalle del plato e ingredientes'}
+      description={categoryName || 'Detalles del producto'}
       size="lg"
       footer={
         <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -138,10 +138,10 @@ export function ProductDetailModal({
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-5">
           <div className="sm:col-span-5 aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800">
             <img
-              src={product.image || FALLBACK_FOOD_IMAGE}
+              src={product.image || FALLBACK_PRODUCT_IMAGE}
               alt={product.name}
               onError={(e) => {
-                (e.currentTarget as HTMLImageElement).src = FALLBACK_FOOD_IMAGE;
+                (e.currentTarget as HTMLImageElement).src = FALLBACK_PRODUCT_IMAGE;
               }}
               className="h-full w-full object-cover"
             />
@@ -188,7 +188,7 @@ export function ProductDetailModal({
               <span>Reseñas Verificadas de Clientes ({totalReviews})</span>
             </h3>
             <span className="text-[11px] text-slate-400">
-              Solo pedidos en estado DELIVERED
+              Compras verificadas
             </span>
           </div>
 
@@ -199,8 +199,8 @@ export function ProductDetailModal({
             </div>
           ) : totalReviews === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-5 text-center text-xs text-slate-500 dark:text-slate-400">
-              Aún no hay reseñas para este plato. ¡Sé el primero en pedirlo y
-              calificarlo cuando tu orden sea entregada!
+              Aún no hay reseñas para este producto. ¡Sé el primero en pedirlo y
+              calificarlo cuando recibas tu pedido!
             </div>
           ) : (
             <div className="space-y-3">

@@ -3,7 +3,11 @@
 **Última actualización:** 14 de Noviembre de 2026
 
 ## Última Tarea / Contexto Actual
-- **[NUEVO] Refinamiento UI/UX de Navegación + Programa de Socios Repartidores con Descuento Mensual (10% OFF)**:
+- **[NUEVO] Identidad Comercial de Licorería, Cigarrillos, Quesos y Pasabocas + Limpieza de Jerga Técnica en Frontend**:
+  - **Hero Banner y Rutas (`CatalogPage.tsx`, `AppRouter.tsx`)**: Eliminación del botón y ruta `/ui-lab` (`Ver UI Lab Fase 0`), remoción de menciones a `Redis Cache + Índices MongoDB` y `Docker`, e incorporación de copy comercial enfocado en licores, cervezas, vinos, cigarrillos, quesos madurados y pasabocas.
+  - **Branding y Catálogo (`ClientLayout.tsx`, `AuthLayout.tsx`, `CategoryPills.tsx`, `ProductFiltersBar.tsx`, `ProductCard.tsx`, `ProductDetailModal.tsx`, `products.api.ts`, `index.html`)**: Reemplazo de iconografía de restaurante (`UtensilsCrossed`) por licorería (`Wine`, `Beer`, `Flame`, `Sparkles`, `GlassWater`), actualización de textos (`Todo el Catálogo`, `Categorías de Productos`, `Solo productos disponibles`) y semilla de productos de licorería y charcutería.
+  - **Limpieza de Textos Técnicos en Flujo Cliente (`CartDrawer.tsx`, `CheckoutPage.tsx`, `AddressesModal.tsx`, `MyOrdersPage.tsx`, `OrderDetailPage.tsx`, `ReviewFormModal.tsx`, `PaymentResultPage.tsx`, `ProfilePage.tsx`)**: Eliminación de referencias visibles a `MongoDB`, `S3`, `bcrypt`, `Webhook`, endpoints `GET/POST /api/v1/*` y tarjeta de diagnóstico de rotación de Refresh Token.
+- **Refinamiento UI/UX de Navegación + Programa de Socios Repartidores con Descuento Mensual (10% OFF)**:
   - **Navbar y Layouts Limpios (`ClientLayout`, `AuthLayout`, `AdminLayout`, `DeliveryLayout`)**: Eliminación de botones de diagnóstico (`ServerStatusBadge`, `ThemeToggle`), remoción del selector de roles público del Navbar/Footer y corrección de alineación Flexbox en `Button.tsx` (`Ingresar`, `Registro`, `Carrito` y botones de regreso).
   - **Mis Pedidos integrado en Mi Perfil (`ProfilePage.tsx`)**: Navegación por pestañas dentro de `/profile` (`Datos y Seguridad` | `Mis Pedidos` | `Conviértete en Repartidor (-10%)`).
   - **Auto-activación de Mensajero (`CLIENT` -> `DELIVERY`)**: `POST /api/v1/delivery/profile` permite a usuarios `CLIENT` registrar su vehículo (`MOTO`, `BICYCLE`, `CAR`) y placa, promoviendo automáticamente su rol a `DELIVERY` en MongoDB y rotando su token JWT en vivo desde `ProfilePage.tsx`.

@@ -78,7 +78,7 @@ export function MyOrdersPage() {
             Mis Pedidos ({meta.total})
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Consulta el estado de tus órdenes, paga pedidos pendientes o califica los platos entregados.
+            Consulta el estado de tus órdenes, paga pedidos pendientes o califica los productos entregados.
           </p>
         </div>
 
@@ -191,7 +191,7 @@ export function MyOrdersPage() {
           description={
             hasActiveFilters
               ? 'Intenta cambiar el estado seleccionado o el rango de fechas.'
-              : 'Explora el catálogo gastronómico, arma tu carrito y realiza tu primera orden.'
+              : 'Explora nuestro catálogo de licores, cigarrillos, quesos y pasabocas, arma tu carrito y realiza tu primera orden.'
           }
           action={
             hasActiveFilters ? (

@@ -65,25 +65,25 @@ export async function deleteProductApi(id: string): Promise<void> {
 }
 
 /**
- * Semilla rápida de catálogo para entorno de desarrollo (requiere sesión ADMIN)
+ * Semilla rápida de catálogo de licorería y charcutería (requiere sesión ADMIN)
  */
 export async function seedDemoCatalogApi(): Promise<void> {
   const demoCategories = [
     {
-      name: 'Hamburguesas Gourmet',
-      description: 'Carne Certified Angus a la parrilla en pan brioche artesanal',
+      name: 'Licores y Destilados',
+      description: 'Whisky, ron, aguardiente, tequila, ginebra y vodka 100% originales',
     },
     {
-      name: 'Pizzas Napolitanas',
-      description: 'Masa madre fermentada 48h horneada a la leña',
+      name: 'Vinos y Cervezas',
+      description: 'Vinos tintos, blancos, espumosos y cervezas nacionales e importadas bien frías',
     },
     {
-      name: 'Sushi & Poke Bowls',
-      description: 'Cortes frescos de salmón y atún con ingredientes orientales',
+      name: 'Quesos y Charcutería',
+      description: 'Quesos madurados, jamón serrano, salami y tablas para maridar',
     },
     {
-      name: 'Postres & Bebidas',
-      description: 'Malteadas cremosas, postres de autor y bebidas refrescantes',
+      name: 'Cigarrillos y Pasabocas',
+      description: 'Cigarrillos, encendedores, frutos secos, chocolates, hielo y mezcladores',
     },
   ];
 
@@ -98,91 +98,91 @@ export async function seedDemoCatalogApi(): Promise<void> {
     }
   }
 
-  const burgersId = categoryMap.get('Hamburguesas Gourmet')!;
-  const pizzasId = categoryMap.get('Pizzas Napolitanas')!;
-  const sushiId = categoryMap.get('Sushi & Poke Bowls')!;
-  const dessertsId = categoryMap.get('Postres & Bebidas')!;
+  const spiritsId = categoryMap.get('Licores y Destilados')!;
+  const winesBeersId = categoryMap.get('Vinos y Cervezas')!;
+  const cheesesId = categoryMap.get('Quesos y Charcutería')!;
+  const cigarettesSnacksId = categoryMap.get('Cigarrillos y Pasabocas')!;
 
   const demoProducts: CreateProductPayload[] = [
     {
-      name: 'Doble Truffle Smash Burger',
+      name: 'Whisky Buchanan’s Deluxe 12 Años 750ml',
       description:
-        'Doble carne smash 200g, queso cheddar madurado, tocineta ahumada, cebolla caramelizada y mayonesa de trufa negra en pan brioche.',
-      price: 38900,
+        'Whisky escocés blended de 12 años con notas suaves de naranja, chocolate y miel. Sello de autenticidad.',
+      price: 165000,
       available: true,
-      categoryId: burgersId,
+      categoryId: spiritsId,
       image:
-        'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=80',
+        'https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=900&q=80',
     },
     {
-      name: 'Crispy Chicken & Honey Mustard',
+      name: 'Aguardiente Antioqueño Tapa Azul Sin Azúcar 750ml',
       description:
-        'Pechuga de pollo crujiente empanizada en panko, coleslaw fresca, pepinillos artesanales y salsa honey mustard.',
-      price: 32500,
+        'Aguardiente colombiano sin azúcar, ideal para compartir bien frío con amigos.',
+      price: 52000,
       available: true,
-      categoryId: burgersId,
+      categoryId: spiritsId,
       image:
-        'https://images.unsplash.com/photo-1606755962773-d324e0a13086?auto=format&fit=crop&w=900&q=80',
+        'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=900&q=80',
     },
     {
-      name: 'Pizza Margherita D.O.P.',
+      name: 'Vino Tinto Reserva Cabernet Sauvignon 750ml',
       description:
-        'Salsa de tomates San Marzano, mozzarella fior di latte fresca, hojas de albahaca orgánica y aceite de oliva extra virgen.',
-      price: 42000,
+        'Vino tinto chileno con crianza en barrica de roble, notas de frutos rojos maduros y taninos elegantes.',
+      price: 68000,
       available: true,
-      categoryId: pizzasId,
+      categoryId: winesBeersId,
       image:
-        'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=900&q=80',
+        'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=900&q=80',
     },
     {
-      name: 'Pizza Prosciutto & Burrata',
+      name: 'Six Pack Cerveza Club Colombia Dorada 330ml',
       description:
-        'Base pomodoro artesanal coronada con burrata entera cremosa, prosciutto di Parma, rúgula fresca y reducción balsámica.',
-      price: 54000,
+        '6 latas de cerveza tipo lager de maestría cervecera, entregadas bien frías.',
+      price: 26500,
       available: true,
-      categoryId: pizzasId,
+      categoryId: winesBeersId,
       image:
-        'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80',
+        'https://images.unsplash.com/photo-1608270586620-248524c67de9?auto=format&fit=crop&w=900&q=80',
     },
     {
-      name: 'Dragon Roll Tempura (10 bocados)',
+      name: 'Tabla de Queso Manchego, Gouda & Jamón Serrano (350g)',
       description:
-        'Rollo relleno de langostino apanado y queso crema, cubierto de aguacate, anguila glaseada y ajonjolí tostado.',
-      price: 41500,
+        'Selección lista para consumir con queso manchego curado, gouda holandés, jamón serrano y aceitunas.',
+      price: 48900,
       available: true,
-      categoryId: sushiId,
+      categoryId: cheesesId,
       image:
-        'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=900&q=80',
+        'https://images.unsplash.com/photo-1452195100486-9cc805987862?auto=format&fit=crop&w=900&q=80',
     },
     {
-      name: 'Pacific Salmon Poke Bowl',
+      name: 'Queso Brie Francés Cremoso 200g',
       description:
-        'Base de arroz de sushi con salmón fresco marinado en ponzu, edamames, mango, aguacate, wakame y crispy onions.',
-      price: 36900,
+        'Queso de pasta blanda y corteza blanca, perfecto para acompañar con vino tinto o frutos secos.',
+      price: 34000,
       available: true,
-      categoryId: sushiId,
+      categoryId: cheesesId,
       image:
-        'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=900&q=80',
+        'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?auto=format&fit=crop&w=900&q=80',
     },
     {
-      name: 'Cheesecake Vasco de Pistacho',
+      name: 'Cajetilla Cigarrillos Marlboro Gold (20 unidades)',
       description:
-        'Tarta de queso horneada al estilo San Sebastián con centro cremoso y cobertura tibia de praliné de pistacho.',
+        'Cajetilla de 20 cigarrillos rubios suaves. Producto exclusivo para mayores de edad (+18).',
+      price: 11500,
+      available: true,
+      categoryId: cigarettesSnacksId,
+      image:
+        'https://images.unsplash.com/photo-1527099908998-5b7365fe2a0b?auto=format&fit=crop&w=900&q=80',
+    },
+    {
+      name: 'Mix Premium Almendras, Marañones y Pistachos 250g',
+      description:
+        'Mezcla tostada con toque de sal marina, el acompañante ideal para tus bebidas y licores.',
       price: 22900,
       available: true,
-      categoryId: dessertsId,
+      categoryId: cigarettesSnacksId,
       image:
-        'https://images.unsplash.com/photo-1533134242443-d4fd215305ad?auto=format&fit=crop&w=900&q=80',
-    },
-    {
-      name: 'Limonada de Coco Cremosa 16oz',
-      description:
-        'Preparada al instante con leche de coco natural, zumo de limón recién exprimido y hielo frappé.',
-      price: 12500,
-      available: false,
-      categoryId: dessertsId,
-      image:
-        'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=900&q=80',
+        'https://images.unsplash.com/photo-1599599810769-bcde5a160d32?auto=format&fit=crop&w=900&q=80',
     },
   ];
 

@@ -236,8 +236,8 @@ export function AddressesModal() {
             Inicia sesión para gestionar tu libreta de direcciones
           </p>
           <p className="text-xs text-amber-700 dark:text-amber-300">
-            Las direcciones se guardan de forma segura en tu cuenta (GET/POST
-            /api/v1/addresses).
+            Tus direcciones se guardan de forma segura en tu cuenta para que tus
+            próximos pedidos sean más rápidos.
           </p>
         </div>
       ) : isCreating ? (

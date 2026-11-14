@@ -64,8 +64,8 @@ const TIMELINE_STEPS: {
   },
   {
     key: 'PREPARING',
-    label: 'En Cocina',
-    desc: 'Preparando platos',
+    label: 'Alistando',
+    desc: 'Preparando pedido',
     icon: <ChefHat className="w-4 h-4" />,
   },
   {
@@ -149,7 +149,7 @@ export function OrderDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['my-orders'] });
       toast.success(`Estado actualizado a ${updatedOrder.status}`, {
         description:
-          'Se emitieron las notificaciones por BullMQ y WebSocket (EventsGateway).',
+          'El cliente ha sido notificado en tiempo real sobre el avance de su pedido.',
       });
     },
     onError: (err) => {
@@ -247,7 +247,7 @@ export function OrderDetailPage() {
           {canReview && (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
               <Sparkles className="w-3.5 h-3.5" />
-              ¡Ya puedes calificar tus platos!
+              ¡Ya puedes calificar tus productos!
             </span>
           )}
         </div>
@@ -326,8 +326,7 @@ export function OrderDetailPage() {
                 Consola Rápida de Estado (Modo Admin)
               </span>
               <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80">
-                Avanza el estado (`PATCH /api/v1/orders/:id/status`) hasta{' '}
-                <strong>DELIVERED</strong> para probar la calificación de productos.
+                Actualiza el estado del pedido rápidamente desde aquí.
               </p>
             </div>
 
@@ -362,7 +361,7 @@ export function OrderDetailPage() {
               </h3>
               {canReview && (
                 <span className="text-xs font-semibold text-orange-600 dark:text-orange-400">
-                  Haz clic en &ldquo;Calificar Plato&rdquo; para dejar tu reseña
+                  Haz clic en &ldquo;Calificar Producto&rdquo; para dejar tu reseña
                 </span>
               )}
             </div>
@@ -374,7 +373,7 @@ export function OrderDetailPage() {
                     ? (item.productId as Product)
                     : null;
                 const prodId = prod ? prod._id : String(item.productId);
-                const prodName = item.name || prod?.name || `Plato #${idx + 1}`;
+                const prodName = item.name || prod?.name || `Producto #${idx + 1}`;
                 const prodImage = prod?.image;
                 const alreadyReviewed = reviewedProductIds.includes(prodId);
 
@@ -430,7 +429,7 @@ export function OrderDetailPage() {
                               <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
                             }
                           >
-                            Calificar Plato
+                            Calificar Producto
                           </Button>
                         )}
                       </div>
@@ -537,17 +536,16 @@ export function OrderDetailPage() {
         isOpen={isCancelModalOpen}
         onClose={() => setIsCancelModalOpen(false)}
         title="¿Deseas cancelar este pedido?"
-        description="Solo se pueden cancelar pedidos que aún se encuentran en estado PENDING antes de entrar a cocina."
+        description="Solo se pueden cancelar pedidos que aún se encuentran pendientes antes de ser despachados."
         size="sm"
       >
         <div className="space-y-5">
           <div className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/30 p-4 flex items-start gap-3 text-xs text-amber-800 dark:text-amber-300">
             <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <p>
-              Esta acción cambiará el estado de la orden{' '}
-              <strong>#{order._id.slice(-6).toUpperCase()}</strong> a{' '}
-              <strong>CANCELLED</strong> (`PATCH /api/v1/orders/:id/cancel`) de
-              forma permanente.
+              Esta acción cancelará la orden{' '}
+              <strong>#{order._id.slice(-6).toUpperCase()}</strong> de forma
+              permanente.
             </p>
           </div>
 

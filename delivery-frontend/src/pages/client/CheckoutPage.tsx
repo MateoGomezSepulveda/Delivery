@@ -126,7 +126,7 @@ export function CheckoutPage() {
       const createdOrder = await createOrderMutation.mutateAsync(trimmedAddress);
 
       toast.success('¡Pedido creado con éxito!', {
-        description: `Orden #${createdOrder._id.slice(-6).toUpperCase()} registrada en MongoDB.`,
+        description: `Orden #${createdOrder._id.slice(-6).toUpperCase()} recibida correctamente.`,
       });
 
       if (payWithMercadoPago) {
@@ -210,13 +210,13 @@ export function CheckoutPage() {
             Confirmación y Checkout Seguro
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Verifica tu dirección de entrega, revisa tus platos y completa tu pago con MercadoPago.
+            Verifica tu dirección de entrega, revisa tus productos y completa tu pago con MercadoPago.
           </p>
         </div>
 
         <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/80 dark:bg-emerald-950/30 px-4 py-2.5 text-xs font-bold text-emerald-800 dark:text-emerald-300">
           <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>Transacción Protegida · NestJS + MercadoPago</span>
+          <span>Pago 100% Seguro · MercadoPago</span>
         </div>
       </div>
 
@@ -340,7 +340,7 @@ export function CheckoutPage() {
                     Productos de tu Pedido ({items.length})
                   </h2>
                   <p className="text-xs text-slate-500">
-                    Sincronizados con tu carrito activo en MongoDB
+                    Revisa las cantidades antes de confirmar tu pedido
                   </p>
                 </div>
               </div>
@@ -484,9 +484,9 @@ export function CheckoutPage() {
             <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/50 p-3.5 flex items-start gap-2.5 text-[11px] text-slate-500 dark:text-slate-400">
               <Lock className="w-4 h-4 text-orange-600 shrink-0 mt-0.5" />
               <p>
-                Al confirmar, tu carrito se convierte en una orden en estado{' '}
-                <strong>PENDING</strong> (`POST /api/v1/orders`) y se genera tu preferencia de pago en{' '}
-                <strong>MercadoPago Checkout Pro</strong> (`POST /api/v1/orders/:id/pay`).
+                Al confirmar, registraremos tu pedido y podrás completar tu pago
+                de forma rápida y segura a través de{' '}
+                <strong>MercadoPago Checkout Pro</strong>.
               </p>
             </div>
           </div>

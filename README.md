@@ -121,8 +121,8 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - ✅ **Guards de Navegación**: `ProtectedRoute` y `RoleGuard` (`CLIENT`, `DELIVERY`, `ADMIN`) con redirección automática por rol.
   - ✅ **Mi Perfil y Avatar en S3 (`/profile`)**: Edición de datos personales y contraseña (`PATCH /users/:id` con `OwnershipGuard`), subida de avatar a AWS S3 (`POST /uploads/avatars`) con normalización automática de `.jfif`/`.jpeg` a `.jpg` y rotación de Refresh Token.
 
-- ✅ **Frontend Fase 2 (Catálogo Gastronómico, Búsqueda Avanzada y Reseñas Públicas)**:
-  - ✅ **Explorador de Menú (`CatalogPage.tsx`)**: Carrusel de categorías (`GET /categories`), buscador con *debounce* sincronizado con la URL, filtros por precio/disponibilidad, ordenamiento dinámico (`sortBy`, `sortOrder`) y paginación.
+- ✅ **Frontend Fase 2 (Catálogo de Licorería & Charcutería, Búsqueda Avanzada y Reseñas Públicas)**:
+  - ✅ **Explorador de Catálogo (`CatalogPage.tsx`)**: Identidad comercial de licorería, cigarrillos, quesos y pasabocas, carrusel de categorías (`GET /categories`), buscador con *debounce* sincronizado con la URL, filtros por precio/disponibilidad, ordenamiento dinámico (`sortBy`, `sortOrder`) y paginación.
   - ✅ **Detalle de Producto y Reseñas (`ProductDetailModal.tsx`)**: Ficha de producto (`GET /products/:id`) y listado de reseñas verificadas (`GET /reviews/product/:productId`) con cálculo de promedio de estrellas.
 
 - ✅ **Frontend Fase 3 (Carrito Persistente, Direcciones con Mapa y Cupones)**:

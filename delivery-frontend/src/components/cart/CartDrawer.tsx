@@ -125,7 +125,7 @@ export function CartDrawer() {
         <EmptyState
           icon={<ShoppingBag className="w-7 h-7" />}
           title="Inicia sesión para armar tu pedido"
-          description="Tu carrito se sincroniza en tiempo real con MongoDB (GET/POST /api/v1/cart)."
+          description="Inicia sesión para guardar tus productos y recibir tu pedido a domicilio."
           action={
             <Link to="/login" onClick={closeDrawer}>
               <Button variant="primary">Iniciar Sesión Ahora</Button>
@@ -134,13 +134,13 @@ export function CartDrawer() {
         />
       ) : isLoading ? (
         <p className="text-center text-xs text-slate-400 py-10">
-          Sincronizando tu carrito activo...
+          Cargando tu carrito...
         </p>
       ) : items.length === 0 ? (
         <EmptyState
           icon={<ShoppingBag className="w-7 h-7" />}
           title="Tu carrito está vacío"
-          description="Agrega tus platos favoritos del catálogo para verlos aquí."
+          description="Agrega licores, cigarrillos, quesos o pasabocas desde el catálogo para verlos aquí."
         />
       ) : (
         <div className="space-y-4">

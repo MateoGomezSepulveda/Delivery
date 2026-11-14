@@ -1,10 +1,11 @@
 import {
-  Coffee,
-  Fish,
+  Beer,
   Flame,
+  GlassWater,
   LayoutGrid,
-  Pizza,
-  Utensils,
+  Sparkles,
+  Tag,
+  Wine,
 } from 'lucide-react';
 import type { Category } from '@/types/catalog.types';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -19,19 +20,46 @@ interface CategoryPillsProps {
 
 function getCategoryIcon(name: string) {
   const lower = name.toLowerCase();
-  if (lower.includes('hamburguesa') || lower.includes('burger')) {
+  if (
+    lower.includes('licor') ||
+    lower.includes('whisky') ||
+    lower.includes('ron') ||
+    lower.includes('aguardiente') ||
+    lower.includes('vino') ||
+    lower.includes('destilado')
+  ) {
+    return <Wine className="w-4 h-4" />;
+  }
+  if (lower.includes('cerveza') || lower.includes('beer')) {
+    return <Beer className="w-4 h-4" />;
+  }
+  if (
+    lower.includes('cigarrillo') ||
+    lower.includes('tabaco') ||
+    lower.includes('vape') ||
+    lower.includes('encendedor')
+  ) {
     return <Flame className="w-4 h-4" />;
   }
-  if (lower.includes('pizza') || lower.includes('ital')) {
-    return <Pizza className="w-4 h-4" />;
+  if (
+    lower.includes('queso') ||
+    lower.includes('charcuter') ||
+    lower.includes('jamón') ||
+    lower.includes('jamon') ||
+    lower.includes('tabla')
+  ) {
+    return <Sparkles className="w-4 h-4" />;
   }
-  if (lower.includes('sushi') || lower.includes('poke') || lower.includes('mar')) {
-    return <Fish className="w-4 h-4" />;
+  if (
+    lower.includes('bebida') ||
+    lower.includes('hielo') ||
+    lower.includes('mezclador') ||
+    lower.includes('snack') ||
+    lower.includes('pasaboca')
+  ) {
+    return <GlassWater className="w-4 h-4" />;
   }
-  if (lower.includes('postre') || lower.includes('bebida') || lower.includes('cafe')) {
-    return <Coffee className="w-4 h-4" />;
-  }
-  return <Utensils className="w-4 h-4" />;
+  return <Tag className="w-4 h-4" />;
 }
 
 export function CategoryPills({
@@ -63,7 +91,7 @@ export function CategoryPills({
         )}
       >
         <LayoutGrid className="w-4 h-4" />
-        <span>Todo el Menú</span>
+        <span>Todo el Catálogo</span>
       </button>
 
       {categories.map((cat) => {

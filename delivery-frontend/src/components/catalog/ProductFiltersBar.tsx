@@ -58,7 +58,7 @@ export function ProductFiltersBar({
         {/* Search Input */}
         <div className="md:col-span-5">
           <Input
-            placeholder="Buscar plato o ingrediente (ej. trufa, salmón, pizza)..."
+            placeholder="Buscar licor, cerveza, cigarrillos, queso o snack..."
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             leftIcon={<Search className="w-4 h-4" />}
@@ -131,7 +131,7 @@ export function ProductFiltersBar({
                 onlyAvailable ? 'opacity-100' : 'opacity-40',
               )}
             />
-            <span>Solo platos disponibles ahora</span>
+            <span>Solo productos disponibles</span>
           </button>
         </div>
 
