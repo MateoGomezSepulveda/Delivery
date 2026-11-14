@@ -1,8 +1,13 @@
 # Estado del Proyecto
 
-**Última actualización:** 13 de Noviembre de 2026
+**Última actualización:** 14 de Noviembre de 2026
 
 ## Última Tarea / Contexto Actual
+- **[NUEVO] Refinamiento UI/UX de Navegación + Programa de Socios Repartidores con Descuento Mensual (10% OFF)**:
+  - **Navbar y Layouts Limpios (`ClientLayout`, `AuthLayout`, `AdminLayout`, `DeliveryLayout`)**: Eliminación de botones de diagnóstico (`ServerStatusBadge`, `ThemeToggle`), remoción del selector de roles público del Navbar/Footer y corrección de alineación Flexbox en `Button.tsx` (`Ingresar`, `Registro`, `Carrito` y botones de regreso).
+  - **Mis Pedidos integrado en Mi Perfil (`ProfilePage.tsx`)**: Navegación por pestañas dentro de `/profile` (`Datos y Seguridad` | `Mis Pedidos` | `Conviértete en Repartidor (-10%)`).
+  - **Auto-activación de Mensajero (`CLIENT` -> `DELIVERY`)**: `POST /api/v1/delivery/profile` permite a usuarios `CLIENT` registrar su vehículo (`MOTO`, `BICYCLE`, `CAR`) y placa, promoviendo automáticamente su rol a `DELIVERY` en MongoDB y rotando su token JWT en vivo desde `ProfilePage.tsx`.
+  - **Beneficio Socio Repartidor (-10% Mensual)**: `OrdersService.createOrder` aplica automáticamente un **10% de descuento (`riderDiscount`)** en los primeros **4 pedidos personales de cada mes** realizados por usuarios con rol `DELIVERY`, reflejado en `CartDrawer.tsx`, `CheckoutPage.tsx` y `OrderDetailPage.tsx`.
 - Se completaron las **Fases 0.1 a 0.7** del Backend (Módulos de negocio y utilidades base), blindando la API con autenticación, validaciones, paginación y trazabilidad.
 - Se completaron las **Fases 1 a 6 del Backend** (Docker Profesional, Observabilidad, Testing >80% + CI, Seguridad Avanzada, 9 Módulos Core nuevos, Cache con Redis, Colas con BullMQ, Índices de MongoDB y Analytics).
 - ✅ **Frontend — Fase 0 Completada (`delivery-frontend/`)**:

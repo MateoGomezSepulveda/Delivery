@@ -143,7 +143,7 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - ✅ **Backend**: gateway acepta `auth.token` y usa `sub` del JWT; `DeliveryService` emite ubicación y estados.
   - ⏳ Push FCM remoto pendiente de credenciales de Firebase (`serviceAccount` en backend) y campo `fcmTokens` en DTOs de usuario.
 
-- ✅ **Frontend Fase 6 (Portal del Repartidor)**: onboarding de perfil, switch Online/Offline, pedidos disponibles, ruta activa con emisor GPS real/simulador y métricas (`/delivery/*`).
+- ✅ **Frontend Fase 6 (Portal del Repartidor & Programa de Socios Mensajeros)**: auto-activación de cuenta de repartidor desde `/profile` (`CLIENT` → `DELIVERY` con rotación de JWT en vivo), switch Online/Offline, pedidos disponibles, ruta activa con emisor GPS real/simulador, métricas (`/delivery/*`) y **beneficio exclusivo del 10% de descuento automático** en los primeros 4 pedidos personales de cada mes.
 
 - ✅ **Frontend Fase 7 (Panel de Administración y Analytics)**: dashboard con KPIs y gráficas (`/analytics/*`), despacho dual **Kanban | Tabla** de pedidos con búsqueda y filtro por estado (`/admin/orders`), CRUD de productos (con subida a S3), categorías, cupones y gestión de usuarios/roles.
 

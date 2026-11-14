@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  Optional,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -16,6 +17,8 @@ import { CreateDeliveryProfileDto } from './dto/create-delivery-profile.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
 import { UpdateAvailabilityDto } from './dto/update-availability.dto';
 import { EventsGateway } from '../events/events/events.gateway';
+import { UsersService } from 'src/users/users.service';
+import { Role } from 'src/auth/roles.enum';
 
 @Injectable()
 export class DeliveryService {
@@ -25,14 +28,28 @@ export class DeliveryService {
     @InjectModel(Order.name)
     private orderModel: Model<OrderDocument>,
     private eventsGateway: EventsGateway,
+    @Optional() private usersService?: UsersService,
   ) {}
 
-  // Crear perfil de repartidor (solo una vez por usuario)
+  // Crear perfil de repartidor (solo una vez por usuario) y promover CLIENT -> DELIVERY
   async createProfile(userId: string, dto: CreateDeliveryProfileDto) {
     const existing = await this.deliveryProfileModel.findOne({ userId });
     if (existing)
       throw new ConflictException('Ya tienes un perfil de repartidor.');
-    return this.deliveryProfileModel.create({ ...dto, userId });
+
+    const createdProfile = await this.deliveryProfileModel.create({
+      ...dto,
+      userId,
+    });
+
+    if (this.usersService) {
+      const user = await this.usersService.findOne(userId);
+      if (user && user.role === Role.CLIENT) {
+        await this.usersService.changeRole(userId, Role.DELIVERY);
+      }
+    }
+
+    return createdProfile;
   }
 
   // Ver mi perfil

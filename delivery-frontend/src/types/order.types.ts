@@ -97,6 +97,8 @@ export interface Order {
   userId: OrderUserPopulated | string;
   deliveryId?: string;
   items: OrderItem[];
+  subtotal?: number;
+  riderDiscount?: number;
   total: number;
   address: string;
   status: OrderStatus;

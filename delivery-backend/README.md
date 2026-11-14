@@ -222,7 +222,7 @@ docker compose up -d --build api
   - ✅ **Uploads**: Subida de imágenes a AWS S3.
   - ✅ **Payments (MercadoPago)**: Servicio `PaymentsService` y webhook para procesar el éxito del pago.
   - ✅ **Notifications & Mail**: Sistema asíncrono para enviar push notifications (FCM) y correos (Nodemailer) en cada actualización de estado del pedido.
-  - ✅ **Delivery**: Módulo completo para repartidores (perfil, disponibilidad, geolocalización de entrega y estadísticas).
+  - ✅ **Delivery**: Módulo completo para repartidores (auto-activación de perfil desde cuenta `CLIENT` → `DELIVERY`, disponibilidad, geolocalización de entrega, estadísticas y descuento mensual del 10% en sus primeros 4 pedidos como cliente).
   - ✅ **Events**: Integración de WebSockets (`socket.io`) para emitir cambios de estado de órdenes en tiempo real a los clientes.
   - ✅ **Reviews**: Reseñas con validación de pedido `DELIVERED`, verificación de que el producto pertenece a la orden, índice único `{ user, product, order }` y moderación por Admin.
   - ✅ **Coupons**: CRUD de cupones (Admin) y endpoint `apply` con validación de expiración, límite de usos, uso único por usuario, monto mínimo y tope de descuento.

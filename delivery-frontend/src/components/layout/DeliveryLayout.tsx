@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -8,6 +8,7 @@ import {
   BarChart3,
   Bike,
   Car,
+  LogOut,
   Navigation,
   PackageCheck,
   Power,
@@ -20,7 +21,7 @@ import {
 } from '@/api/endpoints/delivery.api';
 import { extractErrorMessage } from '@/api/axios.client';
 import type { VehicleType } from '@/types/delivery.types';
-import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import { useAuthStore } from '@/store/useAuthStore';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -112,6 +113,14 @@ const navClass = ({ isActive }: { isActive: boolean }) =>
 
 export function DeliveryLayout() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { logout } = useAuthStore();
+
+  const handleLogout = async () => {
+    await logout();
+    toast.success('Sesión cerrada correctamente.');
+    navigate('/login');
+  };
 
   const {
     data: profile,
@@ -184,14 +193,22 @@ export function DeliveryLayout() {
               <span>{isOnline ? 'Online' : 'Offline'}</span>
             </button>
           )}
-          <ThemeToggle />
           <Link
             to="/"
-            className="inline-flex items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+            className="group inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:border-orange-200 hover:bg-orange-50/60 hover:text-orange-600 transition-all duration-200 cursor-pointer"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Cliente</span>
+            <ArrowLeft className="w-3.5 h-3.5 text-slate-500 group-hover:text-orange-600 group-hover:-translate-x-0.5 transition-transform duration-200" />
+            <span className="hidden sm:inline">Catálogo</span>
           </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleLogout}
+            title="Cerrar sesión"
+            className="h-9 w-9 text-slate-500 hover:text-red-600 hover:bg-red-50"
+          >
+            <LogOut className="w-4 h-4" />
+          </Button>
         </div>
       </header>
 

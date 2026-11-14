@@ -8,6 +8,7 @@ export interface DeliveryProfile {
   vehicleType: VehicleType;
   plate?: string;
   isAvailable: boolean;
+  totalDeliveries?: number;
   currentLocation?: { lat: number; lng: number };
 }
 

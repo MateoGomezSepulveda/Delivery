@@ -49,7 +49,9 @@ export const useThemeStore = create<ThemeState>()(
       name: 'delivery_theme_v1',
       onRehydrateStorage: () => (state) => {
         if (state) {
-          applyThemeToDOM(state.theme);
+          state.theme = 'light';
+          state.resolvedTheme = 'light';
+          applyThemeToDOM('light');
         }
       },
     },

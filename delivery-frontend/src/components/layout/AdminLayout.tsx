@@ -1,17 +1,19 @@
-import { NavLink, Link, Outlet } from 'react-router-dom';
+import { NavLink, Link, Outlet, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   ArrowLeft,
   BarChart3,
   ClipboardList,
   FolderKanban,
+  LogOut,
   ShieldAlert,
   Tag,
   Users,
   Utensils,
 } from 'lucide-react';
-import { ThemeToggle } from '@/components/layout/ThemeToggle';
-import { ServerStatusBadge } from '@/components/layout/ServerStatusBadge';
+import { useAuthStore } from '@/store/useAuthStore';
 import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { cn } from '@/utils/cn';
 
 const sidebarLinks = [
@@ -24,6 +26,15 @@ const sidebarLinks = [
 ];
 
 export function AdminLayout() {
+  const navigate = useNavigate();
+  const { logout } = useAuthStore();
+
+  const handleLogout = async () => {
+    await logout();
+    toast.success('Sesión cerrada correctamente.');
+    navigate('/login');
+  };
+
   return (
     <div className="min-h-screen flex bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-50">
       <aside className="hidden md:flex w-64 flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
@@ -68,9 +79,9 @@ export function AdminLayout() {
         <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
           <Link
             to="/"
-            className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="group flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-semibold text-slate-700 shadow-sm hover:border-orange-200 hover:bg-orange-50/60 hover:text-orange-600 transition-all duration-200 cursor-pointer"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4 text-slate-500 group-hover:text-orange-600 group-hover:-translate-x-0.5 transition-transform duration-200" />
             <span>Volver al Portal Cliente</span>
           </Link>
         </div>
@@ -79,9 +90,23 @@ export function AdminLayout() {
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 flex items-center justify-between gap-3">
           <h1 className="text-base font-bold">Centro de Control Ejecutivo</h1>
-          <div className="flex items-center gap-3">
-            <ServerStatusBadge />
-            <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <Link
+              to="/"
+              className="md:hidden group inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:border-orange-200 hover:bg-orange-50/60 hover:text-orange-600 transition-all duration-200 cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-slate-500 group-hover:text-orange-600 group-hover:-translate-x-0.5 transition-transform duration-200" />
+              <span>Catálogo</span>
+            </Link>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              leftIcon={<LogOut className="w-4 h-4" />}
+              className="text-slate-600 hover:text-red-600 hover:bg-red-50"
+            >
+              Cerrar sesión
+            </Button>
           </div>
         </header>
 

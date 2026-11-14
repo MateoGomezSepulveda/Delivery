@@ -44,7 +44,7 @@ export function PaymentResultPage() {
 
   const handleRetryPayment = async () => {
     if (!orderId) {
-      navigate('/orders');
+      navigate('/profile?tab=orders');
       return;
     }
     try {
@@ -170,7 +170,7 @@ export function PaymentResultPage() {
               </Button>
             </Link>
           ) : (
-            <Link to="/orders" className="w-full sm:w-auto">
+            <Link to="/profile?tab=orders" className="w-full sm:w-auto">
               <Button
                 variant="primary"
                 className="w-full"

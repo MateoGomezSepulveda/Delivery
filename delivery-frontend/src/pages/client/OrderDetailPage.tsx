@@ -178,7 +178,7 @@ export function OrderDetailPage() {
           title="No encontramos este pedido"
           description="Verifica que el identificador de la orden sea válido o que pertenezca a tu cuenta."
           action={
-            <Link to="/orders">
+            <Link to="/profile?tab=orders">
               <Button variant="primary">Volver a Mis Pedidos</Button>
             </Link>
           }
@@ -202,7 +202,7 @@ export function OrderDetailPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <Link
-            to="/orders"
+            to="/profile?tab=orders"
             className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-600 dark:text-orange-400 hover:underline mb-2 cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -461,9 +461,15 @@ export function OrderDetailPage() {
 
             <div className="space-y-2 border-t border-b border-slate-200 dark:border-slate-800 py-4 text-sm">
               <div className="flex items-center justify-between text-slate-500">
-                <span>Total Productos ({order.items.length})</span>
-                <span>{formatCurrency(order.total)}</span>
+                <span>Subtotal Productos ({order.items.length})</span>
+                <span>{formatCurrency(order.subtotal ?? order.total)}</span>
               </div>
+              {Boolean(order.riderDiscount && order.riderDiscount > 0) && (
+                <div className="flex items-center justify-between text-blue-600 font-bold">
+                  <span>Beneficio Socio Mensajero (-10%)</span>
+                  <span>-{formatCurrency(order.riderDiscount ?? 0)}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between text-slate-500">
                 <span>Costo de envío</span>
                 <span className="text-xs font-bold text-emerald-600">

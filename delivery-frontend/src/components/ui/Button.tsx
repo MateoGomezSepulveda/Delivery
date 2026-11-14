@@ -63,7 +63,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         type={type}
         disabled={isDisabled}
         className={cn(
-          'inline-flex items-center justify-center font-semibold transition-colors duration-200 cursor-pointer select-none',
+          'inline-flex items-center justify-center whitespace-nowrap font-semibold transition-all duration-200 cursor-pointer select-none',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950',
           'disabled:opacity-50 disabled:pointer-events-none',
           variantClasses[variant],
@@ -75,11 +75,19 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {isLoading ? (
           <Loader2 className="w-4 h-4 animate-spin shrink-0" />
         ) : (
-          leftIcon && <span className="shrink-0">{leftIcon}</span>
+          leftIcon && (
+            <span className="inline-flex items-center justify-center shrink-0">
+              {leftIcon}
+            </span>
+          )
         )}
-        {children && <span>{children}</span>}
+        {children && (
+          <span className="inline-flex items-center gap-2">{children}</span>
+        )}
         {!isLoading && rightIcon && (
-          <span className="shrink-0">{rightIcon}</span>
+          <span className="inline-flex items-center justify-center shrink-0">
+            {rightIcon}
+          </span>
         )}
       </button>
     );

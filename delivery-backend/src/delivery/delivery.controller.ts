@@ -27,8 +27,11 @@ export class DeliveryController {
   constructor(private readonly deliveryService: DeliveryService) {}
 
   @Post('profile')
-  @Roles(Role.DELIVERY)
-  @ApiOperation({ summary: 'Crear perfil de repartidor' })
+  @Roles(Role.CLIENT, Role.DELIVERY)
+  @ApiOperation({
+    summary:
+      'Crear perfil de repartidor (auto-promueve a CLIENT -> DELIVERY con beneficio de descuento mensual)',
+  })
   createProfile(@Request() req, @Body() dto: CreateDeliveryProfileDto) {
     return this.deliveryService.createProfile(req.user.userId, dto);
   }

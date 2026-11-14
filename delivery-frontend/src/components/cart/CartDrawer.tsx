@@ -21,7 +21,7 @@ import { CouponInputBox } from '@/components/cart/CouponInputBox';
 
 export function CartDrawer() {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const {
     isOpen,
     closeDrawer,
@@ -40,10 +40,12 @@ export function CartDrawer() {
 
   const items = cart?.items ?? [];
   const subtotal = cart?.total ?? 0;
+  const riderDiscount =
+    user?.role === 'DELIVERY' ? Math.round(subtotal * 0.1) : 0;
   const discount = appliedCoupon
     ? Math.min(appliedCoupon.discountAmount, subtotal)
     : 0;
-  const finalTotal = Math.max(0, subtotal - discount);
+  const finalTotal = Math.max(0, subtotal - riderDiscount - discount);
 
   return (
     <Drawer
@@ -61,6 +63,12 @@ export function CartDrawer() {
                 <span>Subtotal ({items.length} productos)</span>
                 <span>{formatCurrency(subtotal)}</span>
               </div>
+              {riderDiscount > 0 && (
+                <div className="flex items-center justify-between text-blue-600 font-semibold">
+                  <span>Beneficio Mensajero (-10%)</span>
+                  <span>-{formatCurrency(riderDiscount)}</span>
+                </div>
+              )}
               {discount > 0 && (
                 <div className="flex items-center justify-between text-emerald-600 font-semibold">
                   <span>Descuento ({appliedCoupon?.code})</span>

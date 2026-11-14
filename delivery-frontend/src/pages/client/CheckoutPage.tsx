@@ -21,6 +21,7 @@ import { extractErrorMessage } from '@/api/axios.client';
 import type { Product } from '@/types/catalog.types';
 import type { Address } from '@/types/order.types';
 import { useCartDrawerStore } from '@/store/useCartDrawerStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { formatCurrency } from '@/utils/formatters';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -41,6 +42,7 @@ function formatAddressString(addr: Address): string {
 export function CheckoutPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
   const {
     openAddressModal,
     activeAddressLabel,
@@ -92,10 +94,12 @@ export function CheckoutPage() {
 
   const items = cart?.items ?? [];
   const subtotal = cart?.total ?? 0;
+  const riderDiscount =
+    user?.role === 'DELIVERY' ? Math.round(subtotal * 0.1) : 0;
   const discount = appliedCoupon
     ? Math.min(appliedCoupon.discountAmount, subtotal)
     : 0;
-  const finalTotal = Math.max(0, subtotal - discount);
+  const finalTotal = Math.max(0, subtotal - riderDiscount - discount);
 
   const createOrderMutation = useMutation({
     mutationFn: (addressToUse: string) =>
@@ -423,6 +427,13 @@ export function CheckoutPage() {
                   Gratis Promo
                 </span>
               </div>
+
+              {riderDiscount > 0 && (
+                <div className="flex items-center justify-between text-blue-600 font-bold">
+                  <span>Beneficio Socio Mensajero (-10%)</span>
+                  <span>-{formatCurrency(riderDiscount)}</span>
+                </div>
+              )}
 
               {discount > 0 && (
                 <div className="flex items-center justify-between text-emerald-600 font-bold">

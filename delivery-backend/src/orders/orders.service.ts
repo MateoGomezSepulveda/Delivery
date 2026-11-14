@@ -56,10 +56,38 @@ export class OrdersService {
       price: item.price,
     }));
 
+    // Beneficio Socio Repartidor: 10% de descuento en los primeros 4 pedidos del mes
+    const subtotal = cart.total;
+    let riderDiscount = 0;
+
+    try {
+      const user = await this.usersService.findOne(userId);
+      if (user?.role === 'DELIVERY') {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthlyOrdersCount =
+          (await this.orderModel.countDocuments({
+            userId,
+            createdAt: { $gte: startOfMonth },
+            status: { $ne: OrderStatus.CANCELLED },
+          })) ?? 0;
+
+        if (monthlyOrdersCount < 4) {
+          riderDiscount = Math.round(subtotal * 0.1);
+        }
+      }
+    } catch {
+      riderDiscount = 0;
+    }
+
+    const finalTotal = Math.max(0, subtotal - riderDiscount);
+
     const order = new this.orderModel({
       userId,
       items: orderItems,
-      total: cart.total,
+      subtotal,
+      riderDiscount,
+      total: finalTotal,
       address,
     });
 

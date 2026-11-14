@@ -7,16 +7,12 @@ import {
   LogIn,
   LogOut,
   MapPin,
-  Package,
   ShoppingBag,
-  Store,
   User as UserIcon,
   UserPlus,
   UtensilsCrossed,
 } from 'lucide-react';
 import { getCartApi } from '@/api/endpoints/cart.api';
-import { ThemeToggle } from '@/components/layout/ThemeToggle';
-import { ServerStatusBadge } from '@/components/layout/ServerStatusBadge';
 import { Button } from '@/components/ui/Button';
 import { RoleBadge } from '@/components/ui/Badge';
 import { CartDrawer } from '@/components/cart/CartDrawer';
@@ -67,9 +63,6 @@ export function ClientLayout() {
                 <span className="font-heading text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">
                   Delivery<span className="text-orange-600 dark:text-orange-400">Pro</span>
                 </span>
-                <span className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500 -mt-1">
-                  Full-Stack Platform
-                </span>
               </div>
             </Link>
 
@@ -85,54 +78,8 @@ export function ClientLayout() {
             </button>
           </div>
 
-          {/* Role Layout Switcher */}
-          <nav className="hidden lg:flex items-center gap-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 p-1 border border-slate-200/60 dark:border-slate-700/60">
-            <Link
-              to="/"
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer',
-                location.pathname === '/'
-                  ? 'bg-white dark:bg-slate-900 text-orange-600 dark:text-orange-400 shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white',
-              )}
-            >
-              <Store className="w-3.5 h-3.5" />
-              <span>Catálogo</span>
-            </Link>
-            <Link
-              to="/orders"
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer',
-                location.pathname.startsWith('/orders')
-                  ? 'bg-white dark:bg-slate-900 text-orange-600 dark:text-orange-400 shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white',
-              )}
-            >
-              <Package className="w-3.5 h-3.5" />
-              <span>Mis Pedidos</span>
-            </Link>
-            <Link
-              to="/delivery"
-              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
-            >
-              <Bike className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              <span>Rider App</span>
-            </Link>
-            <Link
-              to="/admin"
-              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
-            >
-              <LayoutDashboard className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Admin</span>
-            </Link>
-          </nav>
-
           {/* Right Actions */}
-          <div className="flex items-center gap-2">
-            <div className="hidden xl:block">
-              <ServerStatusBadge />
-            </div>
-            <ThemeToggle />
+          <div className="flex items-center gap-2 sm:gap-2.5">
             {isAuthenticated && (
               <span
                 title={
@@ -141,7 +88,7 @@ export function ClientLayout() {
                     : 'Tiempo real desconectado'
                 }
                 className={cn(
-                  'h-2.5 w-2.5 rounded-full',
+                  'h-2.5 w-2.5 rounded-full shrink-0',
                   socketConnected ? 'bg-emerald-500' : 'bg-slate-400',
                 )}
               />
@@ -149,13 +96,33 @@ export function ClientLayout() {
 
             {isAuthenticated && user ? (
               <div className="flex items-center gap-2">
+                {user.role === 'DELIVERY' && (
+                  <Link
+                    to="/delivery"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/80 hover:bg-blue-100/80 h-9 px-3 text-xs font-bold text-blue-700 transition-colors cursor-pointer"
+                    title="Abrir tu panel de entregas como Mensajero"
+                  >
+                    <Bike className="w-3.5 h-3.5 text-blue-600" />
+                    <span className="hidden md:inline">Rider App</span>
+                  </Link>
+                )}
+                {user.role === 'ADMIN' && (
+                  <Link
+                    to="/admin"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/80 hover:bg-emerald-100/80 h-9 px-3 text-xs font-bold text-emerald-700 transition-colors cursor-pointer"
+                    title="Abrir el Centro de Control Admin"
+                  >
+                    <LayoutDashboard className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="hidden md:inline">Panel Admin</span>
+                  </Link>
+                )}
                 <Link
                   to="/profile"
                   className={cn(
-                    'inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer',
+                    'inline-flex items-center gap-2 rounded-xl border h-9 px-3 text-xs font-semibold transition-colors cursor-pointer',
                     location.pathname === '/profile'
-                      ? 'border-orange-500 bg-orange-50 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300'
-                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800',
+                      ? 'border-orange-500 bg-orange-50 text-orange-700'
+                      : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700',
                   )}
                 >
                   {user.avatarUrl ? (
@@ -177,26 +144,29 @@ export function ClientLayout() {
                   size="icon"
                   onClick={handleLogout}
                   title="Cerrar sesión"
+                  className="h-9 w-9 text-slate-500 hover:text-red-600 hover:bg-red-50"
                 >
-                  <LogOut className="w-4 h-4 text-slate-500 hover:text-red-600" />
+                  <LogOut className="w-4 h-4" />
                 </Button>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <Link to="/login">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Link to="/login" className="inline-flex">
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    leftIcon={<LogIn className="w-3.5 h-3.5" />}
+                    leftIcon={<LogIn className="w-3.5 h-3.5 text-slate-500" />}
+                    className="text-slate-700 hover:text-orange-600 hover:bg-orange-50/70"
                   >
                     Ingresar
                   </Button>
                 </Link>
-                <Link to="/register" className="hidden sm:block">
+                <Link to="/register" className="hidden sm:inline-flex">
                   <Button
-                    variant="secondary"
+                    variant="outline"
                     size="sm"
-                    leftIcon={<UserPlus className="w-3.5 h-3.5" />}
+                    leftIcon={<UserPlus className="w-3.5 h-3.5 text-orange-600" />}
+                    className="border-slate-200 hover:border-orange-300 hover:bg-orange-50/50 text-slate-800"
                   >
                     Registro
                   </Button>
@@ -204,14 +174,17 @@ export function ClientLayout() {
               </div>
             )}
 
+            <div className="hidden sm:block h-5 w-px bg-slate-200" />
+
             <Button
               variant="primary"
               size="sm"
               onClick={openDrawer}
               leftIcon={<ShoppingBag className="w-4 h-4" />}
+              className="shadow-sm"
             >
               <span className="hidden sm:inline">Carrito</span>
-              <span className="rounded-full bg-white/20 px-1.5 py-0.2 text-[11px]">
+              <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/25 px-1.5 text-[11px] font-bold leading-none text-white">
                 {cartItemCount}
               </span>
             </Button>
@@ -238,21 +211,14 @@ export function ClientLayout() {
             <Link to="/" className="hover:text-orange-600 cursor-pointer">
               Catálogo
             </Link>
-            <Link to="/orders" className="hover:text-orange-600 cursor-pointer">
-              Mis Pedidos
-            </Link>
-            <Link to="/profile" className="hover:text-orange-600 cursor-pointer">
-              Mi Perfil
-            </Link>
-            <Link to="/ui-lab" className="hover:text-orange-600 cursor-pointer">
-              UI Lab
-            </Link>
-            <Link to="/delivery" className="hover:text-blue-600 cursor-pointer">
-              Repartidor
-            </Link>
-            <Link to="/admin" className="hover:text-emerald-600 cursor-pointer">
-              Admin
-            </Link>
+            {isAuthenticated && (
+              <Link
+                to="/profile"
+                className="hover:text-orange-600 cursor-pointer"
+              >
+                Mi Perfil
+              </Link>
+            )}
           </div>
         </div>
       </footer>
