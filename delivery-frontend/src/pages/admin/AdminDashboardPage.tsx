@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
+  Calendar,
   CircleDollarSign,
+  Download,
   Receipt,
   ShoppingBag,
   TrendingUp,
@@ -14,9 +17,27 @@ import {
   getTopProductsApi,
 } from '@/api/endpoints/analytics.api';
 import { formatCurrency } from '@/utils/formatters';
+import { Button } from '@/components/ui/Button';
 import { OrderStatusBadge } from '@/components/ui/Badge';
 import type { OrderStatus } from '@/types/api.types';
 import { cn } from '@/utils/cn';
+
+type DateRangeOption = '7d' | '30d' | 'month' | '90d';
+
+const RANGE_OPTIONS: { key: DateRangeOption; label: string }[] = [
+  { key: '7d', label: 'Últimos 7 días' },
+  { key: '30d', label: '30 días' },
+  { key: 'month', label: 'Este mes' },
+  { key: '90d', label: '90 días' },
+];
+
+function getDaysForRange(range: DateRangeOption): number {
+  if (range === '7d') return 7;
+  if (range === '30d') return 30;
+  if (range === '90d') return 90;
+  const now = new Date();
+  return Math.max(1, now.getDate());
+}
 
 function SalesBars({
   points,
@@ -50,7 +71,8 @@ function SalesBars({
 }
 
 export function AdminDashboardPage() {
-  const [days, setDays] = useState(30);
+  const [range, setRange] = useState<DateRangeOption>('30d');
+  const days = useMemo(() => getDaysForRange(range), [range]);
 
   const dashboard = useQuery({
     queryKey: ['admin-dashboard'],
@@ -99,13 +121,89 @@ export function AdminDashboardPage() {
     },
   ];
 
-  const topMax = Math.max(...(top.data ?? []).map((p) => p.totalQuantitySold), 1);
+  const topMax = Math.max(
+    ...(top.data ?? []).map((p) => p.totalQuantitySold),
+    1,
+  );
+
+  const handleExportCsv = () => {
+    const lines: string[] = [];
+    lines.push('Seccion,Metrica_Fecha_Producto,Cantidad_Pedidos,Ingresos_Valor');
+    lines.push(`KPI,Ingresos Totales,${k?.totalOrders ?? 0},${k?.totalRevenue ?? 0}`);
+    lines.push(
+      `KPI,Ticket Promedio,${k?.paidOrdersCount ?? 0},${k?.averageOrderValue ?? 0}`,
+    );
+    lines.push(`KPI,Usuarios Registrados,${k?.totalUsers ?? 0},0`);
+    lines.push(`KPI,Productos Activos,${k?.activeProducts ?? 0},0`);
+
+    (sales.data ?? []).forEach((s) => {
+      lines.push(`Ventas Diarias,${s.date},${s.ordersCount},${s.dailyRevenue}`);
+    });
+
+    (top.data ?? []).forEach((p) => {
+      const safeName = `"${p.name.replace(/"/g, '""')}"`;
+      lines.push(
+        `Top Productos,${safeName},${p.totalQuantitySold},${p.totalRevenue}`,
+      );
+    });
+
+    const csvContent = `\uFEFF${lines.join('\n')}`;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    link.href = url;
+    link.download = `reporte-analytics-${range}-${dateStamp}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success('Reporte CSV exportado correctamente');
+  };
 
   return (
     <div className="space-y-6">
-      <h2 className="font-heading text-2xl font-extrabold">
-        Dashboard Analytics
-      </h2>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="font-heading text-2xl font-extrabold">
+            Dashboard Analytics
+          </h2>
+          <p className="text-xs text-slate-500">
+            Métricas ejecutivas, ventas por período y exportación a CSV
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-1">
+            <Calendar className="w-3.5 h-3.5 text-slate-400 ml-2 mr-1" />
+            {RANGE_OPTIONS.map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => setRange(opt.key)}
+                className={cn(
+                  'rounded-lg px-2.5 py-1 text-xs font-bold transition-colors cursor-pointer',
+                  range === opt.key
+                    ? 'bg-orange-600 text-white'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800',
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCsv}
+            leftIcon={<Download className="w-4 h-4" />}
+          >
+            Exportar CSV
+          </Button>
+        </div>
+      </div>
 
       {dashboard.isError && (
         <p className="text-sm text-red-600">
@@ -134,24 +232,12 @@ export function AdminDashboardPage() {
 
       <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-card space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="font-heading font-extrabold">Ventas diarias</h3>
-          <div className="flex gap-1">
-            {[7, 30, 90].map((d) => (
-              <button
-                key={d}
-                type="button"
-                onClick={() => setDays(d)}
-                className={cn(
-                  'rounded-lg px-3 py-1 text-xs font-bold cursor-pointer',
-                  days === d
-                    ? 'bg-orange-600 text-white'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
-                )}
-              >
-                {d}d
-              </button>
-            ))}
-          </div>
+          <h3 className="font-heading font-extrabold">
+            Ventas diarias ({RANGE_OPTIONS.find((r) => r.key === range)?.label})
+          </h3>
+          <span className="text-xs text-slate-400">
+            Ventana de {days} {days === 1 ? 'día' : 'días'}
+          </span>
         </div>
         {sales.isLoading ? (
           <p className="text-sm text-slate-500">Cargando...</p>
@@ -181,7 +267,9 @@ export function AdminDashboardPage() {
                 <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800">
                   <div
                     className="h-2 rounded-full bg-emerald-500"
-                    style={{ width: `${(p.totalQuantitySold / topMax) * 100}%` }}
+                    style={{
+                      width: `${(p.totalQuantitySold / topMax) * 100}%`,
+                    }}
                   />
                 </div>
               </div>

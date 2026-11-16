@@ -7,6 +7,42 @@ import type {
   ProductQueryParams,
 } from '@/types/catalog.types';
 
+const RECENT_UPDATES_TTL_MS = 10 * 60 * 1000; // 10 min (sincronizado con TTL de Redis en backend)
+const recentProductUpdates = new Map<
+  string,
+  { product: Product; timestamp: number }
+>();
+const recentProductDeletes = new Map<string, number>();
+
+function applyRecentMutations(products: Product[]): Product[] {
+  const now = Date.now();
+  return products
+    .filter((p) => {
+      const deletedAt = recentProductDeletes.get(p._id);
+      if (deletedAt && now - deletedAt < RECENT_UPDATES_TTL_MS) {
+        return false;
+      }
+      return true;
+    })
+    .map((p) => {
+      const entry = recentProductUpdates.get(p._id);
+      if (entry && now - entry.timestamp < RECENT_UPDATES_TTL_MS) {
+        return {
+          ...p,
+          ...entry.product,
+          categoryId:
+            typeof p.categoryId === 'object' &&
+            p.categoryId !== null &&
+            typeof entry.product.categoryId === 'string' &&
+            p.categoryId._id === entry.product.categoryId
+              ? p.categoryId
+              : entry.product.categoryId,
+        };
+      }
+      return p;
+    });
+}
+
 export async function getProductsApi(
   params?: ProductQueryParams,
 ): Promise<PaginatedResponse<Product>> {
@@ -27,21 +63,29 @@ export async function getProductsApi(
   );
 
   if (Array.isArray(response.data)) {
+    const merged = applyRecentMutations(response.data);
     return {
-      data: response.data,
+      data: merged,
       meta: {
-        total: response.data.length,
+        total: merged.length,
         page: 1,
         lastPage: 1,
       },
     };
   }
 
-  return response.data;
+  return {
+    ...response.data,
+    data: applyRecentMutations(response.data.data ?? []),
+  };
 }
 
 export async function getProductByIdApi(id: string): Promise<Product> {
   const response = await apiClient.get<Product>(`/products/${id}`);
+  const entry = recentProductUpdates.get(id);
+  if (entry && Date.now() - entry.timestamp < RECENT_UPDATES_TTL_MS) {
+    return { ...response.data, ...entry.product };
+  }
   return response.data;
 }
 
@@ -49,6 +93,12 @@ export async function createProductApi(
   payload: CreateProductPayload,
 ): Promise<Product> {
   const response = await apiClient.post<Product>('/products', payload);
+  if (response.data?._id) {
+    recentProductUpdates.set(response.data._id, {
+      product: response.data,
+      timestamp: Date.now(),
+    });
+  }
   return response.data;
 }
 
@@ -57,11 +107,17 @@ export async function updateProductApi(
   payload: Partial<CreateProductPayload>,
 ): Promise<Product> {
   const response = await apiClient.patch<Product>(`/products/${id}`, payload);
+  recentProductUpdates.set(id, {
+    product: response.data,
+    timestamp: Date.now(),
+  });
   return response.data;
 }
 
 export async function deleteProductApi(id: string): Promise<void> {
   await apiClient.delete(`/products/${id}`);
+  recentProductUpdates.delete(id);
+  recentProductDeletes.set(id, Date.now());
 }
 
 /**

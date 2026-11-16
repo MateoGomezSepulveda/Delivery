@@ -4,7 +4,10 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { InjectModel } from '@nestjs/mongoose';
 import { Product, ProductDocument } from './schemas/product.schema';
 import { Model } from 'mongoose';
@@ -20,7 +23,16 @@ export class ProductsService {
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
     @Inject(forwardRef(() => CategoriesService))
     private categoriesService: CategoriesService,
+    @Optional() @Inject(CACHE_MANAGER) private cacheManager?: Cache,
   ) {}
+
+  private async invalidateCache() {
+    try {
+      await this.cacheManager?.clear();
+    } catch {
+      // Ignorar si Redis no está disponible en entorno de test
+    }
+  }
 
   async create(dto: CreateProductDto) {
     const category = await this.categoriesService.findOne(dto.categoryId);
@@ -28,7 +40,9 @@ export class ProductsService {
       throw new NotFoundException('Category not found');
     }
     const newProduct = new this.productModel(dto);
-    return newProduct.save();
+    const saved = await newProduct.save();
+    await this.invalidateCache();
+    return saved;
   }
 
   async findAll(paginationQuery: ProductPaginationDto) {
@@ -90,7 +104,11 @@ export class ProductsService {
     if (!product) {
       throw new NotFoundException(`Product with ID "${id}" not found`);
     }
-    return this.productModel.findByIdAndUpdate(id, updateData, { new: true });
+    const updated = await this.productModel.findByIdAndUpdate(id, updateData, {
+      new: true,
+    });
+    await this.invalidateCache();
+    return updated;
   }
 
   async remove(id: string) {
@@ -105,7 +123,9 @@ export class ProductsService {
     if (order) {
       throw new BadRequestException('Cannot delete product used in orders');
     }
-    return this.productModel.findByIdAndDelete(id);
+    const deleted = await this.productModel.findByIdAndDelete(id);
+    await this.invalidateCache();
+    return deleted;
   }
 
   async findByCategory(categoryId: string) {

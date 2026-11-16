@@ -103,27 +103,18 @@ export async function uploadImageToS3Api(
   const formData = new FormData();
   formData.append('file', normalizedFile);
 
-  try {
-    const response = await apiClient.post<UploadFileResponse>(
-      `/uploads/${folder}`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+  const response = await apiClient.post<UploadFileResponse>(
+    `/uploads/${folder}`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
       },
-    );
+    },
+  );
 
-    return {
-      ...response.data,
-      previewDataUrl: dataUrl,
-    };
-  } catch {
-    // Si AWS S3 falla o el bucket no tiene permisos públicos en local, usamos el DataURL optimizado
-    return {
-      success: true,
-      url: dataUrl,
-      previewDataUrl: dataUrl,
-    };
-  }
+  return {
+    ...response.data,
+    previewDataUrl: dataUrl,
+  };
 }

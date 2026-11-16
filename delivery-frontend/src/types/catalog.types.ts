@@ -12,8 +12,8 @@ export interface Product {
   description: string;
   price: number;
   available: boolean;
-  image?: string;
-  categoryId: string | Category;
+  image?: string | null;
+  categoryId: string | Category | null;
   createdBy?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -60,7 +60,7 @@ export interface CreateProductPayload {
   description: string;
   price: number;
   available?: boolean;
-  image?: string;
+  image?: string | null;
   categoryId: string;
 }
 

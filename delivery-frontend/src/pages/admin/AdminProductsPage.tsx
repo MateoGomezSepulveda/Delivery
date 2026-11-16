@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ImagePlus, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ImagePlus, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import {
   createProductApi,
   deleteProductApi,
@@ -12,6 +12,7 @@ import { getCategoriesApi } from '@/api/endpoints/categories.api';
 import { uploadImageToS3Api } from '@/api/endpoints/uploads.api';
 import { extractErrorMessage } from '@/api/axios.client';
 import type { CreateProductPayload, Product } from '@/types/catalog.types';
+import { useDebounce } from '@/hooks/useDebounce';
 import { formatCurrency } from '@/utils/formatters';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -31,15 +32,29 @@ const EMPTY: CreateProductPayload = {
 export function AdminProductsPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const debouncedSearch = useDebounce(search, 350);
+
   const [editing, setEditing] = useState<Product | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [form, setForm] = useState<CreateProductPayload>(EMPTY);
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [uploading, setUploading] = useState(false);
 
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, categoryFilter]);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-products', page],
-    queryFn: () => getProductsApi({ page, limit: 10 }),
+    queryKey: ['admin-products', page, debouncedSearch, categoryFilter],
+    queryFn: () =>
+      getProductsApi({
+        page,
+        limit: 10,
+        search: debouncedSearch.trim() || undefined,
+        categoryId: categoryFilter || undefined,
+      }),
   });
   const { data: cats } = useQuery({
     queryKey: ['categories'],
@@ -48,30 +63,41 @@ export function AdminProductsPage() {
 
   const categories = cats?.data ?? [];
   const catName = (p: Product) => {
-    const id = typeof p.categoryId === 'string' ? p.categoryId : p.categoryId?._id;
-    return categories.find((c) => c._id === id)?.name ?? '—';
+    const id =
+      typeof p.categoryId === 'object' && p.categoryId
+        ? p.categoryId._id
+        : p.categoryId;
+    if (!id) return 'Sin categoría';
+    return (
+      (typeof p.categoryId === 'object' && p.categoryId?.name) ||
+      categories.find((c) => c._id === id)?.name ||
+      '—'
+    );
   };
 
-  const refresh = () => {
-    queryClient.invalidateQueries({ queryKey: ['admin-products'] });
-    queryClient.invalidateQueries({ queryKey: ['products'] });
+  const refresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] }),
+      queryClient.invalidateQueries({ queryKey: ['products'] }),
+    ]);
   };
 
   const saveMutation = useMutation({
     mutationFn: () => {
+      const trimmedImage = form.image?.trim();
       const payload: CreateProductPayload = {
         ...form,
         name: form.name.trim(),
         price: Number(form.price),
-        image: form.image?.trim() || undefined,
+        image: trimmedImage ? trimmedImage : null,
         description: (form.description ?? '').trim(),
       };
       return editing
         ? updateProductApi(editing._id, payload)
         : createProductApi(payload);
     },
-    onSuccess: () => {
-      refresh();
+    onSuccess: async () => {
+      await refresh();
       setIsOpen(false);
       toast.success(editing ? 'Producto actualizado' : 'Producto creado');
     },
@@ -79,10 +105,27 @@ export function AdminProductsPage() {
       toast.error('No se pudo guardar', { description: extractErrorMessage(err) }),
   });
 
+  const toggleAvailableMutation = useMutation({
+    mutationFn: ({ id, available }: { id: string; available: boolean }) =>
+      updateProductApi(id, { available }),
+    onSuccess: async (_data, variables) => {
+      await refresh();
+      toast.success(
+        variables.available
+          ? 'Producto activado como disponible'
+          : 'Producto marcado como agotado',
+      );
+    },
+    onError: (err) =>
+      toast.error('No se pudo cambiar la disponibilidad', {
+        description: extractErrorMessage(err),
+      }),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteProductApi(id),
-    onSuccess: () => {
-      refresh();
+    onSuccess: async () => {
+      await refresh();
       toast.success('Producto eliminado');
     },
     onError: (err) =>
@@ -104,10 +147,18 @@ export function AdminProductsPage() {
       price: p.price,
       available: p.available,
       image: p.image ?? '',
-      categoryId: typeof p.categoryId === 'string' ? p.categoryId : p.categoryId._id,
+      categoryId:
+        typeof p.categoryId === 'object' && p.categoryId
+          ? p.categoryId._id
+          : (p.categoryId ?? ''),
     });
     setPreviewUrl(p.image ?? '');
     setIsOpen(true);
+  };
+
+  const handleClearImage = () => {
+    setForm((f) => ({ ...f, image: '' }));
+    setPreviewUrl('');
   };
 
   const handleUpload = async (file?: File) => {
@@ -115,15 +166,13 @@ export function AdminProductsPage() {
     try {
       setUploading(true);
       const res = await uploadImageToS3Api(file, 'products');
-      setForm((f) => ({ ...f, image: res.url }));
-      setPreviewUrl(res.previewDataUrl || res.url);
-      toast.success(
-        res.url.startsWith('http')
-          ? 'Imagen subida a S3'
-          : 'Imagen optimizada localmente (respaldo sin S3 público)',
-      );
+      // Guardamos el DataURL optimizado (evita error 403 si el bucket S3 tiene acceso público bloqueado)
+      const resolvedImage = res.previewDataUrl || res.url;
+      setForm((f) => ({ ...f, image: resolvedImage }));
+      setPreviewUrl(resolvedImage);
+      toast.success('Imagen subida y procesada correctamente');
     } catch (err) {
-      toast.error('No se pudo subir la imagen', {
+      toast.error('No se pudo subir la imagen a S3', {
         description: extractErrorMessage(err),
       });
     } finally {
@@ -133,11 +182,43 @@ export function AdminProductsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="font-heading text-2xl font-extrabold">Productos</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="font-heading text-2xl font-extrabold">Productos</h2>
+          <p className="text-xs text-slate-500">
+            Administra el catálogo, imágenes en S3 y disponibilidad en tiempo real
+          </p>
+        </div>
         <Button onClick={openCreate} leftIcon={<Plus className="w-4 h-4" />}>
           Nuevo producto
         </Button>
+      </div>
+
+      {/* Buscador con debounce y filtro por categoría */}
+      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+        <div className="sm:col-span-8">
+          <Input
+            placeholder="Buscar producto por nombre o descripción..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            leftIcon={<Search className="w-4 h-4" />}
+          />
+        </div>
+        <div className="sm:col-span-4">
+          <select
+            aria-label="Filtrar por categoría"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="w-full h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500"
+          >
+            <option value="">Todas las categorías</option>
+            {categories.map((c) => (
+              <option key={c._id} value={c._id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto">
@@ -159,6 +240,13 @@ export function AdminProductsPage() {
                 </td>
               </tr>
             )}
+            {!isLoading && (data?.data ?? []).length === 0 && (
+              <tr>
+                <td colSpan={5} className="p-8 text-center text-slate-400">
+                  No se encontraron productos con los filtros actuales.
+                </td>
+              </tr>
+            )}
             {(data?.data ?? []).map((p) => (
               <tr
                 key={p._id}
@@ -170,20 +258,59 @@ export function AdminProductsPage() {
                       <img
                         src={p.image}
                         alt={p.name}
-                        className="h-10 w-10 rounded-lg object-cover bg-slate-100"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src =
+                            'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=200&q=80';
+                        }}
+                        className="h-10 w-10 rounded-lg object-cover bg-slate-100 shrink-0"
                       />
                     ) : (
-                      <div className="h-10 w-10 rounded-lg bg-slate-100 dark:bg-slate-800" />
+                      <div className="h-10 w-10 rounded-lg bg-slate-100 dark:bg-slate-800 shrink-0" />
                     )}
-                    <span className="font-semibold">{p.name}</span>
+                    <div className="min-w-0">
+                      <span className="font-semibold block truncate">
+                        {p.name}
+                      </span>
+                      {p.description && (
+                        <span className="text-xs text-slate-400 line-clamp-1">
+                          {p.description}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </td>
                 <td className="p-3">{catName(p)}</td>
                 <td className="p-3 font-semibold">{formatCurrency(p.price)}</td>
                 <td className="p-3">
-                  <Badge variant={p.available ? 'success' : 'neutral'}>
-                    {p.available ? 'Disponible' : 'Agotado'}
-                  </Badge>
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={p.available}
+                      aria-label={`Cambiar disponibilidad de ${p.name}`}
+                      disabled={toggleAvailableMutation.isPending}
+                      onClick={() =>
+                        toggleAvailableMutation.mutate({
+                          id: p._id,
+                          available: !p.available,
+                        })
+                      }
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:opacity-50 ${
+                        p.available
+                          ? 'bg-emerald-500'
+                          : 'bg-slate-300 dark:bg-slate-700'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
+                          p.available ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                    <Badge variant={p.available ? 'success' : 'neutral'}>
+                      {p.available ? 'Disponible' : 'Agotado'}
+                    </Badge>
+                  </div>
                 </td>
                 <td className="p-3">
                   <div className="flex justify-end gap-1.5">
@@ -220,12 +347,13 @@ export function AdminProductsPage() {
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
         title={editing ? 'Editar producto' : 'Nuevo producto'}
-        size="md"
+        size="lg"
       >
         <form
-          className="space-y-4"
+          className="space-y-3.5"
           onSubmit={(e) => {
             e.preventDefault();
+            if (uploading) return;
             if (!form.name.trim() || !form.categoryId) {
               toast.warning('Nombre y categoría son obligatorios');
               return;
@@ -233,19 +361,94 @@ export function AdminProductsPage() {
             saveMutation.mutate();
           }}
         >
+          {/* Barra compacta de Fotografía del Producto */}
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-2.5 flex items-center gap-3">
+            <div className="h-14 w-14 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shrink-0 flex items-center justify-center">
+              {previewUrl || form.image ? (
+                <img
+                  src={previewUrl || form.image || ''}
+                  alt="Vista previa"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src =
+                      'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=200&q=80';
+                  }}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <ImagePlus className="w-5 h-5 text-orange-500/70" />
+              )}
+            </div>
+
+            <div className="flex-1 flex flex-wrap items-center gap-2">
+              <label
+                className={`inline-flex items-center gap-1.5 rounded-xl border border-orange-200 dark:border-orange-900/60 bg-orange-50 dark:bg-orange-950/40 px-3 py-2 text-xs font-bold text-orange-700 dark:text-orange-300 hover:bg-orange-100/80 transition-colors shrink-0 ${
+                  uploading
+                    ? 'opacity-50 pointer-events-none'
+                    : 'cursor-pointer'
+                }`}
+              >
+                <ImagePlus className="w-3.5 h-3.5 text-orange-600" />
+                <span>
+                  {uploading
+                    ? 'Subiendo...'
+                    : previewUrl || form.image
+                      ? 'Cambiar foto'
+                      : 'Subir foto'}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*,.jfif,.jpeg,.jpg,.png,.webp,.avif"
+                  disabled={uploading}
+                  className="hidden"
+                  onChange={(e) => {
+                    void handleUpload(e.target.files?.[0]);
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+
+              {(previewUrl || form.image) && (
+                <button
+                  type="button"
+                  onClick={handleClearImage}
+                  className="inline-flex items-center gap-1 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/70 dark:bg-red-950/30 px-2.5 py-2 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-100/70 transition-colors cursor-pointer shrink-0"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Quitar</span>
+                </button>
+              )}
+
+              <input
+                type="text"
+                placeholder={
+                  form.image?.startsWith('data:image/')
+                    ? 'Foto cargada (o pega URL https://...)'
+                    : 'O pega URL de imagen (https://...)'
+                }
+                value={
+                  form.image?.startsWith('data:image/')
+                    ? ''
+                    : (form.image ?? '')
+                }
+                onChange={(e) => {
+                  setForm({ ...form, image: e.target.value });
+                  setPreviewUrl(e.target.value);
+                }}
+                className="flex-1 min-w-[180px] h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500"
+              />
+            </div>
+          </div>
+
           <Input
-            label="Nombre"
+            label="Nombre del producto"
+            placeholder="Ej. Whisky Buchanan's Deluxe 12 Años 750ml"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
           />
-          <Input
-            label="Descripción"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-          />
-          <div className="grid grid-cols-2 gap-3">
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Input
-              label="Precio"
+              label="Precio (COP)"
               type="number"
               min={0}
               value={form.price}
@@ -253,16 +456,22 @@ export function AdminProductsPage() {
                 setForm({ ...form, price: Number(e.target.value) })
               }
             />
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+            <div className="w-full space-y-1.5">
+              <label
+                htmlFor="product-category"
+                className="block text-sm font-medium text-slate-700 dark:text-slate-200"
+              >
                 Categoría
               </label>
               <select
+                id="product-category"
                 value={form.categoryId}
-                onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm"
+                onChange={(e) =>
+                  setForm({ ...form, categoryId: e.target.value })
+                }
+                className="w-full h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500"
               >
-                <option value="">Selecciona...</option>
+                <option value="">Selecciona una categoría...</option>
                 {categories.map((c) => (
                   <option key={c._id} value={c._id}>
                     {c.name}
@@ -272,52 +481,69 @@ export function AdminProductsPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            {(previewUrl || form.image) && (
-              <img
-                src={previewUrl || form.image}
-                alt="Vista previa"
-                className="h-14 w-14 rounded-xl object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 shrink-0"
-              />
-            )}
-            <div className="flex-1 space-y-1.5">
-              <Input
-                label="URL de imagen"
-                value={form.image}
-                onChange={(e) => {
-                  setForm({ ...form, image: e.target.value });
-                  setPreviewUrl(e.target.value);
-                }}
-              />
-              <label className="inline-flex items-center gap-2 text-xs font-semibold cursor-pointer text-blue-600 dark:text-blue-400">
-                <ImagePlus className="w-4 h-4" />
-                {uploading ? 'Subiendo...' : 'Subir imagen a S3'}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => void handleUpload(e.target.files?.[0])}
-                />
-              </label>
-            </div>
+          <div className="w-full space-y-1.5">
+            <label
+              htmlFor="product-description"
+              className="block text-sm font-medium text-slate-700 dark:text-slate-200"
+            >
+              Descripción
+            </label>
+            <textarea
+              id="product-description"
+              rows={2}
+              placeholder="Describe el producto..."
+              value={form.description}
+              onChange={(e) =>
+                setForm({ ...form, description: e.target.value })
+              }
+              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 resize-none"
+            />
           </div>
 
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.available ?? true}
-              onChange={(e) => setForm({ ...form, available: e.target.checked })}
-            />
-            Disponible para la venta
-          </label>
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={form.available ?? true}
+                onClick={() =>
+                  setForm({ ...form, available: !(form.available ?? true) })
+                }
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
+                  (form.available ?? true)
+                    ? 'bg-emerald-500'
+                    : 'bg-slate-300 dark:bg-slate-700'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
+                    (form.available ?? true) ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Disponible para la venta
+              </span>
+            </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit" isLoading={saveMutation.isPending}>
-              Guardar
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                isLoading={saveMutation.isPending}
+                disabled={uploading}
+              >
+                {uploading ? 'Subiendo...' : 'Guardar'}
+              </Button>
+            </div>
           </div>
         </form>
       </Modal>

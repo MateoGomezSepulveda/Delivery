@@ -55,11 +55,11 @@ export function Modal({
       <div
         className={cn(
           'relative z-10 w-full rounded-2xl border border-slate-200 dark:border-slate-800',
-          'bg-white dark:bg-slate-900 p-6 shadow-2xl transition-all duration-200',
+          'bg-white dark:bg-slate-900 p-5 shadow-2xl transition-all duration-200',
           sizeMap[size],
         )}
       >
-        <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-start justify-between gap-4 pb-3 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h2
               id="modal-title"
@@ -68,7 +68,7 @@ export function Modal({
               {title}
             </h2>
             {description && (
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                 {description}
               </p>
             )}
@@ -83,12 +83,12 @@ export function Modal({
           </button>
         </div>
 
-        <div className="py-5 text-sm text-slate-700 dark:text-slate-200">
+        <div className="py-4 text-sm text-slate-700 dark:text-slate-200">
           {children}
         </div>
 
         {footer && (
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
             {footer}
           </div>
         )}

@@ -14,11 +14,13 @@ import {
   LogOut,
   Mail,
   Package,
+  Phone,
   ShieldCheck,
   Sparkles,
   Tag,
   UploadCloud,
   User as UserIcon,
+  ZoomIn,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { updateUserApi } from '@/api/endpoints/users.api';
@@ -41,6 +43,7 @@ import { MyOrdersPage } from '@/pages/client/MyOrdersPage';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge, RoleBadge } from '@/components/ui/Badge';
+import { Modal } from '@/components/ui/Modal';
 import { cn } from '@/utils/cn';
 
 const RIDER_VEHICLES: {
@@ -95,6 +98,8 @@ export function ProfilePage() {
 
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
@@ -202,6 +207,10 @@ export function ProfilePage() {
     }
   };
 
+  const handleOpenProfileModal = () => {
+    setIsProfileModalOpen(true);
+  };
+
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !email.trim()) {
@@ -214,12 +223,15 @@ export function ProfilePage() {
       const updatedUser = await updateUserApi(user._id, {
         name: name.trim(),
         email: email.trim(),
+        phone: phone.trim() || undefined,
       });
       updateUserState({
         name: updatedUser.name,
         email: updatedUser.email,
+        phone: updatedUser.phone,
       });
       toast.success('Datos de perfil actualizados correctamente');
+      setIsProfileModalOpen(false);
     } catch (error) {
       toast.error('Error al actualizar perfil', {
         description: extractErrorMessage(error),
@@ -265,28 +277,41 @@ export function ProfilePage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      {/* Header Profile Card + S3 Avatar Upload */}
+      {/* Header Profile Card */}
       <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-card flex flex-col sm:flex-row items-center justify-between gap-6">
         <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
           <div className="relative group">
-            {user.avatarUrl ? (
-              <img
-                src={user.avatarUrl}
-                alt={user.name}
-                className="h-24 w-24 rounded-3xl object-cover border-2 border-orange-500 shadow-md"
-              />
-            ) : (
-              <div className="h-24 w-24 rounded-3xl bg-gradient-to-br from-orange-600 to-red-600 text-white font-heading text-2xl font-extrabold flex items-center justify-center shadow-warm">
-                {initials}
+            <button
+              type="button"
+              onClick={handleOpenProfileModal}
+              title="Haz clic para ver tu foto en grande o cambiarla"
+              className="relative block h-24 w-24 rounded-3xl overflow-hidden focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 cursor-pointer"
+            >
+              {user.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt={user.name}
+                  className="h-full w-full object-cover border-2 border-orange-500 rounded-3xl shadow-md transition-transform duration-200 group-hover:scale-105"
+                />
+              ) : (
+                <div className="h-full w-full rounded-3xl bg-gradient-to-br from-orange-600 to-red-600 text-white font-heading text-2xl font-extrabold flex items-center justify-center shadow-warm transition-transform duration-200 group-hover:scale-105">
+                  {initials}
+                </div>
+              )}
+
+              <div className="absolute inset-0 rounded-3xl bg-slate-950/45 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center text-white gap-1">
+                <ZoomIn className="w-5 h-5" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">
+                  Ver Foto
+                </span>
               </div>
-            )}
+            </button>
 
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploadingAvatar}
-              title="Subir nueva foto de perfil a AWS S3"
-              className="absolute -bottom-2 -right-2 h-9 w-9 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center shadow-lg hover:scale-105 transition-transform cursor-pointer"
+              onClick={handleOpenProfileModal}
+              title="Ver o cambiar foto de perfil"
+              className="absolute -bottom-2 -right-2 h-9 w-9 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center shadow-lg hover:bg-orange-600 dark:hover:bg-orange-500 dark:hover:text-white transition-colors duration-200 cursor-pointer"
             >
               <Camera className="w-4 h-4" />
             </button>
@@ -310,6 +335,12 @@ export function ProfilePage() {
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {user.email}
             </p>
+            {user.phone && (
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center justify-center sm:justify-start gap-1.5">
+                <Phone className="w-3.5 h-3.5 text-orange-600" />
+                <span>{user.phone}</span>
+              </p>
+            )}
           </div>
         </div>
 
@@ -341,15 +372,6 @@ export function ProfilePage() {
             }
           >
             Mis Pedidos
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            isLoading={isUploadingAvatar}
-            onClick={() => fileInputRef.current?.click()}
-            leftIcon={<UploadCloud className="w-4 h-4 text-orange-600" />}
-          >
-            Cambiar Foto
           </Button>
           <Button
             variant="danger"
@@ -651,6 +673,15 @@ export function ProfilePage() {
                 helperText="El backend valida que el correo no esté duplicado en otra cuenta."
               />
 
+              <Input
+                label="Número de Celular"
+                type="tel"
+                placeholder="Número de contacto"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                leftIcon={<Phone className="w-4 h-4" />}
+              />
+
               <Button
                 type="submit"
                 variant="primary"
@@ -767,6 +798,62 @@ export function ProfilePage() {
           </div>
         </>
       )}
+
+      {/* Modal exclusivo para Ver Foto en Grande y Cambiar Foto */}
+      <Modal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        title="Foto de Perfil"
+        description="Visualiza tu foto actual o sube una nueva imagen para tu cuenta."
+        size="sm"
+        footer={
+          <div className="flex w-full items-center justify-between gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsProfileModalOpen(false)}
+            >
+              Cerrar
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              isLoading={isUploadingAvatar}
+              onClick={() => fileInputRef.current?.click()}
+              leftIcon={<UploadCloud className="w-4 h-4" />}
+            >
+              {user.avatarUrl ? 'Cambiar Foto' : 'Subir Foto'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="flex flex-col items-center gap-4 py-2">
+          <div className="relative">
+            {user.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                alt={user.name}
+                className="h-56 w-56 sm:h-64 sm:w-64 rounded-3xl object-cover border-4 border-orange-500 shadow-xl"
+              />
+            ) : (
+              <div className="h-56 w-56 sm:h-64 sm:w-64 rounded-3xl bg-gradient-to-br from-orange-600 to-red-600 text-white font-heading text-6xl font-extrabold flex items-center justify-center shadow-xl">
+                {initials}
+              </div>
+            )}
+          </div>
+
+          <div className="text-center space-y-0.5">
+            <p className="text-base font-bold text-slate-900 dark:text-white">
+              {user.name}
+            </p>
+            <p className="text-xs text-slate-400">
+              Formatos compatibles: JPG, PNG, WEBP o AVIF
+            </p>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

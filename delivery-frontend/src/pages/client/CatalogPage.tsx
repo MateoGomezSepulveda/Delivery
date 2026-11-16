@@ -388,7 +388,7 @@ export function CatalogPage() {
             ? categoryNameById.get(
                 typeof selectedProduct.categoryId === 'string'
                   ? selectedProduct.categoryId
-                  : selectedProduct.categoryId?._id,
+                  : (selectedProduct.categoryId?._id ?? ''),
               )
             : undefined
         }

@@ -84,9 +84,11 @@ export async function getAllOrdersAdminApi(
 export async function updateOrderStatusAdminApi(
   orderId: string,
   status: OrderStatus,
+  deliveryId?: string,
 ): Promise<Order> {
   const response = await apiClient.patch<Order>(`/orders/${orderId}/status`, {
     status,
+    ...(deliveryId ? { deliveryId } : {}),
   });
   return response.data;
 }

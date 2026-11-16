@@ -133,10 +133,10 @@ export function ProductDetailModal({
         </div>
       }
     >
-      <div className="space-y-6 max-h-[68vh] overflow-y-auto pr-1">
+      <div className="space-y-4">
         {/* Product Hero Info */}
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-5">
-          <div className="sm:col-span-5 aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800">
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
+          <div className="sm:col-span-5 h-44 sm:h-48 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800">
             <img
               src={product.image || FALLBACK_PRODUCT_IMAGE}
               alt={product.name}
@@ -147,8 +147,8 @@ export function ProductDetailModal({
             />
           </div>
 
-          <div className="sm:col-span-7 flex flex-col justify-between space-y-3">
-            <div className="space-y-2">
+          <div className="sm:col-span-7 flex flex-col justify-between space-y-2.5">
+            <div className="space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
                 {product.available ? (
                   <Badge variant="success">Disponible ahora</Badge>
@@ -164,12 +164,12 @@ export function ProductDetailModal({
                 </Badge>
               </div>
 
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed pt-1">
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed pt-1 whitespace-pre-line line-clamp-4">
                 {product.description}
               </p>
             </div>
 
-            <div className="rounded-xl bg-orange-50/70 dark:bg-orange-950/30 border border-orange-200/70 dark:border-orange-900/50 p-3 flex items-center justify-between">
+            <div className="rounded-xl bg-orange-50/70 dark:bg-orange-950/30 border border-orange-200/70 dark:border-orange-900/50 p-2.5 flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
                 Precio unitario
               </span>
@@ -181,11 +181,11 @@ export function ProductDetailModal({
         </div>
 
         {/* Public Reviews Section (GET /api/v1/reviews/product/:productId) */}
-        <div className="border-t border-slate-100 dark:border-slate-800 pt-5 space-y-4">
+        <div className="border-t border-slate-100 dark:border-slate-800 pt-3.5 space-y-2.5">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white">
-              <MessageSquareText className="w-4 h-4 text-orange-600" />
-              <span>Reseñas Verificadas de Clientes ({totalReviews})</span>
+            <h3 className="text-xs font-bold flex items-center gap-1.5 text-slate-900 dark:text-white">
+              <MessageSquareText className="w-3.5 h-3.5 text-orange-600" />
+              <span>Reseñas Verificadas ({totalReviews})</span>
             </h3>
             <span className="text-[11px] text-slate-400">
               Compras verificadas
@@ -193,18 +193,14 @@ export function ProductDetailModal({
           </div>
 
           {isLoadingReviews ? (
-            <div className="space-y-2.5">
-              <Skeleton className="h-16 w-full rounded-xl" />
-              <Skeleton className="h-16 w-full rounded-xl" />
-            </div>
+            <Skeleton className="h-12 w-full rounded-xl" />
           ) : totalReviews === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-5 text-center text-xs text-slate-500 dark:text-slate-400">
-              Aún no hay reseñas para este producto. ¡Sé el primero en pedirlo y
-              calificarlo cuando recibas tu pedido!
+            <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-3 text-center text-xs text-slate-500 dark:text-slate-400">
+              Aún no hay reseñas para este producto. ¡Sé el primero en calificarlo!
             </div>
           ) : (
-            <div className="space-y-3">
-              {reviews.map((rev) => {
+            <div className="space-y-2">
+              {reviews.slice(0, 2).map((rev) => {
                 const authorName =
                   typeof rev.user === 'object' && rev.user !== null
                     ? (rev.user as ReviewUserPopulated).name

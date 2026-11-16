@@ -95,7 +95,7 @@ export interface OrderUserPopulated {
 export interface Order {
   _id: string;
   userId: OrderUserPopulated | string;
-  deliveryId?: string;
+  deliveryId?: OrderUserPopulated | string | null;
   items: OrderItem[];
   subtotal?: number;
   riderDiscount?: number;

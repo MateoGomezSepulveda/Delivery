@@ -4,7 +4,10 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { Category, CategoryDocument } from './schemas/category.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -17,11 +20,22 @@ export class CategoriesService {
     @InjectModel(Category.name) private categoryModel: Model<CategoryDocument>,
     @Inject(forwardRef(() => ProductsService))
     private productsService: ProductsService,
+    @Optional() @Inject(CACHE_MANAGER) private cacheManager?: Cache,
   ) {}
+
+  private async invalidateCache() {
+    try {
+      await this.cacheManager?.clear();
+    } catch {
+      // Ignorar si Redis no está disponible
+    }
+  }
 
   async create(data: Partial<Category>) {
     const newCategory = new this.categoryModel(data);
-    return newCategory.save();
+    const saved = await newCategory.save();
+    await this.invalidateCache();
+    return saved;
   }
 
   async findAll(paginationQuery: PaginationQueryDto) {
@@ -63,6 +77,7 @@ export class CategoriesService {
     if (!updateCategory) {
       throw new NotFoundException(`Category with ID "${id}" not found`);
     }
+    await this.invalidateCache();
     return updateCategory;
   }
 
@@ -78,6 +93,7 @@ export class CategoriesService {
     if (!deletedCategory) {
       throw new NotFoundException(`Category with ID "${id}" not found`);
     }
+    await this.invalidateCache();
     return deletedCategory;
   }
 }

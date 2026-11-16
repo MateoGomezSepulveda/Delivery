@@ -3,6 +3,7 @@ import {
   IsEnum,
   IsNotEmpty,
   IsOptional,
+  IsString,
   MinLength,
 } from 'class-validator';
 import { Role } from '../../auth/roles.enum';
@@ -23,6 +24,14 @@ export class CreateUserDto {
   @ApiProperty({ example: '123456', description: 'Contraseña del usuario' })
   @MinLength(6)
   password: string;
+
+  @ApiProperty({
+    description: 'Teléfono del usuario',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  phone?: string;
 
   @IsOptional({
     message: 'El rol es opcional',

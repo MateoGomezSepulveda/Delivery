@@ -6,6 +6,10 @@ export interface User {
   email: string;
   role: UserRole;
   phone?: string;
+  isEmailVerified?: boolean;
+  riderRequestStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  vehicleType?: string;
+  plate?: string;
   fcmTokens?: string[];
   avatarUrl?: string;
   createdAt?: string;
@@ -47,6 +51,7 @@ export interface ResetPasswordPayload {
 export interface UpdateProfilePayload {
   name?: string;
   email?: string;
+  phone?: string;
   password?: string;
 }
 
