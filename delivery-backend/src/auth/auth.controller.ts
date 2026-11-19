@@ -81,14 +81,17 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Resend email verification code and link',
+    summary: 'Resend verification code via email or SMS',
   })
   @ApiResponse({
     status: 200,
-    description: 'Verification email re-dispatched if account is pending.',
+    description: 'Verification code re-dispatched if account is pending.',
   })
   resendVerification(@Body() resendDto: ResendVerificationDto) {
-    return this.authService.resendVerification(resendDto.email);
+    return this.authService.resendVerification(
+      resendDto.email,
+      resendDto.channel,
+    );
   }
 
   @Throttle({ default: { limit: 5, ttl: 60000 } })

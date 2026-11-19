@@ -12,6 +12,7 @@ import {
 
 const mockGetCartApi = vi.fn();
 const mockLogoutApi = vi.fn();
+const mockUpdateUserApi = vi.fn();
 const mockNavigate = vi.fn();
 
 vi.mock('@/api/endpoints/cart.api', () => ({
@@ -20,6 +21,10 @@ vi.mock('@/api/endpoints/cart.api', () => ({
 
 vi.mock('@/api/endpoints/auth.api', () => ({
   logoutApi: (...args: unknown[]) => mockLogoutApi(...args),
+}));
+
+vi.mock('@/api/endpoints/users.api', () => ({
+  updateUserApi: (...args: unknown[]) => mockUpdateUserApi(...args),
 }));
 
 vi.mock('@/hooks/useSocket', () => ({
@@ -60,6 +65,7 @@ describe('ClientLayout logout cleanup (Bug #3 & Bug #4)', () => {
         _id: 'u-client-1',
         name: 'Mateo Cliente',
         email: 'mateo@correo.com',
+        phone: '+573001234567',
         role: 'CLIENT',
       },
       accessToken: 'token-1',
@@ -129,5 +135,70 @@ describe('ClientLayout logout cleanup (Bug #3 & Bug #4)', () => {
     ).toBeInTheDocument();
     expect(screen.getByText(DEFAULT_ADDRESS_LABEL)).toBeInTheDocument();
     expect(queryClient.getQueryData(['cart'])).toBeUndefined();
+  });
+
+  it('shows missing phone banner for Google client and opens CompletePhoneModal to save phone', async () => {
+    const user = userEvent.setup();
+    useAuthStore.setState({
+      user: {
+        _id: 'u-google-no-phone',
+        name: 'Camila Google',
+        email: 'camila@gmail.com',
+        role: 'CLIENT',
+        authProviders: ['google'],
+      },
+      isAuthenticated: true,
+    });
+    mockGetCartApi.mockResolvedValue({ items: [], total: 0 });
+    mockUpdateUserApi.mockResolvedValue({
+      _id: 'u-google-no-phone',
+      name: 'Camila Google',
+      email: 'camila@gmail.com',
+      phone: '+573112223344',
+      role: 'CLIENT',
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
+          <ClientLayout />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(
+      screen.getByText(/falta tu número de celular/i),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /agregar celular/i }));
+
+    expect(
+      screen.getByText('Registra tu Número de Celular'),
+    ).toBeInTheDocument();
+
+    await user.type(
+      screen.getByPlaceholderText('Ej. 300 123 4567'),
+      '3112223344',
+    );
+    await user.click(screen.getByRole('button', { name: /guardar celular/i }));
+
+    await waitFor(() => {
+      expect(mockUpdateUserApi).toHaveBeenCalledWith('u-google-no-phone', {
+        phone: '3112223344',
+      });
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(/falta tu número de celular/i),
+      ).not.toBeInTheDocument();
+    });
+    expect(useAuthStore.getState().user?.phone).toBe('+573112223344');
   });
 });

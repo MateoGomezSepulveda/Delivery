@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { MailService } from '../mail/mail.service';
+import { SmsService } from '../sms/sms.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { getModelToken } from '@nestjs/mongoose';
@@ -41,6 +42,12 @@ describe('AuthService', () => {
     sendOrderStatusEmail: jest.fn(),
   };
 
+  const mockSmsService = {
+    sendVerificationSms: jest.fn(),
+    checkVerificationCode: jest.fn(),
+    isConfigured: jest.fn().mockReturnValue(false),
+  };
+
   const mockJwtService = {
     sign: jest.fn().mockReturnValue('mock-access-token'),
   };
@@ -77,6 +84,7 @@ describe('AuthService', () => {
         AuthService,
         { provide: UsersService, useValue: mockUsersService },
         { provide: MailService, useValue: mockMailService },
+        { provide: SmsService, useValue: mockSmsService },
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
         {
@@ -109,11 +117,18 @@ describe('AuthService', () => {
 
   // ─── register ────────────────────────────────────────────────────────────────
   describe('register', () => {
-    it('debe crear el usuario CLIENT sin verificar y enviar correo de verificación', async () => {
-      const dto = { name: 'Test', email: 'test@test.com', password: '123456' };
+    it('debe crear el usuario CLIENT con celular obligatorio y enviar correo de verificación', async () => {
+      const dto = {
+        name: 'Test',
+        email: 'test@test.com',
+        password: '123456',
+        phone: '3001234567',
+      };
       const created = {
         _id: 'user-123',
-        ...dto,
+        name: dto.name,
+        email: dto.email,
+        phone: '+573001234567',
         role: 'CLIENT',
         isEmailVerified: false,
       };
@@ -129,13 +144,21 @@ describe('AuthService', () => {
       const result = await service.register(dto as any);
 
       expect(mockUsersService.create).toHaveBeenCalledWith(
-        { ...dto, role: 'CLIENT' },
+        {
+          name: 'Test',
+          email: 'test@test.com',
+          password: '123456',
+          phone: '+573001234567',
+          role: 'CLIENT',
+        },
         { isEmailVerified: false },
       );
       expect(mockEmailVerificationModel.create).toHaveBeenCalledWith(
         expect.objectContaining({
           user: 'user-123',
           email: 'test@test.com',
+          phone: '+573001234567',
+          channel: 'email',
           code: expect.stringMatching(/^\d{6}$/),
           token: expect.any(String),
         }),
@@ -147,9 +170,60 @@ describe('AuthService', () => {
         expect.stringContaining('http://localhost:5173/verify-email?token='),
       );
       expect(result.requiresEmailVerification).toBe(true);
+      expect(result.verificationChannel).toBe('email');
       expect(result.isEmailVerified).toBe(false);
       expect(result).not.toHaveProperty('devVerificationCode');
       expect(result).not.toHaveProperty('emailPreviewUrl');
+    });
+
+    it('debe enviar verificación por SMS cuando verificationChannel es sms (y respaldo email si Twilio no está configurado)', async () => {
+      const dto = {
+        name: 'Test SMS',
+        email: 'sms@test.com',
+        password: '123456',
+        phone: '+573001234567',
+        verificationChannel: 'sms',
+      };
+      mockUsersService.create.mockResolvedValue({
+        _id: 'user-sms-1',
+        name: dto.name,
+        email: dto.email,
+        phone: '+573001234567',
+        role: 'CLIENT',
+        isEmailVerified: false,
+      });
+      mockEmailVerificationModel.deleteMany.mockResolvedValue({});
+      mockEmailVerificationModel.create.mockResolvedValue({});
+      mockSmsService.sendVerificationSms.mockResolvedValue({
+        sent: false,
+        provider: 'console',
+      });
+      mockMailService.sendEmailVerification.mockResolvedValue({
+        sent: true,
+        provider: 'smtp',
+      });
+
+      const result = await service.register(dto as any);
+
+      expect(mockSmsService.sendVerificationSms).toHaveBeenCalledWith(
+        '+573001234567',
+        expect.stringMatching(/^\d{6}$/),
+      );
+      expect(mockMailService.sendEmailVerification).toHaveBeenCalled();
+      expect(result.verificationChannel).toBe('sms');
+      expect(result.smsDelivered).toBe(false);
+      expect(result.fallbackEmailSent).toBe(true);
+    });
+
+    it('debe rechazar registro si el celular es inválido o falta', async () => {
+      await expect(
+        service.register({
+          name: 'Sin Tel',
+          email: 'sintel@test.com',
+          password: '123456',
+          phone: '123',
+        } as any),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -193,10 +267,76 @@ describe('AuthService', () => {
       });
       expect(mockUsersService.markEmailAsVerified).toHaveBeenCalledWith(
         'user-123',
+        { markPhoneVerified: false },
       );
       expect(result.user.isEmailVerified).toBe(true);
       expect(result.access_token).toBe('mock-access-token');
       expect(result.refresh_token).toBeDefined();
+    });
+
+    it('debe verificar por código SMS y marcar isPhoneVerified: true', async () => {
+      mockEmailVerificationModel.findOne.mockResolvedValue({
+        ...mockVerificationDoc,
+        phone: '+573001234567',
+        channel: 'sms',
+      });
+      mockUsersService.markEmailAsVerified.mockResolvedValue({
+        ...verifiedUser,
+        phone: '+573001234567',
+        isPhoneVerified: true,
+      });
+      mockEmailVerificationModel.deleteMany.mockResolvedValue({});
+      mockRefreshTokenModel.create.mockResolvedValue({});
+
+      const result = await service.verifyEmail({
+        phone: '3001234567',
+        code: '482913',
+      });
+
+      expect(mockEmailVerificationModel.findOne).toHaveBeenCalledWith({
+        phone: '+573001234567',
+        code: '482913',
+      });
+      expect(mockUsersService.markEmailAsVerified).toHaveBeenCalledWith(
+        'user-123',
+        { markPhoneVerified: true },
+      );
+      expect(result.user.isPhoneVerified).toBe(true);
+    });
+
+    it('debe validar código OTP vía Twilio Verify cuando verificationMode es twilio-verify', async () => {
+      mockEmailVerificationModel.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          ...mockVerificationDoc,
+          phone: '+573001234567',
+          channel: 'sms',
+          verificationMode: 'twilio-verify',
+          code: 'TWILIO_VERIFY_MANAGED',
+        });
+      mockSmsService.checkVerificationCode.mockResolvedValue(true);
+      mockUsersService.markEmailAsVerified.mockResolvedValue({
+        ...verifiedUser,
+        phone: '+573001234567',
+        isPhoneVerified: true,
+      });
+      mockEmailVerificationModel.deleteMany.mockResolvedValue({});
+      mockRefreshTokenModel.create.mockResolvedValue({});
+
+      const result = await service.verifyEmail({
+        email: 'test@test.com',
+        code: '987654',
+      });
+
+      expect(mockSmsService.checkVerificationCode).toHaveBeenCalledWith(
+        '+573001234567',
+        '987654',
+      );
+      expect(mockUsersService.markEmailAsVerified).toHaveBeenCalledWith(
+        'user-123',
+        { markPhoneVerified: true },
+      );
+      expect(result.user.isPhoneVerified).toBe(true);
     });
 
     it('debe verificar el correo usando el token del enlace', async () => {

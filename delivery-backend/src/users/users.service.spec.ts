@@ -16,6 +16,7 @@ describe('UsersService', () => {
     select: jest.fn().mockResolvedValue([]),
     countDocuments: jest.fn().mockResolvedValue(0),
     findOne: jest.fn(),
+    findById: jest.fn(),
     findByIdAndUpdate: jest.fn(),
   };
 
@@ -100,5 +101,40 @@ describe('UsersService', () => {
       { new: true },
     );
     expect(result?.avatarUrl).toBe('data:image/jpeg;base64,avatar123');
+  });
+
+  it('debería normalizar el celular colombiano a formato E.164 al actualizar y reiniciar isPhoneVerified', async () => {
+    mockUserModel.findById.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue({
+          _id: 'mi_id_real',
+          phone: '+573001112233',
+        }),
+      }),
+    });
+    mockUserModel.findByIdAndUpdate.mockReturnValue({
+      select: jest.fn().mockResolvedValue({
+        _id: 'mi_id_real',
+        phone: '+573009998877',
+        isPhoneVerified: false,
+      }),
+    });
+
+    const result = await service.update('mi_id_real', {
+      phone: '300 999 8877',
+    });
+
+    expect(mockUserModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      'mi_id_real',
+      { phone: '+573009998877', isPhoneVerified: false },
+      { new: true },
+    );
+    expect(result?.phone).toBe('+573009998877');
+  });
+
+  it('debería rechazar números de celular con formato inválido al actualizar', async () => {
+    await expect(
+      service.update('mi_id_real', { phone: '12345' }),
+    ).rejects.toThrow(BadRequestException);
   });
 });

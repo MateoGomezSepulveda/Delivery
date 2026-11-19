@@ -8,6 +8,7 @@ import {
   CreditCard,
   Lock,
   MapPin,
+  Phone,
   Plus,
   ShieldCheck,
   ShoppingBag,
@@ -17,6 +18,7 @@ import {
 import { getCartApi } from '@/api/endpoints/cart.api';
 import { getMyAddressesApi } from '@/api/endpoints/addresses.api';
 import { createOrderApi, payOrderApi } from '@/api/endpoints/orders.api';
+import { updateUserApi } from '@/api/endpoints/users.api';
 import { useRiderDiscountQuota } from '@/hooks/useRiderDiscountQuota';
 import { extractErrorMessage } from '@/api/axios.client';
 import type { Product } from '@/types/catalog.types';
@@ -24,6 +26,7 @@ import type { Address } from '@/types/order.types';
 import { useCartDrawerStore } from '@/store/useCartDrawerStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { formatCurrency } from '@/utils/formatters';
+import { validatePhoneNumber } from '@/utils/phone';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -43,7 +46,7 @@ function formatAddressString(addr: Address): string {
 export function CheckoutPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
+  const { user, updateUserState } = useAuthStore();
   const {
     openAddressModal,
     activeAddressLabel,
@@ -57,6 +60,11 @@ export function CheckoutPage() {
   );
   const [customAddress, setCustomAddress] = useState<string>('');
   const [isProcessingMp, setIsProcessingMp] = useState(false);
+  const [inlinePhone, setInlinePhone] = useState(user?.phone || '');
+  const [inlinePhoneError, setInlinePhoneError] = useState<string | undefined>();
+  const [isSavingPhone, setIsSavingPhone] = useState(false);
+
+  const hasValidPhone = Boolean(user?.phone?.trim());
 
   const { data: cart, isLoading: loadingCart } = useQuery({
     queryKey: ['cart'],
@@ -125,7 +133,44 @@ export function CheckoutPage() {
     },
   });
 
+  const handleSaveInlinePhone = async () => {
+    if (!user) return;
+    const validationErr = validatePhoneNumber(inlinePhone);
+    if (validationErr) {
+      setInlinePhoneError(validationErr);
+      return;
+    }
+    setInlinePhoneError(undefined);
+    setIsSavingPhone(true);
+    try {
+      const updated = await updateUserApi(user._id, {
+        phone: inlinePhone.trim(),
+      });
+      updateUserState({
+        phone: updated.phone,
+        isPhoneVerified: updated.isPhoneVerified,
+      });
+      toast.success('Número de celular guardado', {
+        description: 'Ya puedes confirmar tu pedido.',
+      });
+    } catch (err) {
+      toast.error('No se pudo guardar el celular', {
+        description: extractErrorMessage(err),
+      });
+    } finally {
+      setIsSavingPhone(false);
+    }
+  };
+
   const handleConfirmOrder = async (payWithMercadoPago: boolean) => {
+    if (!hasValidPhone) {
+      toast.warning('Número de celular obligatorio', {
+        description:
+          'Registra tu número de celular para que el repartidor pueda contactarte antes de confirmar el pedido.',
+      });
+      return;
+    }
+
     const trimmedAddress = customAddress.trim();
     if (!trimmedAddress) {
       toast.warning('Dirección de entrega requerida', {
@@ -482,6 +527,53 @@ export function CheckoutPage() {
               </div>
             </div>
 
+            {!hasValidPhone && (
+              <div
+                role="region"
+                aria-label="Aviso de celular obligatorio"
+                className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/90 dark:bg-amber-950/40 p-4 space-y-3"
+              >
+                <div className="flex items-start gap-2.5 text-xs text-amber-900 dark:text-amber-200">
+                  <Phone className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold">
+                      Número de celular obligatorio para pedir
+                    </p>
+                    <p className="mt-0.5 text-amber-800 dark:text-amber-300">
+                      Registraste tu cuenta sin teléfono. Ingresa tu celular
+                      para coordinar la entrega y desbloquear la confirmación.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-2">
+                  <div className="flex-1">
+                    <Input
+                      aria-label="Número de celular obligatorio"
+                      type="tel"
+                      placeholder="Ej. 300 123 4567"
+                      value={inlinePhone}
+                      onChange={(e) => {
+                        setInlinePhone(e.target.value);
+                        if (inlinePhoneError) setInlinePhoneError(undefined);
+                      }}
+                      leftIcon={<Phone className="w-4 h-4" />}
+                      error={inlinePhoneError}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="md"
+                    isLoading={isSavingPhone}
+                    onClick={handleSaveInlinePhone}
+                    className="sm:mt-0.5 shrink-0"
+                  >
+                    Guardar celular y continuar
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Action Buttons */}
             <div className="space-y-3">
               <Button
@@ -490,7 +582,7 @@ export function CheckoutPage() {
                 size="lg"
                 className="w-full"
                 isLoading={createOrderMutation.isPending && isProcessingMp}
-                disabled={createOrderMutation.isPending}
+                disabled={createOrderMutation.isPending || !hasValidPhone}
                 onClick={() => handleConfirmOrder(true)}
                 leftIcon={<CreditCard className="w-5 h-5" />}
               >
@@ -503,7 +595,7 @@ export function CheckoutPage() {
                 size="md"
                 className="w-full"
                 isLoading={createOrderMutation.isPending && !isProcessingMp}
-                disabled={createOrderMutation.isPending}
+                disabled={createOrderMutation.isPending || !hasValidPhone}
                 onClick={() => handleConfirmOrder(false)}
                 leftIcon={<Truck className="w-4 h-4" />}
               >

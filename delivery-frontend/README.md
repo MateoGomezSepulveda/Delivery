@@ -53,12 +53,12 @@ npm run build
   - Kit de componentes UI base (`Button`, `Input`, `Badge`, `OrderStatusBadge`, `RoleBadge`, `Modal`, `Drawer`, `Skeleton`, `EmptyState`).
   - Layouts Multi-Rol (`ClientLayout`, `DeliveryLayout`, `AdminLayout`) e indicador de salud en tiempo real conectado a `GET /api/v1/health`.
 
-- ✅ **Fase 1 (Autenticación, Seguridad de Sesión, RBAC y Perfil con S3)**:
-  - Servicios tipados `auth.api.ts`, `users.api.ts` y `uploads.api.ts` (con conversión automática `<canvas>` de `.jfif`/`.jpeg`/`.avif` a `.jpg`) + utilidad `jwt.ts` para decodificar claims (`sub`, `email`, `role`, `exp`).
-  - Store persistente `useAuthStore.ts` con hidratación automática de sesión contra `GET /api/v1/users/:id` y cierre de sesión seguro (`POST /api/v1/auth/logout`).
-  - Vistas de identidad en `AuthLayout`: `LoginPage` (con manejo de Rate Limit `429` y redirección por rol), `RegisterPage` (con auto-login), `ForgotPasswordPage` (con soporte `devToken`) y `ResetPasswordPage`.
+- ✅ **Fase 1 (Autenticación, Celular Obligatorio, Verificación Dual SMS/Gmail, OAuth 2.0, Seguridad de Sesión, RBAC y Perfil con S3)**:
+  - Servicios tipados `auth.api.ts`, `users.api.ts` y `uploads.api.ts` (con conversión automática `<canvas>` de `.jfif`/`.jpeg`/`.avif` a `.jpg` y compresión de avatares a 320px persistidos en MongoDB) + utilidades `jwt.ts` y `phone.ts`.
+  - Store persistente `useAuthStore.ts` con hidratación automática de sesión contra `GET /api/v1/users/:id`, migración silenciosa de avatares previos, limpieza total al cerrar sesión (`resetCartUi` + `queryClient.clear`) y cierre de sesión seguro (`POST /api/v1/auth/logout`).
+  - Vistas de identidad en `AuthLayout`: `LoginPage` (Rate Limit `429`, redirección por rol y aviso de verificación pendiente), `RegisterPage` (celular obligatorio, selector **Correo Gmail / SMS al celular** y flujo en 2 pasos), `VerifyEmailPage` (6 casillas OTP, verificación por enlace `?token=...` y reenvío por Correo o SMS), `SocialAuthButtons` (**Google y Facebook OAuth 2.0** con exigencia de celular vía `CompletePhoneModal` / banner `ClientLayout` / bloqueo en `CheckoutPage`), `ForgotPasswordPage` y `ResetPasswordPage` (flujo real SMTP sin `devToken`).
   - Guards de navegación `ProtectedRoute` y `RoleGuard` (`CLIENT`, `DELIVERY`, `ADMIN`).
-  - Página `ProfilePage` (`/profile`) con edición de datos personales (`PATCH /users/:id`), cambio de contraseña, prueba manual de rotación de Refresh Token y subida de avatar a AWS S3 (`POST /uploads/avatars`).
+  - Página `ProfilePage` (`/profile`) con edición de datos personales y celular (`PATCH /users/:id`), badges de verificación de correo y celular, tarjeta de cuentas vinculadas Google/Facebook, modal ampliado de foto de perfil con subida a AWS S3 (`POST /uploads/avatars`) y activación de Socio Repartidor (`-10%` en 4 pedidos/mes).
 
 - ✅ **Fase 2 (Catálogo Gastronómico, Búsqueda Avanzada y Reseñas Públicas)**:
   - Servicios `categories.api.ts`, `products.api.ts` (incluyendo sembrador automático `seedDemoCatalogApi`) y `reviews.api.ts`.
@@ -90,7 +90,7 @@ npm run build
 
 - ✅ **Fase 8 (Calidad, Testing, PWA, Code Splitting y Dockerización)**:
   - **ESLint 9 (`eslint.config.js`)** + scripts `lint`, `typecheck`, `test`, `test:watch` y `test:e2e`.
-  - **Tests Unitarios y de Componentes (Vitest + Testing Library + jsdom)**: 17 archivos / 49 tests (`jwt.test.ts`, `formatters.test.ts`, `browserNotifications.test.ts`, `useAuthStore.test.ts`, `useCartMutations.test.tsx`, `CouponInputBox.test.tsx`, `SocialAuthButtons.test.tsx`, `ClientLayout.test.tsx`, `UserAvatar.test.tsx`, `LoginPage.test.tsx`, `RegisterPage.test.tsx`, `VerifyEmailPage.test.tsx`, `PasswordRecovery.test.tsx`, `ProfilePage.test.tsx`, `CheckoutPage.test.tsx`, `AdminOrdersPage.test.tsx` y `AdminUsersPage.test.tsx`).
+  - **Tests Unitarios y de Componentes (Vitest + Testing Library + jsdom)**: 17 archivos / 53 tests (`jwt.test.ts`, `formatters.test.ts`, `browserNotifications.test.ts`, `useAuthStore.test.ts`, `useCartMutations.test.tsx`, `CouponInputBox.test.tsx`, `SocialAuthButtons.test.tsx`, `ClientLayout.test.tsx`, `UserAvatar.test.tsx`, `LoginPage.test.tsx`, `RegisterPage.test.tsx`, `VerifyEmailPage.test.tsx`, `PasswordRecovery.test.tsx`, `ProfilePage.test.tsx`, `CheckoutPage.test.tsx`, `AdminOrdersPage.test.tsx` y `AdminUsersPage.test.tsx`).
   - **Tests E2E Multirrol (`e2e/delivery-flow.spec.ts` con Playwright)**: flujo completo Cliente -> Admin -> Repartidor -> Cliente reseña.
   - **Performance & PWA**: `React.lazy` + `Suspense` en `AppRouter.tsx`, `manualChunks` en `vite.config.ts`, `public/manifest.webmanifest`, íconos PNG y SVG (`192`/`512`) y Service Workers (`public/sw.js` + `public/firebase-messaging-sw.js`).
   - **Docker Producción (Non-Root)**: `Dockerfile` multi-stage con `nginxinc/nginx-unprivileged:1.27-alpine` en puerto `8080`, `nginx.conf` (Gzip, caché `/assets/`, no-cache para SWs, `/healthz`, SPA fallback) y `.dockerignore`.

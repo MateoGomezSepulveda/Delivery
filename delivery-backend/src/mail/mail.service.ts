@@ -1,6 +1,13 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as dns from 'dns';
 import * as nodemailer from 'nodemailer';
+
+const SMTP_CONNECTION_TIMEOUT_MS = 4000;
+const SMTP_GREETING_TIMEOUT_MS = 4000;
+const SMTP_SOCKET_TIMEOUT_MS = 6000;
+const SMTP_DNS_TIMEOUT_MS = 3000;
+const SEND_MAIL_OVERALL_TIMEOUT_MS = 10000;
 
 export interface SendMailResult {
   sent: boolean;
@@ -52,6 +59,12 @@ export class MailService {
       : rawSmtpPass;
 
     if (smtpHost && smtpUser && smtpPass) {
+      try {
+        dns.setDefaultResultOrder('ipv4first');
+      } catch {
+        // Ignore if runtime does not support changing DNS result order
+      }
+
       const smtpPort = Number(
         this.configService?.get<string>('SMTP_PORT') ||
           process.env.SMTP_PORT ||
@@ -69,6 +82,10 @@ export class MailService {
         host: smtpHost,
         port: smtpPort,
         secure,
+        connectionTimeout: SMTP_CONNECTION_TIMEOUT_MS,
+        greetingTimeout: SMTP_GREETING_TIMEOUT_MS,
+        socketTimeout: SMTP_SOCKET_TIMEOUT_MS,
+        dnsTimeout: SMTP_DNS_TIMEOUT_MS,
         auth: {
           user: smtpUser,
           pass: smtpPass,
@@ -85,6 +102,10 @@ export class MailService {
         host: 'smtp.ethereal.email',
         port: 587,
         secure: false,
+        connectionTimeout: SMTP_CONNECTION_TIMEOUT_MS,
+        greetingTimeout: SMTP_GREETING_TIMEOUT_MS,
+        socketTimeout: SMTP_SOCKET_TIMEOUT_MS,
+        dnsTimeout: SMTP_DNS_TIMEOUT_MS,
         auth: {
           user: testAccount.user,
           pass: testAccount.pass,
@@ -130,6 +151,38 @@ export class MailService {
       .replace(/'/g, '&#39;');
   }
 
+  private async sendMailWithTimeout(
+    transporter: nodemailer.Transporter,
+    options: nodemailer.SendMailOptions,
+    timeoutMs = SEND_MAIL_OVERALL_TIMEOUT_MS,
+  ): Promise<nodemailer.SentMessageInfo> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const sendPromise = transporter.sendMail(options);
+
+    try {
+      return await Promise.race([
+        sendPromise,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            reject(
+              new Error(
+                `SMTP sendMail excedió el tiempo límite de ${timeoutMs}ms`,
+              ),
+            );
+          }, timeoutMs);
+        }),
+      ]);
+    } catch (error) {
+      // Evita UnhandledPromiseRejection si sendMail falla después del timeout
+      sendPromise.catch(() => undefined);
+      throw error;
+    } finally {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    }
+  }
+
   async sendEmailVerification(
     to: string,
     name: string,
@@ -149,7 +202,7 @@ export class MailService {
     }
 
     try {
-      const info = await transporter.sendMail({
+      const info = await this.sendMailWithTimeout(transporter, {
         from: this.getFromAddress(),
         to,
         subject: `${code} es tu código de verificación — DeliveryPro`,
@@ -234,7 +287,7 @@ export class MailService {
     }
 
     try {
-      const info = await transporter.sendMail({
+      const info = await this.sendMailWithTimeout(transporter, {
         from: this.getFromAddress(),
         to,
         subject: 'Restablece tu contraseña — DeliveryPro',
@@ -306,7 +359,7 @@ export class MailService {
       return;
     }
     try {
-      const info = await transporter.sendMail({
+      const info = await this.sendMailWithTimeout(transporter, {
         from: this.getFromAddress(),
         to,
         subject: `Actualización de tu pedido #${orderId.substring(0, 8)}`,

@@ -92,7 +92,9 @@ export function SocialAuthButtons({ disabled = false }: SocialAuthButtonsProps) 
 
     if (response.isNewUser) {
       toast.success(`¡Bienvenido a DeliveryPro, ${response.user.name}!`, {
-        description: `Tu cuenta fue creada y verificada automáticamente con ${providerLabel}.`,
+        description: !response.user.phone?.trim()
+          ? 'Registra tu número de celular desde el aviso superior o en el checkout para realizar tu primer pedido.'
+          : `Tu cuenta fue creada y verificada automáticamente con ${providerLabel}.`,
       });
     } else if (response.linkedExistingAccount) {
       toast.success(`¡${providerLabel} vinculado a tu cuenta!`, {
@@ -100,7 +102,9 @@ export function SocialAuthButtons({ disabled = false }: SocialAuthButtonsProps) 
       });
     } else {
       toast.success(`¡Bienvenido de nuevo, ${response.user.name}!`, {
-        description: `Sesión iniciada con ${providerLabel}.`,
+        description: !response.user.phone?.trim()
+          ? 'Recuerda registrar tu número de celular antes de confirmar un pedido.'
+          : `Sesión iniciada con ${providerLabel}.`,
       });
     }
 

@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   ConflictException,
   HttpStatus,
+  Optional,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -14,6 +15,8 @@ import { Model, Types } from 'mongoose';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
 import { MailService } from '../mail/mail.service';
+import { SmsService } from '../sms/sms.service';
+import { normalizePhoneNumber } from '../common/utils/phone.util';
 import { RegisterDto } from './dto/register.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { GoogleAuthDto } from './dto/google-auth.dto';
@@ -48,6 +51,7 @@ export class AuthService {
     private passwordResetModel: Model<PasswordResetDocument>,
     @InjectModel(EmailVerification.name)
     private emailVerificationModel: Model<EmailVerificationDocument>,
+    @Optional() private readonly smsService?: SmsService,
   ) {}
 
   private getFrontendUrl(): string {
@@ -103,12 +107,25 @@ export class AuthService {
     };
   }
 
-  private async createAndSendEmailVerification(
+  private async createAndSendVerification(
     userId: string,
     email: string,
     name: string,
+    options?: { phone?: string | null; channel?: 'email' | 'sms' },
   ) {
     await this.emailVerificationModel.deleteMany({ user: userId });
+
+    const channel: 'email' | 'sms' =
+      options?.channel === 'sms' ? 'sms' : 'email';
+    const normalizedPhone = options?.phone
+      ? normalizePhoneNumber(options.phone)
+      : null;
+
+    if (channel === 'sms' && !normalizedPhone) {
+      throw new BadRequestException(
+        'Esta cuenta no tiene un número de celular registrado para recibir SMS.',
+      );
+    }
 
     const code = crypto.randomInt(100000, 1000000).toString();
     const token = crypto.randomBytes(32).toString('hex');
@@ -116,16 +133,73 @@ export class AuthService {
       Date.now() + EMAIL_VERIFICATION_TTL_MINUTES * 60 * 1000,
     );
 
+    const verificationUrl = `${this.getFrontendUrl()}/verify-email?token=${token}`;
+
+    if (channel === 'sms' && normalizedPhone) {
+      const smsResult = await this.smsService?.sendVerificationSms(
+        normalizedPhone,
+        code,
+      );
+      const smsDelivered = Boolean(smsResult?.sent);
+      const verificationMode: 'local' | 'twilio-verify' =
+        smsDelivered && smsResult?.provider === 'twilio-verify'
+          ? 'twilio-verify'
+          : 'local';
+
+      await this.emailVerificationModel.create({
+        user: userId,
+        email: email.trim().toLowerCase(),
+        phone: normalizedPhone,
+        channel,
+        verificationMode,
+        code:
+          verificationMode === 'twilio-verify'
+            ? 'TWILIO_VERIFY_MANAGED'
+            : code,
+        token,
+        attempts: 0,
+        expiresAt,
+      });
+
+      if (!smsDelivered) {
+        await this.mailService.sendEmailVerification(
+          email,
+          name,
+          code,
+          verificationUrl,
+        );
+        return {
+          code,
+          token,
+          channel: 'sms' as const,
+          smsDelivered: false,
+          fallbackEmailSent: true,
+          sent: true,
+        };
+      }
+
+      return {
+        code,
+        token,
+        channel: 'sms' as const,
+        smsDelivered: true,
+        fallbackEmailSent: false,
+        sent: true,
+      };
+    }
+
     await this.emailVerificationModel.create({
       user: userId,
       email: email.trim().toLowerCase(),
+      ...(normalizedPhone ? { phone: normalizedPhone } : {}),
+      channel,
+      verificationMode: 'local',
       code,
       token,
       attempts: 0,
       expiresAt,
     });
 
-    const verificationUrl = `${this.getFrontendUrl()}/verify-email?token=${token}`;
     const mailResult = await this.mailService.sendEmailVerification(
       email,
       name,
@@ -136,80 +210,139 @@ export class AuthService {
     return {
       code,
       token,
+      channel: 'email' as const,
+      smsDelivered: false,
+      fallbackEmailSent: false,
       previewUrl: mailResult?.previewUrl,
       sent: mailResult?.sent ?? false,
     };
   }
 
   async register(registerDto: RegisterDto) {
+    const normalizedPhone = normalizePhoneNumber(registerDto.phone);
+    if (!normalizedPhone) {
+      throw new BadRequestException(
+        'Ingresa un número de celular válido (mínimo 10 dígitos, ej. 300 123 4567).',
+      );
+    }
+
+    const channel: 'email' | 'sms' =
+      registerDto.verificationChannel === 'sms' ? 'sms' : 'email';
+
     const createdUser = await this.userService.create(
       {
-        ...registerDto,
+        name: registerDto.name,
+        email: registerDto.email,
+        password: registerDto.password,
+        phone: normalizedPhone,
         role: Role.CLIENT, // Siempre CLIENT en registro público
       },
       { isEmailVerified: false },
     );
 
-    await this.createAndSendEmailVerification(
+    const dispatch = await this.createAndSendVerification(
       createdUser._id.toString(),
       createdUser.email,
       createdUser.name,
+      { phone: normalizedPhone, channel },
     );
+
+    const message =
+      channel === 'sms'
+        ? dispatch.smsDelivered
+          ? 'Cuenta creada con éxito. Te enviamos un código de 6 dígitos por SMS a tu celular.'
+          : 'Cuenta creada con éxito. Enviamos tu código de 6 dígitos a tu correo electrónico como respaldo mientras se configura Twilio SMS.'
+        : 'Cuenta creada con éxito. Te enviamos un código y un enlace de verificación a tu correo electrónico.';
 
     return {
       ...createdUser,
       requiresEmailVerification: true,
-      message:
-        'Cuenta creada con éxito. Te enviamos un código y un enlace de verificación a tu correo electrónico.',
+      verificationChannel: dispatch.channel,
+      smsDelivered: dispatch.smsDelivered,
+      fallbackEmailSent: dispatch.fallbackEmailSent,
+      message,
     };
   }
 
   async verifyEmail(dto: VerifyEmailDto) {
     const token = dto.token?.trim();
     const email = dto.email?.trim().toLowerCase();
+    const phone = dto.phone ? normalizePhoneNumber(dto.phone) : null;
     const code = dto.code?.trim();
 
-    if (!token && (!email || !code)) {
+    if (!token && (!code || (!email && !phone))) {
       throw new BadRequestException(
-        'Debes ingresar el código de 6 dígitos junto con tu correo, o usar el enlace de verificación.',
+        'Debes ingresar el código de 6 dígitos junto con tu correo o celular, o usar el enlace de verificación.',
       );
     }
 
-    const verificationDoc = token
+    let verificationDoc = token
       ? await this.emailVerificationModel.findOne({ token })
-      : await this.emailVerificationModel.findOne({ email, code });
+      : phone && !email
+        ? await this.emailVerificationModel.findOne({ phone, code })
+        : await this.emailVerificationModel.findOne({ email, code });
 
     if (!verificationDoc) {
-      if (email && code) {
-        const existingUser = await this.userService.findByEmail(email);
-        if (existingUser?.isEmailVerified) {
-          throw new BadRequestException(
-            'Este correo electrónico ya fue verificado. Ya puedes iniciar sesión.',
-          );
-        }
-
-        const activeDoc = await this.emailVerificationModel.findOne({ email });
-        if (activeDoc) {
-          const nextAttempts = (activeDoc.attempts ?? 0) + 1;
-          if (nextAttempts >= MAX_VERIFICATION_ATTEMPTS) {
-            await this.emailVerificationModel.deleteOne({ _id: activeDoc._id });
+      if (!token && code && (email || phone)) {
+        if (email) {
+          const existingUser = await this.userService.findByEmail(email);
+          if (existingUser?.isEmailVerified) {
             throw new BadRequestException(
-              'Demasiados intentos fallidos. Solicita un nuevo código de verificación.',
+              'Esta cuenta ya fue verificada. Ya puedes iniciar sesión.',
             );
           }
-          await this.emailVerificationModel.updateOne(
-            { _id: activeDoc._id },
-            { attempts: nextAttempts },
-          );
-          throw new BadRequestException(
-            'El código de verificación es incorrecto. Verifica e intenta de nuevo.',
-          );
+        }
+
+        const activeDoc = email
+          ? await this.emailVerificationModel.findOne({ email })
+          : await this.emailVerificationModel.findOne({ phone });
+        if (activeDoc) {
+          if (activeDoc.expiresAt < new Date()) {
+            await this.emailVerificationModel.deleteOne({ _id: activeDoc._id });
+            throw new BadRequestException(
+              'El código o enlace de verificación ha expirado. Solicita uno nuevo.',
+            );
+          }
+
+          if (
+            activeDoc.verificationMode === 'twilio-verify' &&
+            activeDoc.phone
+          ) {
+            const approved = await this.smsService?.checkVerificationCode(
+              activeDoc.phone,
+              code,
+            );
+            if (approved) {
+              verificationDoc = activeDoc;
+            }
+          }
+
+          if (!verificationDoc) {
+            const nextAttempts = (activeDoc.attempts ?? 0) + 1;
+            if (nextAttempts >= MAX_VERIFICATION_ATTEMPTS) {
+              await this.emailVerificationModel.deleteOne({
+                _id: activeDoc._id,
+              });
+              throw new BadRequestException(
+                'Demasiados intentos fallidos. Solicita un nuevo código de verificación.',
+              );
+            }
+            await this.emailVerificationModel.updateOne(
+              { _id: activeDoc._id },
+              { attempts: nextAttempts },
+            );
+            throw new BadRequestException(
+              'El código de verificación es incorrecto. Verifica e intenta de nuevo.',
+            );
+          }
         }
       }
 
-      throw new BadRequestException(
-        'El código o enlace de verificación es inválido o ya fue utilizado.',
-      );
+      if (!verificationDoc) {
+        throw new BadRequestException(
+          'El código o enlace de verificación es inválido o ya fue utilizado.',
+        );
+      }
     }
 
     if (verificationDoc.expiresAt < new Date()) {
@@ -221,6 +354,7 @@ export class AuthService {
 
     const verifiedUser = await this.userService.markEmailAsVerified(
       verificationDoc.user.toString(),
+      { markPhoneVerified: verificationDoc.channel === 'sms' },
     );
 
     if (!verifiedUser) {
@@ -235,13 +369,13 @@ export class AuthService {
     const tokens = await this.issueTokensForUser(verifiedUser);
 
     return {
-      message: '¡Correo electrónico verificado con éxito!',
+      message: '¡Cuenta verificada con éxito!',
       user: verifiedUser,
       ...tokens,
     };
   }
 
-  async resendVerification(email: string) {
+  async resendVerification(email: string, channel: 'email' | 'sms' = 'email') {
     const normalizedEmail = email.trim().toLowerCase();
     const user = await this.userService.findByEmail(normalizedEmail);
 
@@ -249,6 +383,7 @@ export class AuthService {
       return {
         message:
           'Si el correo está registrado y pendiente de verificación, enviamos un nuevo código.',
+        verificationChannel: channel,
       };
     }
 
@@ -256,19 +391,29 @@ export class AuthService {
       return {
         alreadyVerified: true,
         message:
-          'Este correo electrónico ya está verificado. Ya puedes iniciar sesión.',
+          'Esta cuenta ya está verificada. Ya puedes iniciar sesión.',
       };
     }
 
-    await this.createAndSendEmailVerification(
+    const dispatch = await this.createAndSendVerification(
       user._id.toString(),
       user.email,
       user.name,
+      { phone: user.phone, channel },
     );
 
+    const message =
+      channel === 'sms'
+        ? dispatch.smsDelivered
+          ? 'Te enviamos un nuevo código de 6 dígitos por SMS a tu celular.'
+          : 'Enviamos un nuevo código de 6 dígitos a tu correo electrónico como respaldo mientras se configura Twilio SMS.'
+        : 'Te enviamos un nuevo código y enlace de verificación a tu correo electrónico.';
+
     return {
-      message:
-        'Te enviamos un nuevo código y enlace de verificación a tu correo electrónico.',
+      message,
+      verificationChannel: dispatch.channel,
+      smsDelivered: dispatch.smsDelivered,
+      fallbackEmailSent: dispatch.fallbackEmailSent,
     };
   }
 

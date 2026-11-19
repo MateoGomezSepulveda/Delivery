@@ -67,6 +67,7 @@ import { Input } from '@/components/ui/Input';
 import { Badge, RoleBadge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { validatePhoneNumber } from '@/utils/phone';
 import { cn } from '@/utils/cn';
 
 const RIDER_VEHICLES: {
@@ -288,6 +289,15 @@ export function ProfilePage() {
       return;
     }
 
+    const trimmedPhone = phone.trim();
+    if (user.role !== 'ADMIN' || trimmedPhone) {
+      const phoneError = validatePhoneNumber(trimmedPhone);
+      if (phoneError) {
+        toast.error(phoneError);
+        return;
+      }
+    }
+
     const emailChanged =
       email.trim().toLowerCase() !== user.email.trim().toLowerCase();
 
@@ -296,13 +306,14 @@ export function ProfilePage() {
       const updatedUser = await updateUserApi(user._id, {
         name: name.trim(),
         email: email.trim(),
-        phone: phone.trim() || undefined,
+        phone: trimmedPhone || undefined,
       });
       updateUserState({
         name: updatedUser.name,
         email: updatedUser.email,
         phone: updatedUser.phone,
         isEmailVerified: updatedUser.isEmailVerified,
+        isPhoneVerified: updatedUser.isPhoneVerified,
       });
       if (emailChanged && updatedUser.isEmailVerified === false) {
         toast.success('Datos actualizados. Verifica tu nuevo correo', {
@@ -595,11 +606,22 @@ export function ProfilePage() {
                 </div>
               ) : null}
             </div>
-            {user.phone && (
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center justify-center sm:justify-start gap-1.5">
-                <Phone className="w-3.5 h-3.5 text-orange-600" />
-                <span>{user.phone}</span>
-              </p>
+            {user.phone ? (
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5 text-orange-600" />
+                  <span>{user.phone}</span>
+                </p>
+                {user.isPhoneVerified && (
+                  <Badge variant="success">Celular verificado</Badge>
+                )}
+              </div>
+            ) : (
+              user.role !== 'ADMIN' && (
+                <div className="flex items-center justify-center sm:justify-start">
+                  <Badge variant="warning">Celular requerido para pedir</Badge>
+                </div>
+              )
             )}
           </div>
         </div>

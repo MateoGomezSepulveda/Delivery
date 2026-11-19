@@ -13,6 +13,7 @@ const mockGetMyAddressesApi = vi.fn();
 const mockCreateOrderApi = vi.fn();
 const mockPayOrderApi = vi.fn();
 const mockGetRiderDiscountQuotaApi = vi.fn();
+const mockUpdateUserApi = vi.fn();
 const mockNavigate = vi.fn();
 const mockToastSuccess = vi.fn();
 const mockToastError = vi.fn();
@@ -32,6 +33,10 @@ vi.mock('@/api/endpoints/orders.api', () => ({
   payOrderApi: (...args: unknown[]) => mockPayOrderApi(...args),
   getRiderDiscountQuotaApi: (...args: unknown[]) =>
     mockGetRiderDiscountQuotaApi(...args),
+}));
+
+vi.mock('@/api/endpoints/users.api', () => ({
+  updateUserApi: (...args: unknown[]) => mockUpdateUserApi(...args),
 }));
 
 vi.mock('@/components/addresses/AddressesModal', () => ({
@@ -118,6 +123,7 @@ describe('CheckoutPage', () => {
         _id: 'user-1',
         name: 'Cliente',
         email: 'cliente@correo.com',
+        phone: '+573001234567',
         role: 'CLIENT',
       },
       accessToken: 'tok',
@@ -222,6 +228,7 @@ describe('CheckoutPage', () => {
         _id: 'rider-1',
         name: 'Rider Test',
         email: 'rider@correo.com',
+        phone: '+573001234567',
         role: 'DELIVERY',
       },
       isAuthenticated: true,
@@ -245,5 +252,57 @@ describe('CheckoutPage', () => {
     expect(
       screen.queryByText(/Beneficio Socio Mensajero/i),
     ).not.toBeInTheDocument();
+  });
+
+  it('blocks order confirmation for Google user without phone until inline phone is saved', async () => {
+    const user = userEvent.setup();
+    useAuthStore.setState({
+      user: {
+        _id: 'google-user-1',
+        name: 'Ana Google',
+        email: 'ana@gmail.com',
+        role: 'CLIENT',
+        authProviders: ['google'],
+      },
+      isAuthenticated: true,
+    });
+    mockGetCartApi.mockResolvedValue(activeCart);
+    mockGetMyAddressesApi.mockResolvedValue([defaultAddress]);
+    mockUpdateUserApi.mockResolvedValue({
+      _id: 'google-user-1',
+      name: 'Ana Google',
+      email: 'ana@gmail.com',
+      phone: '+573105554433',
+      role: 'CLIENT',
+    });
+
+    renderCheckoutPage();
+
+    const confirmBtn = await screen.findByRole('button', {
+      name: /confirmar pedido y ver seguimiento/i,
+    });
+    expect(confirmBtn).toBeDisabled();
+    expect(
+      screen.getByText(/número de celular obligatorio para pedir/i),
+    ).toBeInTheDocument();
+
+    await user.type(
+      screen.getByLabelText('Número de celular obligatorio'),
+      '3105554433',
+    );
+    await user.click(
+      screen.getByRole('button', { name: /guardar celular y continuar/i }),
+    );
+
+    await waitFor(() => {
+      expect(mockUpdateUserApi).toHaveBeenCalledWith('google-user-1', {
+        phone: '3105554433',
+      });
+    });
+
+    await waitFor(() => {
+      expect(confirmBtn).toBeEnabled();
+    });
+    expect(useAuthStore.getState().user?.phone).toBe('+573105554433');
   });
 });

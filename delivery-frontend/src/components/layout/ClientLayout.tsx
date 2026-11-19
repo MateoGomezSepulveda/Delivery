@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -7,6 +8,7 @@ import {
   LogIn,
   LogOut,
   MapPin,
+  Phone,
   ShoppingBag,
   User as UserIcon,
   UserPlus,
@@ -18,6 +20,7 @@ import { RoleBadge } from '@/components/ui/Badge';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { CartDrawer } from '@/components/cart/CartDrawer';
 import { AddressesModal } from '@/components/addresses/AddressesModal';
+import { CompletePhoneModal } from '@/components/auth/CompletePhoneModal';
 import { useCartDrawerStore } from '@/store/useCartDrawerStore';
 import { useSocket } from '@/hooks/useSocket';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -31,6 +34,11 @@ export function ClientLayout() {
     useCartDrawerStore();
   const { user, isAuthenticated, logout } = useAuthStore();
   const { connected: socketConnected } = useSocket();
+  const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
+
+  const needsPhoneRegistration = Boolean(
+    isAuthenticated && user && user.role !== 'ADMIN' && !user.phone?.trim(),
+  );
 
   const { data: cart } = useQuery({
     queryKey: ['cart'],
@@ -196,14 +204,46 @@ export function ClientLayout() {
         </div>
       </header>
 
+      {needsPhoneRegistration && (
+        <div
+          role="region"
+          aria-label="Registro de celular obligatorio"
+          className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pt-6"
+        >
+          <div className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/90 dark:bg-amber-950/40 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200">
+            <div className="flex items-center gap-2.5">
+              <Phone className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>
+                <strong>Falta tu número de celular:</strong> regístralo ahora
+                para poder confirmar tus pedidos y coordinar la entrega.
+              </span>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsPhoneModalOpen(true)}
+              leftIcon={<Phone className="w-3.5 h-3.5" />}
+              className="shrink-0"
+            >
+              Agregar celular
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pt-8 pb-16">
         <Outlet />
       </main>
 
-      {/* Slide-over Cart Drawer & Addresses Modal */}
+      {/* Slide-over Cart Drawer, Addresses Modal & Complete Phone Modal */}
       <CartDrawer />
       <AddressesModal />
+      <CompletePhoneModal
+        isOpen={isPhoneModalOpen}
+        onClose={() => setIsPhoneModalOpen(false)}
+      />
 
       {/* Footer */}
       <footer className="border-t border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 py-6">

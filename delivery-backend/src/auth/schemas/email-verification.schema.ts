@@ -12,6 +12,15 @@ export class EmailVerification {
   @Prop({ required: true, lowercase: true, trim: true, index: true })
   email: string;
 
+  @Prop({ type: String, trim: true, index: true })
+  phone?: string;
+
+  @Prop({ type: String, enum: ['email', 'sms'], default: 'email' })
+  channel: 'email' | 'sms';
+
+  @Prop({ type: String, enum: ['local', 'twilio-verify'], default: 'local' })
+  verificationMode?: 'local' | 'twilio-verify';
+
   @Prop({ required: true })
   code: string;
 

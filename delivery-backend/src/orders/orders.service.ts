@@ -16,6 +16,7 @@ import { MailService } from 'src/mail/mail.service';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { UsersService } from 'src/users/users.service';
 import { CouponsService } from 'src/coupons/coupons.service';
+import { normalizePhoneNumber } from 'src/common/utils/phone.util';
 import { EventsGateway } from '../events/events/events.gateway';
 import { QueuesService } from '../queues/queues.service';
 
@@ -91,6 +92,16 @@ export class OrdersService {
   }
 
   async createOrder(userId: string, address: string, couponCode?: string) {
+    const user = await this.usersService.findOne(userId);
+    if (!user?.phone || !normalizePhoneNumber(user.phone)) {
+      throw new BadRequestException({
+        statusCode: 400,
+        code: 'PHONE_REQUIRED',
+        message:
+          'Debes registrar un número de celular válido antes de realizar un pedido.',
+      });
+    }
+
     const cart = await this.cartService.getActiveCart(userId);
 
     if (!cart.items.length) {

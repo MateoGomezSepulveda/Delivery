@@ -14,11 +14,14 @@ import {
   Check,
   CheckCircle2,
   Clock,
+  Info,
   Loader2,
   Mail,
   MailCheck,
+  MessageSquare,
   RefreshCw,
   ShieldCheck,
+  Smartphone,
 } from 'lucide-react';
 import {
   resendVerificationApi,
@@ -26,7 +29,8 @@ import {
 } from '@/api/endpoints/auth.api';
 import { extractErrorMessage, setStoredTokens } from '@/api/axios.client';
 import { useAuthStore } from '@/store/useAuthStore';
-import type { User } from '@/types/auth.types';
+import type { User, VerificationChannel } from '@/types/auth.types';
+import { formatPhoneDisplay } from '@/utils/phone';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/utils/cn';
@@ -36,7 +40,11 @@ const RESEND_COOLDOWN_SECONDS = 60;
 
 interface VerifyEmailLocationState {
   email?: string;
+  phone?: string;
   name?: string;
+  channel?: VerificationChannel;
+  smsDelivered?: boolean;
+  fallbackEmailSent?: boolean;
   justRegistered?: boolean;
 }
 
@@ -59,6 +67,13 @@ export function VerifyEmailPage() {
   const initialEmail = locationState.email || emailFromUrl || '';
 
   const [email, setEmail] = useState(initialEmail);
+  const [phone] = useState(locationState.phone || '');
+  const [activeChannel, setActiveChannel] = useState<VerificationChannel>(
+    locationState.channel === 'sms' ? 'sms' : 'email',
+  );
+  const [fallbackEmailSent, setFallbackEmailSent] = useState<boolean>(
+    Boolean(locationState.fallbackEmailSent),
+  );
   const [isEditingEmail, setIsEditingEmail] = useState(!initialEmail);
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(''));
   const [emailError, setEmailError] = useState<string | undefined>();
@@ -245,7 +260,7 @@ export function VerifyEmailPage() {
     }
 
     if (codeValue.length !== CODE_LENGTH) {
-      setCodeError('Ingresa los 6 dígitos del código enviado a tu correo.');
+      setCodeError('Ingresa los 6 dígitos del código de verificación.');
       return;
     }
 
@@ -269,7 +284,7 @@ export function VerifyEmailPage() {
       );
       setVerifiedUser(response.user);
 
-      toast.success('¡Correo verificado con éxito!', {
+      toast.success('¡Cuenta verificada con éxito!', {
         description: `Tu cuenta ya está activa, ${response.user.name}.`,
       });
     } catch (err) {
@@ -281,14 +296,14 @@ export function VerifyEmailPage() {
         toast.error('Límite de intentos alcanzado', { description: rateMsg });
       } else {
         setCodeError(msg);
-        toast.error('No se pudo verificar tu correo', { description: msg });
+        toast.error('No se pudo verificar tu cuenta', { description: msg });
       }
     } finally {
       setIsVerifying(false);
     }
   };
 
-  const handleResend = async () => {
+  const handleResend = async (targetChannel: VerificationChannel) => {
     const trimmedEmail = email.trim();
     if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setEmailError('Ingresa tu correo electrónico para reenviar el código.');
@@ -302,23 +317,39 @@ export function VerifyEmailPage() {
     setIsResending(true);
 
     try {
-      const res = await resendVerificationApi({ email: trimmedEmail });
+      const res = await resendVerificationApi({
+        email: trimmedEmail,
+        channel: targetChannel,
+      });
 
       if (res.alreadyVerified) {
-        toast.info('Tu correo ya está verificado', {
-          description: 'Puedes iniciar sesión con tu cuenta ahora mismo.',
+        toast.info('Tu cuenta ya está verificada', {
+          description: 'Puedes iniciar sesión ahora mismo.',
         });
         navigate('/login', { replace: true });
         return;
       }
 
+      const nextChannel = res.verificationChannel ?? targetChannel;
+      setActiveChannel(nextChannel);
+      setFallbackEmailSent(Boolean(res.fallbackEmailSent));
       setDigits(Array(CODE_LENGTH).fill(''));
       setCooldown(RESEND_COOLDOWN_SECONDS);
       setIsEditingEmail(false);
 
-      toast.success('Nuevo código enviado', {
-        description: 'Revisa tu bandeja de entrada o carpeta de spam.',
-      });
+      toast.success(
+        nextChannel === 'sms'
+          ? res.smsDelivered
+            ? 'Código enviado por SMS a tu celular'
+            : 'Código enviado por respaldo a Gmail'
+          : 'Nuevo código enviado a tu correo',
+        {
+          description:
+            nextChannel === 'sms' && !res.smsDelivered
+              ? 'No fue posible entregar el SMS por Twilio; enviamos tu código de respaldo a Gmail.'
+              : 'Revisa tu bandeja de entrada o mensajes.',
+        },
+      );
       inputRefs.current[0]?.focus();
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 429) {
@@ -327,7 +358,7 @@ export function VerifyEmailPage() {
             'Por seguridad puedes solicitar hasta 3 códigos por minuto.',
         });
       } else {
-        toast.error('No se pudo reenviar el correo', {
+        toast.error('No se pudo reenviar el código', {
           description: extractErrorMessage(err),
         });
       }
@@ -377,7 +408,7 @@ export function VerifyEmailPage() {
                 : 'text-orange-600 dark:text-orange-400',
             )}
           >
-            Verificar correo
+            {activeChannel === 'sms' ? 'Verificar celular / código' : 'Verificar correo'}
           </span>
         </div>
       </nav>
@@ -437,19 +468,27 @@ export function VerifyEmailPage() {
           </div>
         </div>
       ) : (
-        /* State 3: 6-digit OTP Entry (or expired token recovery) */
+        /* State 3: 6-digit OTP Entry (Gmail or SMS) */
         <>
           <div className="space-y-2">
             <div className="h-12 w-12 rounded-2xl bg-orange-50 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 flex items-center justify-center mb-3">
-              <MailCheck className="w-6 h-6" />
+              {activeChannel === 'sms' ? (
+                <Smartphone className="w-6 h-6" />
+              ) : (
+                <MailCheck className="w-6 h-6" />
+              )}
             </div>
             <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">
-              Verifica tu correo electrónico
+              {activeChannel === 'sms'
+                ? 'Verifica tu cuenta vía SMS'
+                : 'Verifica tu correo electrónico'}
             </h2>
             <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
               {tokenError
                 ? 'El enlace no pudo verificarse. Puedes ingresar el código de 6 dígitos o solicitar uno nuevo.'
-                : 'Enviamos un código de 6 dígitos y un enlace de confirmación válido por 15 minutos.'}
+                : activeChannel === 'sms'
+                  ? 'Generamos un código de 6 dígitos válido por 15 minutos para activar tu cuenta y verificar tu celular.'
+                  : 'Enviamos un código de 6 dígitos y un enlace de confirmación válido por 15 minutos.'}
             </p>
           </div>
 
@@ -466,17 +505,43 @@ export function VerifyEmailPage() {
             </div>
           )}
 
-          {/* Target Email Pill or Input */}
+          {activeChannel === 'sms' && fallbackEmailSent && (
+            <div
+              role="status"
+              className="rounded-2xl border border-amber-200 dark:border-amber-800/70 bg-amber-50/90 dark:bg-amber-950/40 p-4 flex items-start gap-3 text-xs text-amber-900 dark:text-amber-200"
+            >
+              <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <p className="font-bold">Respaldo por correo activado</p>
+                <p>
+                  No fue posible entregar el SMS directamente en este momento,
+                  así que enviamos tu código de 6 dígitos al correo{' '}
+                  <strong className="font-bold">{email || 'registrado'}</strong>{' '}
+                  para que puedas activarte de inmediato.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Target Destination Pill or Email Input */}
           {!isEditingEmail && email ? (
             <div className="rounded-2xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/60 px-4 py-3 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 min-w-0">
-                <Mail className="w-4 h-4 text-orange-600 dark:text-orange-400 shrink-0" />
+                {activeChannel === 'sms' && phone ? (
+                  <Smartphone className="w-4 h-4 text-orange-600 dark:text-orange-400 shrink-0" />
+                ) : (
+                  <Mail className="w-4 h-4 text-orange-600 dark:text-orange-400 shrink-0" />
+                )}
                 <div className="min-w-0">
                   <span className="block text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                    Enviado a
+                    {activeChannel === 'sms' && phone
+                      ? 'Celular / cuenta'
+                      : 'Enviado a'}
                   </span>
                   <span className="block text-sm font-bold text-slate-900 dark:text-white truncate">
-                    {email}
+                    {activeChannel === 'sms' && phone
+                      ? formatPhoneDisplay(phone)
+                      : email}
                   </span>
                 </div>
               </div>
@@ -563,35 +628,53 @@ export function VerifyEmailPage() {
               className="w-full"
               leftIcon={<CheckCircle2 className="w-4 h-4" />}
             >
-              Verificar mi correo
+              {activeChannel === 'sms'
+                ? 'Verificar código SMS'
+                : 'Verificar mi correo'}
             </Button>
           </form>
 
-          {/* Resend Code Section */}
-          <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="text-xs text-slate-600 dark:text-slate-400">
-              <span className="font-semibold text-slate-800 dark:text-slate-200 block">
-                ¿No recibiste el correo?
-              </span>
-              Revisa tu carpeta de spam o solicita un código nuevo.
+          {/* Resend Code Section (Email or SMS) */}
+          <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 p-4 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="text-xs text-slate-600 dark:text-slate-400">
+                <span className="font-semibold text-slate-800 dark:text-slate-200 block">
+                  ¿No recibiste el código?
+                </span>
+                Revisa tu carpeta de spam o elige por dónde reenviarlo.
+              </div>
+
+              {cooldown > 0 && (
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Reenviar en {formatCountdown(cooldown)}</span>
+                </span>
+              )}
             </div>
 
-            {cooldown > 0 ? (
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">
-                <Clock className="w-3.5 h-3.5" />
-                <span>Reenviar en {formatCountdown(cooldown)}</span>
-              </span>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleResend}
-                isLoading={isResending}
-                leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
-                className="shrink-0"
-              >
-                Reenviar código
-              </Button>
+            {cooldown === 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleResend('email')}
+                  isLoading={isResending}
+                  leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+                >
+                  Reenviar código por Correo
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => handleResend('sms')}
+                  isLoading={isResending}
+                  leftIcon={<MessageSquare className="w-3.5 h-3.5" />}
+                >
+                  Enviar código por SMS
+                </Button>
+              </div>
             )}
           </div>
         </>

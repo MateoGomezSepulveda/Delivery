@@ -39,7 +39,7 @@ src/
 ├── addresses/                  # Direcciones de envío por usuario
 ├── uploads/                    # Subida de imágenes a AWS S3
 ├── payments/                   # Pasarela de pagos MercadoPago + webhook
-├── mail/ · notifications/      # Correos (Nodemailer) y push notifications (FCM)
+├── mail/ · sms/ · notifications/ # Correos SMTP (Nodemailer), SMS OTP (Twilio Verify/SMS) y push (FCM)
 ├── delivery/                   # Perfil y gestión de repartidores
 ├── events/                     # WebSockets (Socket.io) para tracking en tiempo real
 ├── reviews/                    # Reseñas y calificaciones de productos
@@ -75,9 +75,9 @@ src/
 ### 🔑 Autenticación (`/auth`)
 | Método | Endpoint | Protección | Descripción |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/auth/register` | Pública | Registrar cliente (`CLIENT`) y enviar correo con código OTP de 6 dígitos + enlace de verificación |
-| `POST` | `/auth/verify-email` | Pública | Verificar correo electrónico mediante código de 6 dígitos (`{ email, code }`) o enlace (`{ token }`) y emitir JWTs |
-| `POST` | `/auth/resend-verification` | Pública | Reenviar código de 6 dígitos y enlace de verificación al correo |
+| `POST` | `/auth/register` | Pública | Registrar cliente (`CLIENT`) con celular obligatorio y enviar código OTP de 6 dígitos por correo SMTP o SMS (`verificationChannel: 'email' \| 'sms'`) |
+| `POST` | `/auth/verify-email` | Pública | Verificar cuenta por código de 6 dígitos (`{ email, code }` o `{ phone, code }`), Twilio Verify o enlace (`{ token }`) y emitir JWTs (`isPhoneVerified: true` en SMS) |
+| `POST` | `/auth/resend-verification` | Pública | Reenviar código de 6 dígitos permitiendo elegir canal (`email` o `sms`) |
 | `POST` | `/auth/login` | Pública | Iniciar sesión y obtener `access_token` + `refresh_token` (requiere correo verificado) |
 | `POST` | `/auth/refresh` | Pública | Rotar `refresh_token` y emitir nuevo `access_token` |
 | `POST` | `/auth/logout` | Pública | Invalidar `refresh_token` activo |
@@ -127,7 +127,7 @@ src/
 ### 📦 Pedidos (`/orders`)
 | Método | Endpoint | Protección | Descripción |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/orders` | JWT | Crear pedido a partir del carrito actual (soporta `couponCode` opcional y aplica beneficio `-10%` Rider máx. 4/mes) |
+| `POST` | `/orders` | JWT | Crear pedido a partir del carrito actual (exige celular registrado `PHONE_REQUIRED`, soporta `couponCode` opcional y aplica beneficio `-10%` Rider máx. 4/mes) |
 | `GET` | `/orders/rider-discount-quota` | JWT | Consultar el cupo mensual restante del beneficio `-10%` para repartidores |
 | `GET` | `/orders/me` | JWT | Historial de pedidos del cliente (paginado, con filtros) |
 | `GET` | `/orders/:id` | JWT | Ver detalle de un pedido (dueño o Admin) |
@@ -239,7 +239,7 @@ docker compose up -d --build api
   - ✅ **Events**: Integración de WebSockets (`socket.io`) para emitir cambios de estado de órdenes en tiempo real a los clientes.
   - ✅ **Reviews**: Reseñas con validación de pedido `DELIVERED`, verificación de que el producto pertenece a la orden, índice único `{ user, product, order }` y moderación por Admin.
   - ✅ **Coupons**: CRUD de cupones (Admin) y endpoint `apply` con validación de expiración, límite de usos, uso único por usuario, monto mínimo y tope de descuento.
-  - ✅ **CI**: Specs de todos los módulos con mocks completos; **17 suites / 130 tests unitarios** + E2E pasando y `nest build` verificado.
+  - ✅ **CI**: Specs de todos los módulos con mocks completos; **18 suites / 143 tests unitarios** + E2E pasando y `nest build` verificado.
 
 - ✅ **Fase 6 (Rendimiento y Escala)**:
   - ✅ **Cache con Redis**: `@nestjs/cache-manager` + `@keyv/redis` en Categorías (TTL 1h) y Productos (TTL 10min).

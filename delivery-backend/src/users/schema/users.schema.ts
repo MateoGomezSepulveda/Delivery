@@ -52,6 +52,13 @@ export class User {
   })
   @Prop({ type: Boolean, default: false })
   isEmailVerified: boolean;
+
+  @ApiProperty({
+    description: 'Indica si el número de celular fue verificado por SMS',
+    default: false,
+  })
+  @Prop({ type: Boolean, default: false })
+  isPhoneVerified: boolean;
 }
 
 export type UserDocument = HydratedDocument<User>;

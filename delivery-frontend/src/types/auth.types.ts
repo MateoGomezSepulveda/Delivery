@@ -1,5 +1,7 @@
 import type { UserRole } from '@/types/api.types';
 
+export type VerificationChannel = 'email' | 'sms';
+
 export interface User {
   _id: string;
   name: string;
@@ -7,6 +9,7 @@ export interface User {
   role: UserRole;
   phone?: string;
   isEmailVerified?: boolean;
+  isPhoneVerified?: boolean;
   googleId?: string;
   facebookId?: string;
   authProviders?: string[];
@@ -36,16 +39,21 @@ export interface RegisterPayload {
   name: string;
   email: string;
   password: string;
-  phone?: string;
+  phone: string;
+  verificationChannel?: VerificationChannel;
 }
 
 export interface RegisterResponse extends User {
   requiresEmailVerification?: boolean;
+  verificationChannel?: VerificationChannel;
+  smsDelivered?: boolean;
+  fallbackEmailSent?: boolean;
   message?: string;
 }
 
 export interface VerifyEmailPayload {
   email?: string;
+  phone?: string;
   code?: string;
   token?: string;
 }
@@ -59,11 +67,15 @@ export interface VerifyEmailResponse {
 
 export interface ResendVerificationPayload {
   email: string;
+  channel?: VerificationChannel;
 }
 
 export interface ResendVerificationResponse {
   message: string;
   alreadyVerified?: boolean;
+  verificationChannel?: VerificationChannel;
+  smsDelivered?: boolean;
+  fallbackEmailSent?: boolean;
 }
 
 export interface GoogleAuthPayload {

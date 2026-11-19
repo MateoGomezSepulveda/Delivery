@@ -65,9 +65,12 @@ const mockCartService = {
 };
 
 const mockUsersService = {
-  findOne: jest
-    .fn()
-    .mockResolvedValue({ email: 'test@test.com', role: 'CLIENT', fcmTokens: [] }),
+  findOne: jest.fn().mockResolvedValue({
+    email: 'test@test.com',
+    role: 'CLIENT',
+    phone: '+573001234567',
+    fcmTokens: [],
+  }),
 };
 
 const mockCouponsService = {
@@ -115,6 +118,7 @@ describe('OrdersService', () => {
     mockUsersService.findOne.mockResolvedValue({
       email: 'test@test.com',
       role: 'CLIENT',
+      phone: '+573001234567',
       fcmTokens: [],
     });
   });
@@ -129,6 +133,18 @@ describe('OrdersService', () => {
 
       expect(mockCartService.getActiveCart).toHaveBeenCalledWith(mockUserId);
       expect(result).toBeDefined();
+    });
+
+    it('debe rechazar createOrder con PHONE_REQUIRED si el usuario no tiene número de celular registrado', async () => {
+      mockUsersService.findOne.mockResolvedValueOnce({
+        email: 'google-user@gmail.com',
+        role: 'CLIENT',
+        phone: undefined,
+      });
+
+      await expect(
+        service.createOrder(mockUserId, 'Calle 123'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('debe lanzar BadRequestException si el carrito está vacío', async () => {

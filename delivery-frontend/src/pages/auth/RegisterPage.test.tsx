@@ -50,15 +50,17 @@ describe('RegisterPage', () => {
     vi.clearAllMocks();
   });
 
-  it('registers a user and navigates to /verify-email without auto-login when verification is required', async () => {
+  it('registers a user with mandatory phone and navigates to /verify-email without auto-login', async () => {
     const user = userEvent.setup();
     mockRegisterApi.mockResolvedValue({
       _id: 'u-new-1',
       name: 'Laura Gómez',
       email: 'laura@correo.com',
+      phone: '+573001234567',
       role: 'CLIENT',
       isEmailVerified: false,
       requiresEmailVerification: true,
+      verificationChannel: 'email',
     });
 
     render(
@@ -74,8 +76,9 @@ describe('RegisterPage', () => {
       screen.getByLabelText('Correo Electrónico'),
       'laura@correo.com',
     );
+    await user.type(screen.getByLabelText('Número de Celular'), '3001234567');
     await user.type(
-      screen.getByLabelText('Contraseña (mínimo 6 caracteres)'),
+      screen.getByLabelText('Contraseña'),
       'Secret123',
     );
     await user.type(
@@ -89,23 +92,87 @@ describe('RegisterPage', () => {
       expect(mockRegisterApi).toHaveBeenCalledWith({
         name: 'Laura Gómez',
         email: 'laura@correo.com',
+        phone: '3001234567',
         password: 'Secret123',
+        verificationChannel: 'email',
       });
       expect(mockLoginApi).not.toHaveBeenCalled();
       expect(mockNavigate).toHaveBeenCalledWith(
         '/verify-email?email=laura%40correo.com',
         {
           replace: true,
-          state: {
+          state: expect.objectContaining({
             email: 'laura@correo.com',
+            phone: '+573001234567',
             name: 'Laura Gómez',
+            channel: 'email',
             justRegistered: true,
-          },
+          }),
         },
       );
     });
 
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
+  });
+
+  it('validates mandatory phone and allows selecting SMS verification channel', async () => {
+    const user = userEvent.setup();
+    mockRegisterApi.mockResolvedValue({
+      _id: 'u-new-sms',
+      name: 'Carlos SMS',
+      email: 'carlos@correo.com',
+      phone: '+573009876543',
+      role: 'CLIENT',
+      isEmailVerified: false,
+      requiresEmailVerification: true,
+      verificationChannel: 'sms',
+      smsDelivered: false,
+      fallbackEmailSent: true,
+    });
+
+    render(
+      <MemoryRouter
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
+        <RegisterPage />
+      </MemoryRouter>,
+    );
+
+    await user.type(screen.getByLabelText('Nombre Completo'), 'Carlos SMS');
+    await user.type(
+      screen.getByLabelText('Correo Electrónico'),
+      'carlos@correo.com',
+    );
+    await user.type(
+      screen.getByLabelText('Contraseña'),
+      'Secret123',
+    );
+    await user.type(
+      screen.getByLabelText('Confirmar Contraseña'),
+      'Secret123',
+    );
+
+    // Intento sin celular -> bloqueado en frontend
+    await user.click(screen.getByRole('button', { name: /crear mi cuenta/i }));
+    expect(
+      await screen.findByText('El número de celular es obligatorio.'),
+    ).toBeInTheDocument();
+    expect(mockRegisterApi).not.toHaveBeenCalled();
+
+    // Ingresar celular y elegir SMS al celular
+    await user.type(screen.getByLabelText('Número de Celular'), '3009876543');
+    await user.click(screen.getByRole('radio', { name: /sms al celular/i }));
+    await user.click(screen.getByRole('button', { name: /crear mi cuenta/i }));
+
+    await waitFor(() => {
+      expect(mockRegisterApi).toHaveBeenCalledWith({
+        name: 'Carlos SMS',
+        email: 'carlos@correo.com',
+        phone: '3009876543',
+        password: 'Secret123',
+        verificationChannel: 'sms',
+      });
+    });
   });
 
   it('shows inline email error when server responds with 409 Conflict', async () => {
@@ -145,8 +212,9 @@ describe('RegisterPage', () => {
       screen.getByLabelText('Correo Electrónico'),
       'laura@correo.com',
     );
+    await user.type(screen.getByLabelText('Número de Celular'), '3001234567');
     await user.type(
-      screen.getByLabelText('Contraseña (mínimo 6 caracteres)'),
+      screen.getByLabelText('Contraseña'),
       'Secret123',
     );
     await user.type(

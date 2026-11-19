@@ -148,14 +148,63 @@ describe('VerifyEmailPage', () => {
       </MemoryRouter>,
     );
 
-    await user.click(screen.getByRole('button', { name: /reenviar código/i }));
+    await user.click(
+      screen.getByRole('button', { name: /reenviar código por correo/i }),
+    );
 
     await waitFor(() => {
       expect(mockResendVerificationApi).toHaveBeenCalledWith({
         email: 'laura@correo.com',
+        channel: 'email',
       });
     });
 
     expect(screen.getByText(/reenviar en 1:00/i)).toBeInTheDocument();
+  });
+
+  it('displays phone destination, fallback notice, and SMS resend button when channel is sms', async () => {
+    const user = userEvent.setup();
+    mockResendVerificationApi.mockResolvedValue({
+      message: 'Nuevo código enviado por SMS',
+      verificationChannel: 'sms',
+      smsDelivered: true,
+      fallbackEmailSent: false,
+    });
+
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: '/verify-email',
+            search: '?email=laura%40correo.com',
+            state: {
+              email: 'laura@correo.com',
+              phone: '+573001234567',
+              channel: 'sms',
+              fallbackEmailSent: true,
+              justRegistered: false,
+            },
+          },
+        ]}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
+        <VerifyEmailPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Verifica tu cuenta vía SMS')).toBeInTheDocument();
+    expect(screen.getByText('+57 300 123 4567')).toBeInTheDocument();
+    expect(screen.getByText(/respaldo por correo activado/i)).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: /enviar código por sms/i }),
+    );
+
+    await waitFor(() => {
+      expect(mockResendVerificationApi).toHaveBeenCalledWith({
+        email: 'laura@correo.com',
+        channel: 'sms',
+      });
+    });
   });
 });

@@ -30,6 +30,7 @@ import { ReviewsModule } from './reviews/reviews.module';
 import { CouponsModule } from './coupons/coupons.module';
 import { QueuesModule } from './queues/queues.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { SmsModule } from './sms/sms.module';
 import * as Joi from 'joi';
 
 @Module({
@@ -90,6 +91,7 @@ import * as Joi from 'joi';
     UploadsModule,
     PaymentsModule,
     MailModule,
+    SmsModule,
     NotificationsModule,
     DeliveryModule,
     EventsModule,

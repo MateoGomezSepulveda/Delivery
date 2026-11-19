@@ -10,6 +10,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcrypt';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
+import { normalizePhoneNumber } from 'src/common/utils/phone.util';
 import { Role } from 'src/auth/roles.enum';
 
 @Injectable()
@@ -66,12 +67,25 @@ export class UsersService {
 
     const hashedPassword = await bcrypt.hash(userData.password, 10);
 
+    let normalizedPhone: string | undefined = undefined;
+    if (userData.phone !== undefined) {
+      const parsedPhone = normalizePhoneNumber(userData.phone);
+      if (!parsedPhone) {
+        throw new BadRequestException(
+          'Ingresa un número de celular válido (ej. 300 123 4567 o +57 300 123 4567).',
+        );
+      }
+      normalizedPhone = parsedPhone;
+    }
+
     const newUser = new this.userModel({
       ...userData,
+      ...(normalizedPhone ? { phone: normalizedPhone } : {}),
       email: normalizedEmail,
       password: hashedPassword,
       authProviders: ['local'],
       isEmailVerified: options?.isEmailVerified ?? true,
+      isPhoneVerified: false,
     });
     const saved = await newUser.save();
     const { password, ...result } = saved.toObject();
@@ -188,6 +202,24 @@ export class UsersService {
       }
     }
 
+    if (updateData.phone !== undefined) {
+      const normalizedPhone = normalizePhoneNumber(updateData.phone);
+      if (!normalizedPhone) {
+        throw new BadRequestException(
+          'Ingresa un número de celular válido (ej. 300 123 4567 o +57 300 123 4567).',
+        );
+      }
+
+      const existingUser =
+        typeof this.userModel.findById === 'function'
+          ? await this.findOne(id)
+          : null;
+      payloadToUpdate.phone = normalizedPhone;
+      if (!existingUser || existingUser.phone !== normalizedPhone) {
+        payloadToUpdate.isPhoneVerified = false;
+      }
+    }
+
     if (updateData.password) {
       payloadToUpdate.password = await bcrypt.hash(updateData.password, 10);
       return this.userModel
@@ -218,9 +250,23 @@ export class UsersService {
     });
   }
 
-  async markEmailAsVerified(id: string) {
+  async markEmailAsVerified(
+    id: string,
+    options?: { markPhoneVerified?: boolean },
+  ) {
+    const updateFields: Record<string, boolean> = { isEmailVerified: true };
+    if (options?.markPhoneVerified) {
+      updateFields.isPhoneVerified = true;
+    }
+
     return this.userModel
-      .findByIdAndUpdate(id, { isEmailVerified: true }, { new: true })
+      .findByIdAndUpdate(id, updateFields, { new: true })
+      .select('-password');
+  }
+
+  async markPhoneAsVerified(id: string) {
+    return this.userModel
+      .findByIdAndUpdate(id, { isPhoneVerified: true }, { new: true })
       .select('-password');
   }
 
