@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   Bike,
@@ -15,6 +15,7 @@ import {
 import { getCartApi } from '@/api/endpoints/cart.api';
 import { Button } from '@/components/ui/Button';
 import { RoleBadge } from '@/components/ui/Badge';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { CartDrawer } from '@/components/cart/CartDrawer';
 import { AddressesModal } from '@/components/addresses/AddressesModal';
 import { useCartDrawerStore } from '@/store/useCartDrawerStore';
@@ -25,7 +26,8 @@ import { cn } from '@/utils/cn';
 export function ClientLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { openDrawer, openAddressModal, activeAddressLabel } =
+  const queryClient = useQueryClient();
+  const { openDrawer, openAddressModal, activeAddressLabel, resetCartUi } =
     useCartDrawerStore();
   const { user, isAuthenticated, logout } = useAuthStore();
   const { connected: socketConnected } = useSocket();
@@ -36,11 +38,14 @@ export function ClientLayout() {
     enabled: isAuthenticated,
   });
 
-  const cartItemCount =
-    cart?.items?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
+  const cartItemCount = isAuthenticated
+    ? (cart?.items?.reduce((sum, item) => sum + item.quantity, 0) ?? 0)
+    : 0;
 
   const handleLogout = async () => {
     await logout();
+    resetCartUi();
+    queryClient.clear();
     toast.success('Sesión cerrada correctamente.');
     navigate('/login');
   };
@@ -125,15 +130,14 @@ export function ClientLayout() {
                       : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700',
                   )}
                 >
-                  {user.avatarUrl ? (
-                    <img
-                      src={user.avatarUrl}
-                      alt={user.name}
-                      className="w-5 h-5 rounded-full object-cover"
-                    />
-                  ) : (
-                    <UserIcon className="w-3.5 h-3.5 text-orange-600" />
-                  )}
+                  <UserAvatar
+                    src={user.avatarUrl}
+                    name={user.name}
+                    className="w-5 h-5 rounded-full shrink-0"
+                    fallback={
+                      <UserIcon className="w-3.5 h-3.5 text-orange-600 shrink-0" />
+                    }
+                  />
                   <span className="max-w-[100px] truncate">{user.name}</span>
                   <span className="hidden sm:inline-block">
                     <RoleBadge role={user.role} />

@@ -24,22 +24,12 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge, RoleBadge } from '@/components/ui/Badge';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { PaginationBar } from '@/components/catalog/PaginationBar';
 import { cn } from '@/utils/cn';
 
 const ROLES: UserRole[] = ['CLIENT', 'DELIVERY', 'ADMIN'];
 type UserTab = 'ALL' | 'PENDING_RIDERS' | UserRole;
-
-function getInitials(name: string): string {
-  return (
-    name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .slice(0, 2)
-      .toUpperCase() || 'U'
-  );
-}
 
 function isPendingRider(u: User): boolean {
   return u.riderRequestStatus === 'PENDING';
@@ -198,17 +188,13 @@ export function AdminUsersPage() {
                 >
                   <td className="p-3">
                     <div className="flex items-center gap-3">
-                      {u.avatarUrl ? (
-                        <img
-                          src={u.avatarUrl}
-                          alt={u.name}
-                          className="h-10 w-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
-                        />
-                      ) : (
-                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-orange-600 to-red-600 text-white font-heading text-xs font-extrabold flex items-center justify-center shrink-0">
-                          {getInitials(u.name)}
-                        </div>
-                      )}
+                      <UserAvatar
+                        src={u.avatarUrl}
+                        name={u.name}
+                        className="h-10 w-10 rounded-xl shrink-0"
+                        imgClassName="border border-slate-200 dark:border-slate-700"
+                        fallbackClassName="text-xs"
+                      />
                       <div className="min-w-0">
                         <p className="font-semibold truncate">{u.name}</p>
                         <p className="text-xs text-slate-500 truncate">

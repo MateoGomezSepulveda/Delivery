@@ -27,6 +27,7 @@ import {
   ZoomIn,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useCartDrawerStore } from '@/store/useCartDrawerStore';
 import { updateUserApi } from '@/api/endpoints/users.api';
 import { uploadImageToS3Api } from '@/api/endpoints/uploads.api';
 import {
@@ -62,6 +63,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge, RoleBadge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { cn } from '@/utils/cn';
 
 const RIDER_VEHICLES: {
@@ -195,13 +197,6 @@ export function ProfilePage() {
       setIsActivatingRider(false);
     }
   };
-
-  const initials = user.name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
 
   const handleAvatarFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -410,6 +405,8 @@ export function ProfilePage() {
 
   const handleLogout = async () => {
     await logout();
+    useCartDrawerStore.getState().resetCartUi();
+    queryClient.clear();
     toast.success('Has cerrado sesión correctamente.');
     navigate('/login', { replace: true });
   };
@@ -426,17 +423,13 @@ export function ProfilePage() {
               title="Haz clic para ver tu foto en grande o cambiarla"
               className="relative block h-24 w-24 rounded-3xl overflow-hidden focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 cursor-pointer"
             >
-              {user.avatarUrl ? (
-                <img
-                  src={user.avatarUrl}
-                  alt={user.name}
-                  className="h-full w-full object-cover border-2 border-orange-500 rounded-3xl shadow-md transition-transform duration-200 group-hover:scale-105"
-                />
-              ) : (
-                <div className="h-full w-full rounded-3xl bg-gradient-to-br from-orange-600 to-red-600 text-white font-heading text-2xl font-extrabold flex items-center justify-center shadow-warm transition-transform duration-200 group-hover:scale-105">
-                  {initials}
-                </div>
-              )}
+              <UserAvatar
+                src={user.avatarUrl}
+                name={user.name}
+                className="h-full w-full rounded-3xl transition-transform duration-200 group-hover:scale-105"
+                imgClassName="border-2 border-orange-500 shadow-md"
+                fallbackClassName="text-2xl shadow-warm"
+              />
 
               <div className="absolute inset-0 rounded-3xl bg-slate-950/45 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center text-white gap-1">
                 <ZoomIn className="w-5 h-5" />
@@ -1125,17 +1118,13 @@ export function ProfilePage() {
       >
         <div className="flex flex-col items-center gap-4 py-2">
           <div className="relative">
-            {user.avatarUrl ? (
-              <img
-                src={user.avatarUrl}
-                alt={user.name}
-                className="h-56 w-56 sm:h-64 sm:w-64 rounded-3xl object-cover border-4 border-orange-500 shadow-xl"
-              />
-            ) : (
-              <div className="h-56 w-56 sm:h-64 sm:w-64 rounded-3xl bg-gradient-to-br from-orange-600 to-red-600 text-white font-heading text-6xl font-extrabold flex items-center justify-center shadow-xl">
-                {initials}
-              </div>
-            )}
+            <UserAvatar
+              src={user.avatarUrl}
+              name={user.name}
+              className="h-56 w-56 sm:h-64 sm:w-64 rounded-3xl shadow-xl"
+              imgClassName="border-4 border-orange-500"
+              fallbackClassName="text-6xl"
+            />
           </div>
 
           <div className="text-center space-y-0.5">

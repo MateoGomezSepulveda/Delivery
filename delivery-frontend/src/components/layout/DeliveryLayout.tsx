@@ -22,6 +22,7 @@ import {
 import { extractErrorMessage } from '@/api/axios.client';
 import type { VehicleType } from '@/types/delivery.types';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useCartDrawerStore } from '@/store/useCartDrawerStore';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -118,6 +119,8 @@ export function DeliveryLayout() {
 
   const handleLogout = async () => {
     await logout();
+    useCartDrawerStore.getState().resetCartUi();
+    queryClient.clear();
     toast.success('Sesión cerrada correctamente.');
     navigate('/login');
   };

@@ -38,8 +38,8 @@ export function CartDrawer() {
 
   const { addMutation, removeMutation, clearMutation } = useCartMutations();
 
-  const items = cart?.items ?? [];
-  const subtotal = cart?.total ?? 0;
+  const items = isAuthenticated ? (cart?.items ?? []) : [];
+  const subtotal = isAuthenticated ? (cart?.total ?? 0) : 0;
   const riderDiscount =
     user?.role === 'DELIVERY' ? Math.round(subtotal * 0.1) : 0;
   const discount = appliedCoupon

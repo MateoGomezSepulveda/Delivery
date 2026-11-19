@@ -1,4 +1,5 @@
 import { NavLink, Link, Outlet, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
@@ -12,6 +13,7 @@ import {
   Utensils,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useCartDrawerStore } from '@/store/useCartDrawerStore';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/utils/cn';
@@ -27,10 +29,13 @@ const sidebarLinks = [
 
 export function AdminLayout() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { logout } = useAuthStore();
 
   const handleLogout = async () => {
     await logout();
+    useCartDrawerStore.getState().resetCartUi();
+    queryClient.clear();
     toast.success('Sesión cerrada correctamente.');
     navigate('/login');
   };

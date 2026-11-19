@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Address, AppliedCouponResult } from '@/types/order.types';
 
+export const CART_UI_STORAGE_KEY = 'delivery_cart_ui_v1';
+export const DEFAULT_ADDRESS_LABEL = 'Seleccionar dirección de entrega';
+
 interface CartDrawerState {
   isOpen: boolean;
   isAddressModalOpen: boolean;
@@ -16,6 +19,7 @@ interface CartDrawerState {
   setSelectedAddress: (address: Address | null) => void;
   setActiveAddressLabel: (label: string) => void;
   setAppliedCoupon: (coupon: AppliedCouponResult | null) => void;
+  resetCartUi: () => void;
 }
 
 export const useCartDrawerStore = create<CartDrawerState>()(
@@ -23,7 +27,7 @@ export const useCartDrawerStore = create<CartDrawerState>()(
     (set) => ({
       isOpen: false,
       isAddressModalOpen: false,
-      activeAddressLabel: 'Seleccionar dirección de entrega',
+      activeAddressLabel: DEFAULT_ADDRESS_LABEL,
       selectedAddress: null,
       appliedCoupon: null,
       openDrawer: () => set({ isOpen: true }),
@@ -36,13 +40,25 @@ export const useCartDrawerStore = create<CartDrawerState>()(
           selectedAddress: address,
           activeAddressLabel: address
             ? `${address.title}: ${address.street}, ${address.city}`
-            : 'Seleccionar dirección de entrega',
+            : DEFAULT_ADDRESS_LABEL,
         }),
       setActiveAddressLabel: (label) => set({ activeAddressLabel: label }),
       setAppliedCoupon: (coupon) => set({ appliedCoupon: coupon }),
+      resetCartUi: () => {
+        set({
+          isOpen: false,
+          isAddressModalOpen: false,
+          activeAddressLabel: DEFAULT_ADDRESS_LABEL,
+          selectedAddress: null,
+          appliedCoupon: null,
+        });
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem(CART_UI_STORAGE_KEY);
+        }
+      },
     }),
     {
-      name: 'delivery_cart_ui_v1',
+      name: CART_UI_STORAGE_KEY,
       partialize: (state) => ({
         activeAddressLabel: state.activeAddressLabel,
         selectedAddress: state.selectedAddress,

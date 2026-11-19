@@ -7,6 +7,7 @@ import {
 } from '@/api/axios.client';
 import { logoutApi } from '@/api/endpoints/auth.api';
 import { getUserByIdApi } from '@/api/endpoints/users.api';
+import { useCartDrawerStore } from '@/store/useCartDrawerStore';
 import type { User } from '@/types/auth.types';
 import { decodeJwtPayload } from '@/utils/jwt';
 
@@ -38,6 +39,17 @@ export const useAuthStore = create<AuthState>()(
       avatarsByUserId: {},
 
       setSession: (tokens, user) => {
+        const previousUserId = get().user?._id;
+        const selectedAddressUserId =
+          useCartDrawerStore.getState().selectedAddress?.userId;
+
+        if (
+          (previousUserId && previousUserId !== user._id) ||
+          (selectedAddressUserId && selectedAddressUserId !== user._id)
+        ) {
+          useCartDrawerStore.getState().resetCartUi();
+        }
+
         setStoredTokens({
           accessToken: tokens.access_token,
           refreshToken: tokens.refresh_token,
@@ -74,6 +86,7 @@ export const useAuthStore = create<AuthState>()(
       hydrateSession: async () => {
         const { accessToken } = getStoredTokens();
         if (!accessToken) {
+          useCartDrawerStore.getState().resetCartUi();
           set({
             user: null,
             accessToken: null,
@@ -87,6 +100,7 @@ export const useAuthStore = create<AuthState>()(
         const payload = decodeJwtPayload(accessToken);
         if (!payload?.sub) {
           clearStoredTokens();
+          useCartDrawerStore.getState().resetCartUi();
           set({
             user: null,
             accessToken: null,
@@ -100,6 +114,12 @@ export const useAuthStore = create<AuthState>()(
         set({ isHydrating: true });
         try {
           const freshUser = await getUserByIdApi(payload.sub);
+          const selectedAddressUserId =
+            useCartDrawerStore.getState().selectedAddress?.userId;
+          if (selectedAddressUserId && selectedAddressUserId !== freshUser._id) {
+            useCartDrawerStore.getState().resetCartUi();
+          }
+
           const latestTokens = getStoredTokens();
           const savedAvatar = get().avatarsByUserId[freshUser._id];
           set({
@@ -113,6 +133,7 @@ export const useAuthStore = create<AuthState>()(
           });
         } catch {
           clearStoredTokens();
+          useCartDrawerStore.getState().resetCartUi();
           set({
             user: null,
             accessToken: null,
@@ -134,6 +155,7 @@ export const useAuthStore = create<AuthState>()(
           // Incluso si el servidor ya invalidó el token, limpiamos el estado local
         } finally {
           clearStoredTokens();
+          useCartDrawerStore.getState().resetCartUi();
           set({
             user: null,
             accessToken: null,

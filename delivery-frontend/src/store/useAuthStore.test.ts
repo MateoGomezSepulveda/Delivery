@@ -14,6 +14,11 @@ vi.mock('@/api/endpoints/users.api', () => ({
 }));
 
 import { useAuthStore } from '@/store/useAuthStore';
+import {
+  CART_UI_STORAGE_KEY,
+  DEFAULT_ADDRESS_LABEL,
+  useCartDrawerStore,
+} from '@/store/useCartDrawerStore';
 
 function buildJwt(sub: string, role: User['role'] = 'CLIENT'): string {
   const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
@@ -41,6 +46,7 @@ const sampleUser: User = {
 describe('useAuthStore', () => {
   beforeEach(() => {
     localStorage.clear();
+    useCartDrawerStore.getState().resetCartUi();
     useAuthStore.setState({
       user: null,
       accessToken: null,
@@ -129,5 +135,75 @@ describe('useAuthStore', () => {
       accessToken: null,
       refreshToken: null,
     });
+  });
+
+  it('resets active address, applied coupon and cart drawer UI on logout (Bug #3)', async () => {
+    useAuthStore.getState().setSession(
+      { access_token: buildJwt(sampleUser._id), refresh_token: 'refresh-1' },
+      sampleUser,
+    );
+    useCartDrawerStore.getState().setSelectedAddress({
+      _id: 'addr-1',
+      userId: sampleUser._id,
+      title: 'Casa',
+      street: 'Calle 85 #15-20',
+      city: 'Bogotá',
+      state: 'Cundinamarca',
+      zipCode: '110221',
+      country: 'Colombia',
+      isDefault: true,
+    });
+    useCartDrawerStore.getState().setAppliedCoupon({
+      code: 'PROMO10',
+      discountType: 'PERCENTAGE',
+      discountValue: 10,
+      originalTotal: 50000,
+      discountAmount: 5000,
+      finalTotal: 45000,
+    });
+    useCartDrawerStore.getState().openDrawer();
+
+    mockLogoutApi.mockResolvedValue({ success: true });
+    await useAuthStore.getState().logout();
+
+    const cartUi = useCartDrawerStore.getState();
+    expect(cartUi.isOpen).toBe(false);
+    expect(cartUi.selectedAddress).toBeNull();
+    expect(cartUi.appliedCoupon).toBeNull();
+    expect(cartUi.activeAddressLabel).toBe(DEFAULT_ADDRESS_LABEL);
+    expect(localStorage.getItem(CART_UI_STORAGE_KEY)).toBeNull();
+  });
+
+  it('resets cart UI address and coupon when switching to a different user in setSession (Bug #3)', () => {
+    useAuthStore.getState().setSession(
+      { access_token: buildJwt(sampleUser._id), refresh_token: 'refresh-a' },
+      sampleUser,
+    );
+    useCartDrawerStore.getState().setSelectedAddress({
+      _id: 'addr-a',
+      userId: sampleUser._id,
+      title: 'Oficina',
+      street: 'Cra 7 #71-21',
+      city: 'Bogotá',
+      state: 'Cundinamarca',
+      zipCode: '110231',
+      country: 'Colombia',
+      isDefault: true,
+    });
+
+    const otherUser: User = {
+      _id: 'user-002',
+      name: 'Otro Cliente',
+      email: 'otro@delivery.com',
+      role: 'CLIENT',
+    };
+    useAuthStore.getState().setSession(
+      { access_token: buildJwt(otherUser._id), refresh_token: 'refresh-b' },
+      otherUser,
+    );
+
+    const cartUi = useCartDrawerStore.getState();
+    expect(cartUi.selectedAddress).toBeNull();
+    expect(cartUi.activeAddressLabel).toBe(DEFAULT_ADDRESS_LABEL);
   });
 });
