@@ -2,15 +2,19 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
+  ForbiddenException,
+  HttpStatus,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
+import { MailService } from '../mail/mail.service';
 import { RegisterDto } from './dto/register.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import { Role } from './roles.enum';
 import {
   RefreshToken,
@@ -20,6 +24,13 @@ import {
   PasswordReset,
   PasswordResetDocument,
 } from './schemas/password-reset.schema';
+import {
+  EmailVerification,
+  EmailVerificationDocument,
+} from './schemas/email-verification.schema';
+
+const EMAIL_VERIFICATION_TTL_MINUTES = 15;
+const MAX_VERIFICATION_ATTEMPTS = 5;
 
 @Injectable()
 export class AuthService {
@@ -27,32 +38,44 @@ export class AuthService {
     private readonly userService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly mailService: MailService,
     @InjectModel(RefreshToken.name)
     private refreshTokenModel: Model<RefreshTokenDocument>,
     @InjectModel(PasswordReset.name)
     private passwordResetModel: Model<PasswordResetDocument>,
+    @InjectModel(EmailVerification.name)
+    private emailVerificationModel: Model<EmailVerificationDocument>,
   ) {}
 
-  async register(registerDto: RegisterDto) {
-    return this.userService.create({
-      ...registerDto,
-      role: Role.CLIENT, // Siempre CLIENT en registro público
-    });
+  private getFrontendUrl(): string {
+    const explicit = this.configService.get<string>('FRONTEND_URL')?.trim();
+    if (explicit) {
+      return explicit.replace(/\/+$/, '');
+    }
+
+    const allowedOrigins = this.configService.get<string>('ALLOWED_ORIGINS');
+    if (allowedOrigins) {
+      const origins = allowedOrigins
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean);
+      const frontendOrigin =
+        origins.find((origin) => origin.includes('5173')) ||
+        origins.find((origin) => !origin.includes(':3000')) ||
+        origins[0];
+      if (frontendOrigin) {
+        return frontendOrigin.replace(/\/+$/, '');
+      }
+    }
+
+    return 'http://localhost:5173';
   }
 
-  async login(email: string, password: string) {
-    const user = await this.userService.findByEmail(email);
-
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
+  private async issueTokensForUser(user: {
+    _id: Types.ObjectId | string;
+    email: string;
+    role: Role;
+  }) {
     const payload = {
       sub: user._id,
       email: user.email,
@@ -75,6 +98,201 @@ export class AuthService {
       access_token,
       refresh_token,
     };
+  }
+
+  private async createAndSendEmailVerification(
+    userId: string,
+    email: string,
+    name: string,
+  ) {
+    await this.emailVerificationModel.deleteMany({ user: userId });
+
+    const code = crypto.randomInt(100000, 1000000).toString();
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(
+      Date.now() + EMAIL_VERIFICATION_TTL_MINUTES * 60 * 1000,
+    );
+
+    await this.emailVerificationModel.create({
+      user: userId,
+      email: email.trim().toLowerCase(),
+      code,
+      token,
+      attempts: 0,
+      expiresAt,
+    });
+
+    const verificationUrl = `${this.getFrontendUrl()}/verify-email?token=${token}`;
+    const mailResult = await this.mailService.sendEmailVerification(
+      email,
+      name,
+      code,
+      verificationUrl,
+    );
+
+    return {
+      code,
+      token,
+      previewUrl: mailResult?.previewUrl,
+      sent: mailResult?.sent ?? false,
+    };
+  }
+
+  async register(registerDto: RegisterDto) {
+    const createdUser = await this.userService.create(
+      {
+        ...registerDto,
+        role: Role.CLIENT, // Siempre CLIENT en registro público
+      },
+      { isEmailVerified: false },
+    );
+
+    await this.createAndSendEmailVerification(
+      createdUser._id.toString(),
+      createdUser.email,
+      createdUser.name,
+    );
+
+    return {
+      ...createdUser,
+      requiresEmailVerification: true,
+      message:
+        'Cuenta creada con éxito. Te enviamos un código y un enlace de verificación a tu correo electrónico.',
+    };
+  }
+
+  async verifyEmail(dto: VerifyEmailDto) {
+    const token = dto.token?.trim();
+    const email = dto.email?.trim().toLowerCase();
+    const code = dto.code?.trim();
+
+    if (!token && (!email || !code)) {
+      throw new BadRequestException(
+        'Debes ingresar el código de 6 dígitos junto con tu correo, o usar el enlace de verificación.',
+      );
+    }
+
+    const verificationDoc = token
+      ? await this.emailVerificationModel.findOne({ token })
+      : await this.emailVerificationModel.findOne({ email, code });
+
+    if (!verificationDoc) {
+      if (email && code) {
+        const existingUser = await this.userService.findByEmail(email);
+        if (existingUser?.isEmailVerified) {
+          throw new BadRequestException(
+            'Este correo electrónico ya fue verificado. Ya puedes iniciar sesión.',
+          );
+        }
+
+        const activeDoc = await this.emailVerificationModel.findOne({ email });
+        if (activeDoc) {
+          const nextAttempts = (activeDoc.attempts ?? 0) + 1;
+          if (nextAttempts >= MAX_VERIFICATION_ATTEMPTS) {
+            await this.emailVerificationModel.deleteOne({ _id: activeDoc._id });
+            throw new BadRequestException(
+              'Demasiados intentos fallidos. Solicita un nuevo código de verificación.',
+            );
+          }
+          await this.emailVerificationModel.updateOne(
+            { _id: activeDoc._id },
+            { attempts: nextAttempts },
+          );
+          throw new BadRequestException(
+            'El código de verificación es incorrecto. Verifica e intenta de nuevo.',
+          );
+        }
+      }
+
+      throw new BadRequestException(
+        'El código o enlace de verificación es inválido o ya fue utilizado.',
+      );
+    }
+
+    if (verificationDoc.expiresAt < new Date()) {
+      await this.emailVerificationModel.deleteOne({ _id: verificationDoc._id });
+      throw new BadRequestException(
+        'El código o enlace de verificación ha expirado. Solicita uno nuevo.',
+      );
+    }
+
+    const verifiedUser = await this.userService.markEmailAsVerified(
+      verificationDoc.user.toString(),
+    );
+
+    if (!verifiedUser) {
+      await this.emailVerificationModel.deleteOne({ _id: verificationDoc._id });
+      throw new BadRequestException('La cuenta asociada ya no existe.');
+    }
+
+    await this.emailVerificationModel.deleteMany({
+      user: verificationDoc.user,
+    });
+
+    const tokens = await this.issueTokensForUser(verifiedUser);
+
+    return {
+      message: '¡Correo electrónico verificado con éxito!',
+      user: verifiedUser,
+      ...tokens,
+    };
+  }
+
+  async resendVerification(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.userService.findByEmail(normalizedEmail);
+
+    if (!user) {
+      return {
+        message:
+          'Si el correo está registrado y pendiente de verificación, enviamos un nuevo código.',
+      };
+    }
+
+    if (user.isEmailVerified === true) {
+      return {
+        alreadyVerified: true,
+        message:
+          'Este correo electrónico ya está verificado. Ya puedes iniciar sesión.',
+      };
+    }
+
+    await this.createAndSendEmailVerification(
+      user._id.toString(),
+      user.email,
+      user.name,
+    );
+
+    return {
+      message:
+        'Te enviamos un nuevo código y enlace de verificación a tu correo electrónico.',
+    };
+  }
+
+  async login(email: string, password: string) {
+    const user = await this.userService.findByEmail(email);
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (user.isEmailVerified === false) {
+      throw new ForbiddenException({
+        statusCode: HttpStatus.FORBIDDEN,
+        code: 'EMAIL_NOT_VERIFIED',
+        email: user.email,
+        message:
+          'Debes verificar tu correo electrónico antes de iniciar sesión.',
+      });
+    }
+
+    return this.issueTokensForUser(user);
   }
 
   async refresh(refreshToken: string) {

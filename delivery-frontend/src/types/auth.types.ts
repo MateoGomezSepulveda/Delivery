@@ -33,6 +33,34 @@ export interface RegisterPayload {
   name: string;
   email: string;
   password: string;
+  phone?: string;
+}
+
+export interface RegisterResponse extends User {
+  requiresEmailVerification?: boolean;
+  message?: string;
+}
+
+export interface VerifyEmailPayload {
+  email?: string;
+  code?: string;
+  token?: string;
+}
+
+export interface VerifyEmailResponse {
+  message: string;
+  user: User;
+  access_token: string;
+  refresh_token: string;
+}
+
+export interface ResendVerificationPayload {
+  email: string;
+}
+
+export interface ResendVerificationResponse {
+  message: string;
+  alreadyVerified?: boolean;
 }
 
 export interface ForgotPasswordPayload {

@@ -51,14 +51,34 @@ export function RegisterPage() {
 
     setIsSubmitting(true);
     try {
-      // 1. Crear usuario en POST /api/v1/auth/register (siempre asigna rol CLIENT)
       const createdUser = await registerApi({
         name: name.trim(),
         email: email.trim(),
         password,
       });
 
-      // 2. Iniciar sesión automáticamente en POST /api/v1/auth/login
+      // Flujo estándar con verificación de correo electrónico
+      if (createdUser.requiresEmailVerification !== false && !createdUser.isEmailVerified) {
+        toast.success('¡Cuenta creada! Revisa tu correo electrónico', {
+          description:
+            'Te enviamos un código de 6 dígitos y un enlace para activar tu cuenta.',
+        });
+
+        navigate(
+          `/verify-email?email=${encodeURIComponent(createdUser.email)}`,
+          {
+            replace: true,
+            state: {
+              email: createdUser.email,
+              name: createdUser.name,
+              justRegistered: true,
+            },
+          },
+        );
+        return;
+      }
+
+      // Fallback si la cuenta ya vino verificada
       const tokens = await loginApi({
         email: email.trim(),
         password,
@@ -78,10 +98,14 @@ export function RegisterPage() {
       navigate('/', { replace: true });
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 429) {
-        toast.error('Demasiados registros desde esta IP (429)', {
+        toast.error('Demasiados intentos de registro', {
           description:
-            'El límite de seguridad es de 3 registros por minuto. Espera un momento.',
+            'Por seguridad solo se permiten 3 registros por minuto. Espera un momento.',
         });
+      } else if (axios.isAxiosError(error) && error.response?.status === 409) {
+        const msg = extractErrorMessage(error);
+        setErrors((prev) => ({ ...prev, email: msg }));
+        toast.error('Correo ya registrado', { description: msg });
       } else {
         toast.error('No se pudo completar el registro', {
           description: extractErrorMessage(error),
@@ -93,13 +117,37 @@ export function RegisterPage() {
   };
 
   return (
-    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 shadow-card space-y-6">
+    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-7 sm:p-8 shadow-card space-y-6">
+      {/* 2-Step Funnel Progress Indicator */}
+      <nav aria-label="Progreso de registro" className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          <span className="h-6 w-6 rounded-full bg-orange-600 text-white flex items-center justify-center text-xs font-bold shrink-0">
+            1
+          </span>
+          <span className="text-xs font-bold text-orange-600 dark:text-orange-400">
+            Tus datos
+          </span>
+        </div>
+
+        <div className="flex-1 h-0.5 rounded-full bg-slate-200 dark:bg-slate-800" />
+
+        <div className="flex items-center gap-2">
+          <span className="h-6 w-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center text-xs font-bold shrink-0">
+            2
+          </span>
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+            Verificar correo
+          </span>
+        </div>
+      </nav>
+
       <div className="space-y-2">
         <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">
           Crear Cuenta
         </h2>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Regístrate para hacer pedidos y seguir tus entregas en tiempo real.
+          Regístrate para hacer pedidos y seguir tus entregas en tiempo real. Te
+          enviaremos un código para confirmar tu correo.
         </p>
       </div>
 

@@ -6,8 +6,7 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import type { Cache } from 'cache-manager';
+import { CACHE_MANAGER, type Cache } from '@nestjs/cache-manager';
 import { Category, CategoryDocument } from './schemas/category.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';

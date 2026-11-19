@@ -20,6 +20,9 @@ const LoginPage = lazy(() =>
 const RegisterPage = lazy(() =>
   import('@/pages/auth/RegisterPage').then(pickExport('RegisterPage')),
 );
+const VerifyEmailPage = lazy(() =>
+  import('@/pages/auth/VerifyEmailPage').then(pickExport('VerifyEmailPage')),
+);
 const ForgotPasswordPage = lazy(() =>
   import('@/pages/auth/ForgotPasswordPage').then(
     pickExport('ForgotPasswordPage'),
@@ -113,6 +116,7 @@ export function AppRouter() {
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
           </Route>

@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { UsersModule } from '../users/users.module';
+import { MailModule } from '../mail/mail.module';
 import { JwtStrategy } from './jwt.strategy';
 import { RolesGuard } from './roles.guard';
 import { ConfigService } from '@nestjs/config';
@@ -16,13 +17,19 @@ import {
   PasswordReset,
   PasswordResetSchema,
 } from './schemas/password-reset.schema';
+import {
+  EmailVerification,
+  EmailVerificationSchema,
+} from './schemas/email-verification.schema';
 
 @Module({
   imports: [
     UsersModule,
+    MailModule,
     MongooseModule.forFeature([
       { name: RefreshToken.name, schema: RefreshTokenSchema },
       { name: PasswordReset.name, schema: PasswordResetSchema },
+      { name: EmailVerification.name, schema: EmailVerificationSchema },
     ]),
     JwtModule.registerAsync({
       inject: [ConfigService],

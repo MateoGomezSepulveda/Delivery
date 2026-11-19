@@ -111,7 +111,9 @@ apiClient.interceptors.response.use(
     const isAuthEndpoint =
       originalRequest.url?.includes('/auth/login') ||
       originalRequest.url?.includes('/auth/register') ||
-      originalRequest.url?.includes('/auth/refresh');
+      originalRequest.url?.includes('/auth/refresh') ||
+      originalRequest.url?.includes('/auth/verify-email') ||
+      originalRequest.url?.includes('/auth/resend-verification');
 
     if (
       error.response?.status === 401 &&
@@ -184,17 +186,52 @@ apiClient.interceptors.response.use(
 );
 
 /**
- * Extrae un mensaje legible desde el contrato de HttpExceptionFilter
+ * Extrae un mensaje legible desde el contrato de errores del servidor
  */
 export function extractErrorMessage(error: unknown): string {
   if (axios.isAxiosError<ApiErrorResponse>(error)) {
-    const msg = error.response?.data?.message;
-    if (Array.isArray(msg)) return msg.join('. ');
-    if (typeof msg === 'string') return msg;
+    const data = error.response?.data;
+    const directMsg = data?.message;
+    if (Array.isArray(directMsg)) return directMsg.join('. ');
+    if (typeof directMsg === 'string' && directMsg.trim()) return directMsg;
+
+    const nestedError = data?.error;
+    if (typeof nestedError === 'string' && nestedError.trim()) {
+      return nestedError;
+    }
+    if (nestedError && typeof nestedError === 'object') {
+      const nestedMsg = nestedError.message;
+      if (Array.isArray(nestedMsg)) return nestedMsg.join('. ');
+      if (typeof nestedMsg === 'string' && nestedMsg.trim()) return nestedMsg;
+    }
+
     if (error.code === 'ERR_NETWORK') {
-      return 'No se pudo conectar con el servidor API (http://localhost:3000). Verifica que Docker esté corriendo.';
+      return 'No se pudo conectar con el servidor. Verifica tu conexión e intenta de nuevo.';
     }
   }
   if (error instanceof Error) return error.message;
   return 'Ocurrió un error inesperado.';
+}
+
+export interface ApiErrorDetails {
+  code?: string;
+  email?: string;
+  statusCode?: number;
+  message: string;
+}
+
+export function extractApiErrorDetails(error: unknown): ApiErrorDetails {
+  const message = extractErrorMessage(error);
+  if (axios.isAxiosError<ApiErrorResponse>(error)) {
+    const data = error.response?.data;
+    const nested =
+      data?.error && typeof data.error === 'object' ? data.error : undefined;
+    return {
+      code: nested?.code,
+      email: nested?.email,
+      statusCode: error.response?.status ?? data?.statusCode,
+      message,
+    };
+  }
+  return { message };
 }

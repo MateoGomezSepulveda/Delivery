@@ -63,4 +63,22 @@ describe('UsersService', () => {
     // Verificamos que la propiedad role fue borrada antes de actualizar
     expect(updateData.role).toBeUndefined();
   });
+
+  it('debería marcar el correo como verificado con markEmailAsVerified', async () => {
+    mockUserModel.findByIdAndUpdate.mockReturnValue({
+      select: jest.fn().mockResolvedValue({
+        _id: 'mi_id_real',
+        isEmailVerified: true,
+      }),
+    });
+
+    const result = await service.markEmailAsVerified('mi_id_real');
+
+    expect(mockUserModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      'mi_id_real',
+      { isEmailVerified: true },
+      { new: true },
+    );
+    expect(result?.isEmailVerified).toBe(true);
+  });
 });

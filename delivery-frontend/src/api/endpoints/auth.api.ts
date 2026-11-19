@@ -5,12 +5,41 @@ import type {
   ForgotPasswordResponse,
   LoginPayload,
   RegisterPayload,
+  RegisterResponse,
+  ResendVerificationPayload,
+  ResendVerificationResponse,
   ResetPasswordPayload,
-  User,
+  VerifyEmailPayload,
+  VerifyEmailResponse,
 } from '@/types/auth.types';
 
-export async function registerApi(payload: RegisterPayload): Promise<User> {
-  const response = await apiClient.post<User>('/auth/register', payload);
+export async function registerApi(
+  payload: RegisterPayload,
+): Promise<RegisterResponse> {
+  const response = await apiClient.post<RegisterResponse>(
+    '/auth/register',
+    payload,
+  );
+  return response.data;
+}
+
+export async function verifyEmailApi(
+  payload: VerifyEmailPayload,
+): Promise<VerifyEmailResponse> {
+  const response = await apiClient.post<VerifyEmailResponse>(
+    '/auth/verify-email',
+    payload,
+  );
+  return response.data;
+}
+
+export async function resendVerificationApi(
+  payload: ResendVerificationPayload,
+): Promise<ResendVerificationResponse> {
+  const response = await apiClient.post<ResendVerificationResponse>(
+    '/auth/resend-verification',
+    payload,
+  );
   return response.data;
 }
 

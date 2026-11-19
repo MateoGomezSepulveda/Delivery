@@ -2,18 +2,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import { AxiosError, AxiosHeaders } from 'axios';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { useAuthStore } from '@/store/useAuthStore';
 
 const mockLoginApi = vi.fn();
+const mockResendVerificationApi = vi.fn();
 const mockGetUserByIdApi = vi.fn();
 const mockNavigate = vi.fn();
 const mockToastSuccess = vi.fn();
 const mockToastError = vi.fn();
 const mockToastInfo = vi.fn();
+const mockToastWarning = vi.fn();
 
 vi.mock('@/api/endpoints/auth.api', () => ({
   loginApi: (...args: unknown[]) => mockLoginApi(...args),
+  resendVerificationApi: (...args: unknown[]) =>
+    mockResendVerificationApi(...args),
   logoutApi: vi.fn(),
 }));
 
@@ -26,6 +31,7 @@ vi.mock('sonner', () => ({
     success: (...args: unknown[]) => mockToastSuccess(...args),
     error: (...args: unknown[]) => mockToastError(...args),
     info: (...args: unknown[]) => mockToastInfo(...args),
+    warning: (...args: unknown[]) => mockToastWarning(...args),
   },
 }));
 
@@ -133,5 +139,73 @@ describe('LoginPage', () => {
 
     expect(useAuthStore.getState().isAuthenticated).toBe(true);
     expect(useAuthStore.getState().user?.role).toBe('ADMIN');
+  });
+
+  it('shows email verification alert and redirects to /verify-email when backend returns EMAIL_NOT_VERIFIED', async () => {
+    const user = userEvent.setup();
+    const unverifiedError = new AxiosError(
+      'Request failed with status code 403',
+      'ERR_BAD_REQUEST',
+      undefined,
+      undefined,
+      {
+        status: 403,
+        statusText: 'Forbidden',
+        headers: {},
+        config: { headers: new AxiosHeaders() },
+        data: {
+          success: false,
+          statusCode: 403,
+          error: {
+            statusCode: 403,
+            code: 'EMAIL_NOT_VERIFIED',
+            email: 'pendiente@correo.com',
+            message: 'Debes verificar tu correo electrónico antes de iniciar sesión.',
+          },
+        },
+      },
+    );
+    mockLoginApi.mockRejectedValue(unverifiedError);
+    mockResendVerificationApi.mockResolvedValue({
+      message: 'Código reenviado',
+    });
+
+    render(
+      <MemoryRouter
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    await user.type(
+      screen.getByLabelText('Correo Electrónico'),
+      'pendiente@correo.com',
+    );
+    await user.type(screen.getByLabelText('Contraseña'), 'Secret123');
+    await user.click(screen.getByRole('button', { name: /entrar a mi cuenta/i }));
+
+    expect(
+      await screen.findByText('Tu correo aún no está verificado'),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: /verificar mi correo ahora/i }),
+    );
+
+    await waitFor(() => {
+      expect(mockResendVerificationApi).toHaveBeenCalledWith({
+        email: 'pendiente@correo.com',
+      });
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/verify-email?email=pendiente%40correo.com',
+        {
+          state: {
+            email: 'pendiente@correo.com',
+            justRegistered: true,
+          },
+        },
+      );
+    });
   });
 });

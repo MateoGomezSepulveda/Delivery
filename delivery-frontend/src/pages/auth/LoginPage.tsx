@@ -4,15 +4,21 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import {
   AlertTriangle,
+  ArrowRight,
   KeyRound,
   Lock,
   LogIn,
   Mail,
+  MailWarning,
   Sparkles,
 } from 'lucide-react';
-import { loginApi } from '@/api/endpoints/auth.api';
+import { loginApi, resendVerificationApi } from '@/api/endpoints/auth.api';
 import { getUserByIdApi } from '@/api/endpoints/users.api';
-import { extractErrorMessage, setStoredTokens } from '@/api/axios.client';
+import {
+  extractApiErrorDetails,
+  extractErrorMessage,
+  setStoredTokens,
+} from '@/api/axios.client';
 import { useAuthStore } from '@/store/useAuthStore';
 import { decodeJwtPayload } from '@/utils/jwt';
 import { Button } from '@/components/ui/Button';
@@ -29,6 +35,8 @@ export function LoginPage() {
     {},
   );
   const [rateLimitWarning, setRateLimitWarning] = useState<string | null>(null);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const [isSendingVerification, setIsSendingVerification] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validate = (): boolean => {
@@ -59,9 +67,39 @@ export function LoginPage() {
     });
   };
 
+  const handleVerifyPendingEmail = async () => {
+    if (!unverifiedEmail) return;
+    setIsSendingVerification(true);
+    try {
+      await resendVerificationApi({ email: unverifiedEmail });
+      toast.success('Te enviamos un nuevo código de verificación', {
+        description: 'Revisa tu correo para activar tu cuenta.',
+      });
+      navigate(
+        `/verify-email?email=${encodeURIComponent(unverifiedEmail)}`,
+        {
+          state: {
+            email: unverifiedEmail,
+            justRegistered: true,
+          },
+        },
+      );
+    } catch (err) {
+      toast.error('No se pudo reenviar el código', {
+        description: extractErrorMessage(err),
+      });
+      navigate(`/verify-email?email=${encodeURIComponent(unverifiedEmail)}`, {
+        state: { email: unverifiedEmail },
+      });
+    } finally {
+      setIsSendingVerification(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setRateLimitWarning(null);
+    setUnverifiedEmail(null);
     if (!validate()) return;
 
     setIsSubmitting(true);
@@ -102,16 +140,27 @@ export function LoginPage() {
         navigate('/', { replace: true });
       }
     } catch (error) {
+      const details = extractApiErrorDetails(error);
       if (axios.isAxiosError(error) && error.response?.status === 429) {
         const msg =
-          'Demasiados intentos de inicio de sesión (Rate Limit: máx 5 por minuto). Espera 60 segundos antes de volver a intentar.';
+          'Demasiados intentos de inicio de sesión (máx. 5 por minuto). Espera 60 segundos antes de volver a intentar.';
         setRateLimitWarning(msg);
-        toast.error('Límite de intentos alcanzado (429)', {
+        toast.error('Límite de intentos alcanzado', {
           description: msg,
+        });
+      } else if (
+        details.statusCode === 403 &&
+        details.code === 'EMAIL_NOT_VERIFIED'
+      ) {
+        const targetEmail = details.email || email.trim();
+        setUnverifiedEmail(targetEmail);
+        toast.warning('Correo pendiente de verificación', {
+          description:
+            'Confirma tu correo electrónico para activar tu cuenta e iniciar sesión.',
         });
       } else {
         toast.error('Error al iniciar sesión', {
-          description: extractErrorMessage(error),
+          description: details.message,
         });
       }
     } finally {
@@ -155,6 +204,38 @@ export function LoginPage() {
             <p className="font-bold">Protección Anti-Fuerza Bruta Activada</p>
             <p className="mt-0.5">{rateLimitWarning}</p>
           </div>
+        </div>
+      )}
+
+      {unverifiedEmail && (
+        <div
+          role="alert"
+          className="rounded-2xl border border-amber-300 dark:border-amber-800 bg-amber-50/90 dark:bg-amber-950/40 p-4 space-y-3 text-xs text-amber-900 dark:text-amber-200"
+        >
+          <div className="flex items-start gap-3">
+            <MailWarning className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-bold text-sm">
+                Tu correo aún no está verificado
+              </p>
+              <p className="leading-relaxed">
+                Confirma{' '}
+                <strong className="font-semibold">{unverifiedEmail}</strong> con
+                el código de 6 dígitos o el enlace que te enviamos para poder
+                ingresar.
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="primary"
+            size="sm"
+            className="w-full"
+            isLoading={isSendingVerification}
+            onClick={handleVerifyPendingEmail}
+            rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+          >
+            Verificar mi correo ahora
+          </Button>
         </div>
       )}
 

@@ -30,16 +30,25 @@ export class SeedService implements OnModuleInit {
     const existingAdmin = await this.usersService.findByEmail(adminEmail);
 
     if (existingAdmin) {
+      if (!existingAdmin.isEmailVerified) {
+        await this.usersService.markEmailAsVerified(
+          existingAdmin._id.toString(),
+        );
+        this.logger.log(`Correo de Admin marcado como verificado: ${adminEmail}`);
+      }
       this.logger.log(`Admin ya existe: ${adminEmail}`);
       return;
     }
 
-    await this.usersService.create({
-      name: 'Administrador',
-      email: adminEmail,
-      password: adminPassword,
-      role: Role.ADMIN,
-    });
+    await this.usersService.create(
+      {
+        name: 'Administrador',
+        email: adminEmail,
+        password: adminPassword,
+        role: Role.ADMIN,
+      },
+      { isEmailVerified: true },
+    );
 
     this.logger.log(`Admin creado exitosamente: ${adminEmail}`);
   }

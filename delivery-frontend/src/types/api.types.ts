@@ -26,14 +26,23 @@ export interface PaginatedResponse<T> {
 /**
  * Contrato estándar de errores del HttpExceptionFilter del Backend
  */
+export interface ApiNestedError {
+  statusCode?: number;
+  message?: string | string[];
+  error?: string;
+  code?: string;
+  email?: string;
+}
+
 export interface ApiErrorResponse {
+  success?: boolean;
   statusCode: number;
   timestamp: string;
   path: string;
   method: string;
   requestId?: string;
-  message: string | string[];
-  error?: string;
+  message?: string | string[];
+  error?: string | ApiNestedError;
 }
 
 export type UserRole = 'CLIENT' | 'DELIVERY' | 'ADMIN';

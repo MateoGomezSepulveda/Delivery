@@ -26,6 +26,13 @@ export class User {
 
   @Prop({ type: String, enum: Role, default: Role.CLIENT })
   role: Role;
+
+  @ApiProperty({
+    description: 'Indica si el usuario verificó su correo electrónico',
+    default: false,
+  })
+  @Prop({ type: Boolean, default: false })
+  isEmailVerified: boolean;
 }
 
 export type UserDocument = HydratedDocument<User>;

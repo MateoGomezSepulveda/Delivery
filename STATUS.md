@@ -1,9 +1,14 @@
 # Estado del Proyecto
 
-**Última actualización:** 16 de Noviembre de 2026
+**Última actualización:** 19 de Noviembre de 2026
 
 ## Última Tarea / Contexto Actual
-- **[NUEVO] Modal de Foto de Perfil + Teléfono en Datos y Seguridad + Reparación de Fotos/Modales de Productos (`ProfilePage.tsx`, `AdminProductsPage.tsx`, `ProductDetailModal.tsx`, `Modal.tsx`, `products.api.ts`, `products.service.ts`, `categories.service.ts`, `create-user.dto.ts`)**:
+- **[NUEVO] FE Clientes (Parte 1) — Verificación Real de Correo Electrónico con Código OTP de 6 Dígitos, Enlace y SMTP Real (`VerifyEmailPage.tsx`, `RegisterPage.tsx`, `LoginPage.tsx`, `ProfilePage.tsx`, `auth.service.ts`, `auth.controller.ts`, `mail.service.ts`, `email-verification.schema.ts`, `users.schema.ts`)**:
+  - **Esquema y Seguridad de Verificación en Backend (`email-verification.schema.ts`, `users.schema.ts`, `users.service.ts`, `seed.service.ts`)**: Campo `isEmailVerified: boolean` (`default: false` en registro público `/auth/register`, `true` automático para el Admin del seed), normalización de correo a minúsculas, validación de correo duplicado (`409 Conflict`) y colección `EmailVerification` con código numérico de **6 dígitos**, token hexadecimal de 64 caracteres, bloqueo tras **5 intentos fallidos** y expiración automática TTL de **15 minutos**.
+  - **Envío Real de Correos por SMTP (`mail.service.ts`)**: Integración con servidor SMTP real configurable por `.env` (`SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, `FRONTEND_URL`) conectado con **Gmail App Password** en desarrollo (listo para cambiar credenciales a **AWS SES** en producción sin tocar código) y plantilla HTML oficial de **DeliveryPro** con código de 6 dígitos + botón de confirmación.
+  - **Nuevos Endpoints en `/api/v1/auth` (`auth.controller.ts`, `auth.service.ts`)**: `POST /auth/verify-email` (verifica por `{ email, code }` o `{ token }` y emite `access_token` + `refresh_token` para inicio de sesión automático), `POST /auth/resend-verification` (genera nuevo código/enlace invalidando el anterior) y validación en `POST /auth/login` que rechaza cuentas no verificadas con `403 Forbidden` (`code: 'EMAIL_NOT_VERIFIED'`).
+  - **Experiencia UI/UX en Frontend (`VerifyEmailPage.tsx`, `RegisterPage.tsx`, `LoginPage.tsx`, `ProfilePage.tsx`, `axios.client.ts`)**: Indicador de progreso en 2 pasos (*1. Tus datos → 2. Verificar correo*), pantalla `/verify-email` con 6 casillas OTP accesibles (auto-avance, pegado completo desde portapapeles, navegación con teclado), verificación automática por enlace `?token=...`, temporizador de reenvío de 60s, alerta interactiva en `/login` para cuentas pendientes de verificar, badge de estado de verificación en `/profile` y extracción de errores anidados del `HttpExceptionFilter`.
+- **Modal de Foto de Perfil + Teléfono en Datos y Seguridad + Reparación de Fotos/Modales de Productos (`ProfilePage.tsx`, `AdminProductsPage.tsx`, `ProductDetailModal.tsx`, `Modal.tsx`, `products.api.ts`, `products.service.ts`, `categories.service.ts`, `create-user.dto.ts`)**:
   - **Avatar interactivo y Modal de Foto en `/profile` (`ProfilePage.tsx`)**: Eliminación del botón suelto `"Cambiar Foto"` en la cabecera; al hacer clic en la foto de perfil se abre un modal compacto (`size="sm"`) con la foto en grande (`h-56 w-56 sm:h-64 sm:w-64`) y el botón **Cambiar Foto / Subir Foto**.
   - **Campo de Celular (`phone`) en Datos y Seguridad (`create-user.dto.ts`, `auth.types.ts`, `ProfilePage.tsx`)**: Habilitado `@IsOptional() @IsString() phone?: string` en `CreateUserDto` / `UpdateUserDto` del backend y agregado en la tarjeta de **Información Personal** en `/profile`.
   - **Fotos de Productos sin bloqueo 403 de S3 + Invalidación inmediata de Caché Redis (`AdminProductsPage.tsx`, `products.api.ts`, `products.service.ts`, `categories.service.ts`)**: Guardado de `previewDataUrl` optimizado al subir fotos de productos, limpieza automática de caché Redis (`cacheManager.clear()`) en `create`/`update`/`remove` y sincronización inmediata en memoria (`applyRecentMutations`).
@@ -60,13 +65,14 @@
   - **Code Splitting & PWA**: `React.lazy` + `Suspense` en todas las rutas (`AppRouter.tsx`) y `manualChunks` en `vite.config.ts` + `manifest.webmanifest`, íconos SVG (`192`/`512`) y Service Workers (`public/sw.js` + `public/firebase-messaging-sw.js`).
   - **Dockerización & CI**: `delivery-frontend/Dockerfile` multi-stage con `nginxinc/nginx-unprivileged:1.27-alpine` (non-root, puerto `8080`, `gzip`, caché inmutable en `/assets/`, no-cache en `sw.js`/`firebase-messaging-sw.js`, `/healthz` y fallback SPA en `nginx.conf`), servicio `frontend` integrado en `docker-compose.yml` y `docker-compose.prod.yml`, y job `frontend-ci` en `.github/workflows/ci.yml`.
 
-## ⚠️ Deuda Técnica — Para Fase de Producción
+## ⚠️ Deuda Técnica y Recordatorios para Pasar a Producción (Fase 7 AWS)
+- **Migrar credenciales SMTP de Gmail (desarrollo) a AWS SES (producción):** Verificar el dominio oficial en AWS SES (`SPF`, `DKIM`, `DMARC`), salir del sandbox de SES y reemplazar `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` y `FRONTEND_URL` en las variables de entorno de producción (el código de `MailService` ya es 100% compatible).
+- **Conectar `forgot-password` a envío por correo real (`MailService`)** y retirar `devToken` de la respuesta JSON.
+- **Cerrar `POST /api/v1/users` público** con `@Roles(Role.ADMIN)` para que todo registro público pase únicamente por `POST /api/v1/auth/register` con verificación obligatoria de correo.
 - *Cuando se despliegue en producción con un dominio real, no será necesario utilizar túneles temporales y los webhooks de MercadoPago llegarán sin bloqueos.*
 - *Migrar módulo de notificaciones (actualmente en Firebase FCM) a AWS SNS.*
-- *Migrar módulo de correos (actualmente en Nodemailer local/Ethereal) a AWS SES.*
 - *Integrar `coupons` en el checkout de `orders` (guardar `couponCode` y `discount` en la orden).*
 - *Agregar tests unitarios adicionales para los services de `delivery` y `payments`.*
-- *Limpiar los 8 warnings de ESLint (`no-unused-vars`).*
 
 ## Siguiente Paso
 - **Verificar visualmente en el navegador** las mejoras finales del frontend (mutaciones optimistas en carrito, vista dual Kanban/Tabla en `/admin/orders` y permisos de notificaciones en `/profile`) y commitear los cambios.

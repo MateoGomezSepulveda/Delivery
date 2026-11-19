@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User, UserDocument } from './schema/users.schema';
@@ -11,6 +15,10 @@ import { Role } from 'src/auth/roles.enum';
 @Injectable()
 export class UsersService {
   constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
+
+  private escapeRegex(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
 
   async findAll(paginationQuery: PaginationQueryDto) {
     const { page = 1, limit = 10, search } = paginationQuery;
@@ -44,12 +52,25 @@ export class UsersService {
     };
   }
 
-  async create(userData: CreateUserDto) {
+  async create(
+    userData: CreateUserDto,
+    options?: { isEmailVerified?: boolean },
+  ) {
+    const normalizedEmail = userData.email.trim().toLowerCase();
+    const existingUser = await this.findByEmail(normalizedEmail);
+    if (existingUser) {
+      throw new ConflictException(
+        'Ya existe una cuenta registrada con este correo electrónico.',
+      );
+    }
+
     const hashedPassword = await bcrypt.hash(userData.password, 10);
 
     const newUser = new this.userModel({
       ...userData,
+      email: normalizedEmail,
       password: hashedPassword,
+      isEmailVerified: options?.isEmailVerified ?? true,
     });
     const saved = await newUser.save();
     const { password, ...result } = saved.toObject();
@@ -65,21 +86,30 @@ export class UsersService {
       delete updateData.role;
     }
 
+    const payloadToUpdate: Record<string, unknown> = { ...updateData };
+
     if (updateData.email) {
-      const userWithEmail = await this.findByEmail(updateData.email);
+      const normalizedEmail = updateData.email.trim().toLowerCase();
+      const userWithEmail = await this.findByEmail(normalizedEmail);
 
       if (userWithEmail && userWithEmail._id.toString() !== id) {
         throw new BadRequestException(
           'Este correo ya esta registrado en otra cuenta',
         );
       }
+
+      payloadToUpdate.email = normalizedEmail;
+      if (!userWithEmail) {
+        payloadToUpdate.isEmailVerified = false;
+      }
     }
 
     if (updateData.password) {
-      updateData.password = await bcrypt.hash(updateData.password, 10);
+      payloadToUpdate.password = await bcrypt.hash(updateData.password, 10);
     }
+
     return this.userModel
-      .findByIdAndUpdate(id, updateData, { new: true })
+      .findByIdAndUpdate(id, payloadToUpdate, { new: true })
       .select('-password');
   }
 
@@ -88,7 +118,16 @@ export class UsersService {
   }
 
   async findByEmail(email: string) {
-    return this.userModel.findOne({ email });
+    const normalized = email.trim();
+    return this.userModel.findOne({
+      email: { $regex: new RegExp(`^${this.escapeRegex(normalized)}$`, 'i') },
+    });
+  }
+
+  async markEmailAsVerified(id: string) {
+    return this.userModel
+      .findByIdAndUpdate(id, { isEmailVerified: true }, { new: true })
+      .select('-password');
   }
 
   async changeRole(id: string, role: Role) {

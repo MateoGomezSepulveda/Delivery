@@ -116,10 +116,10 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - ✅ **Cliente HTTP (`axios.client.ts`)**: Desenvolvimiento automático de `TransformInterceptor` y cola de rotación silenciosa de Refresh Tokens (`POST /auth/refresh`).
   - ✅ **Layouts Multi-Rol & Health Check**: `ClientLayout`, `DeliveryLayout` y `AdminLayout` + conexión en vivo con `GET /api/v1/health`.
 
-- ✅ **Frontend Fase 1 (Autenticación, Seguridad de Sesión, RBAC y Perfil con S3)**:
-  - ✅ **Identidad Completa (`/auth`)**: Vistas de Login, Registro con auto-login, Recuperación (`forgot-password`) y Restablecimiento de contraseña (`reset-password`).
+- ✅ **Frontend Fase 1 (Autenticación, Verificación de Correo por SMTP Real, Seguridad de Sesión, RBAC y Perfil con S3)**:
+  - ✅ **Identidad y Verificación de Correo (`/auth`)**: Vistas de Login, Registro en 2 pasos con envío de correo real por SMTP (`MailService` + Gmail App Password / AWS SES), pantalla `/verify-email` (`VerifyEmailPage.tsx`) con código OTP de 6 dígitos y verificación automática por enlace (`POST /auth/verify-email` y `POST /auth/resend-verification`), bloqueo de login para cuentas no verificadas (`403 EMAIL_NOT_VERIFIED`), Recuperación (`forgot-password`) y Restablecimiento de contraseña (`reset-password`).
   - ✅ **Guards de Navegación**: `ProtectedRoute` y `RoleGuard` (`CLIENT`, `DELIVERY`, `ADMIN`) con redirección automática por rol.
-  - ✅ **Mi Perfil y Avatar en S3 (`/profile`)**: Edición de datos personales y contraseña (`PATCH /users/:id` con `OwnershipGuard`), subida de avatar a AWS S3 (`POST /uploads/avatars`) con normalización automática de `.jfif`/`.jpeg` a `.jpg` y rotación de Refresh Token.
+  - ✅ **Mi Perfil y Avatar en S3 (`/profile`)**: Edición de datos personales, celular (`phone`) y contraseña (`PATCH /users/:id` con `OwnershipGuard`), badge de estado de verificación de correo, modal de foto de perfil con subida a AWS S3 (`POST /uploads/avatars`) y rotación de Refresh Token.
 
 - ✅ **Frontend Fase 2 (Catálogo de Licorería & Charcutería, Búsqueda Avanzada y Reseñas Públicas)**:
   - ✅ **Explorador de Catálogo (`CatalogPage.tsx`)**: Identidad comercial de licorería, cigarrillos, quesos y pasabocas, carrusel de categorías (`GET /categories`), buscador con *debounce* sincronizado con la URL, filtros por precio/disponibilidad, ordenamiento dinámico (`sortBy`, `sortOrder`) y paginación.
@@ -147,7 +147,7 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
 
 - ✅ **Frontend Fase 7 (Panel de Administración y Analytics)**: dashboard con KPIs y gráficas (`/analytics/*`), despacho dual **Kanban | Tabla** de pedidos con búsqueda y filtro por estado (`/admin/orders`), CRUD de productos (con subida a S3), categorías, cupones y gestión de usuarios/roles.
 
-- ✅ **Frontend Fase 8 (Testing, ESLint, Code Splitting, PWA y Dockerización)**: suite unitaria con **Vitest + Testing Library** (8 archivos / 23 tests), flujo E2E multirrol con **Playwright**, configuración **ESLint 9**, **Code Splitting** (`React.lazy` + `manualChunks`), soporte **PWA** (`manifest.webmanifest` + Service Workers), `Dockerfile` **Nginx unprivileged** (puerto `8080`), integración en **Docker Compose** y pipeline **GitHub Actions CI (`frontend-ci`)**.
+- ✅ **Frontend Fase 8 (Testing, ESLint, Code Splitting, PWA y Dockerización)**: suite unitaria con **Vitest + Testing Library** (10 archivos / 29 tests), flujo E2E multirrol con **Playwright**, configuración **ESLint 9**, **Code Splitting** (`React.lazy` + `manualChunks`), soporte **PWA** (`manifest.webmanifest` + Service Workers), `Dockerfile` **Nginx unprivileged** (puerto `8080`), integración en **Docker Compose** y pipeline **GitHub Actions CI (`frontend-ci`)**.
 
 *Siguiente paso: Infraestructura Cloud — Backend Fase 7 (AWS ECS Fargate) y Fase 8 (Kubernetes).*
 

@@ -75,7 +75,14 @@ src/
 ### 🔑 Autenticación (`/auth`)
 | Método | Endpoint | Protección | Descripción |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/auth/login` | Pública | Iniciar sesión y obtener el token JWT |
+| `POST` | `/auth/register` | Pública | Registrar cliente (`CLIENT`) y enviar correo con código OTP de 6 dígitos + enlace de verificación |
+| `POST` | `/auth/verify-email` | Pública | Verificar correo electrónico mediante código de 6 dígitos (`{ email, code }`) o enlace (`{ token }`) y emitir JWTs |
+| `POST` | `/auth/resend-verification` | Pública | Reenviar código de 6 dígitos y enlace de verificación al correo |
+| `POST` | `/auth/login` | Pública | Iniciar sesión y obtener `access_token` + `refresh_token` (requiere correo verificado) |
+| `POST` | `/auth/refresh` | Pública | Rotar `refresh_token` y emitir nuevo `access_token` |
+| `POST` | `/auth/logout` | Pública | Invalidar `refresh_token` activo |
+| `POST` | `/auth/forgot-password` | Pública | Solicitar token de recuperación de contraseña |
+| `POST` | `/auth/reset-password` | Pública | Restablecer contraseña con token temporal |
 
 ### 👤 Usuarios (`/users`)
 | Método | Endpoint | Protección | Descripción |
@@ -205,7 +212,7 @@ docker compose up -d --build api
 
 ## 📌 Estado del Proyecto (Progreso Real)
 
-- ✅ **Fase 0.1 (Auth)**: Autenticación JWT, Refresh Tokens, y flujos de recuperación de contraseñas.
+- ✅ **Fase 0.1 (Auth)**: Autenticación JWT, Refresh Tokens, verificación de correo electrónico por SMTP real (código OTP de 6 dígitos + enlace con TTL de 15 min) y flujos de recuperación de contraseñas.
 - ✅ **Fase 0.2 (Users)**: CRUD de usuarios con validaciones de email duplicado, Ownership Guards, prevención de Inyección de Roles, paginación (`PaginationQueryDto`) y documentación en Swagger.
 - ✅ **Fase 0.3 (Categories)**: Endpoints protegidos, manejo de excepciones (`NotFoundException`), validación de Mongo IDs con `ParseMongoIdPipe`, paginación y Tests Unitarios.
 - ✅ **Fase 0.4 (Products)**: Índices de texto y búsqueda avanzada, paginación con filtros (`ProductPaginationDto`), validaciones y Tests Unitarios.

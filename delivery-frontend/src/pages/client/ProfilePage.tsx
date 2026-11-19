@@ -9,10 +9,12 @@ import {
   Camera,
   Car,
   CheckCircle2,
+  Clock,
   KeyRound,
   Lock,
   LogOut,
   Mail,
+  MailCheck,
   Package,
   Phone,
   ShieldCheck,
@@ -25,7 +27,10 @@ import {
 import { useAuthStore } from '@/store/useAuthStore';
 import { updateUserApi } from '@/api/endpoints/users.api';
 import { uploadImageToS3Api } from '@/api/endpoints/uploads.api';
-import { refreshTokensApi } from '@/api/endpoints/auth.api';
+import {
+  refreshTokensApi,
+  resendVerificationApi,
+} from '@/api/endpoints/auth.api';
 import {
   createDeliveryProfileApi,
   getDeliveryProfileApi,
@@ -110,6 +115,7 @@ export function ProfilePage() {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isSendingVerification, setIsSendingVerification] = useState(false);
   const [notifPermission, setNotifPermission] =
     useState<BrowserNotificationPermission>(() => getNotificationPermission());
 
@@ -211,12 +217,43 @@ export function ProfilePage() {
     setIsProfileModalOpen(true);
   };
 
+  const handleVerifyMyEmail = async () => {
+    setIsSendingVerification(true);
+    try {
+      const res = await resendVerificationApi({ email: user.email });
+      if (res.alreadyVerified) {
+        updateUserState({ isEmailVerified: true });
+        toast.success('Tu correo electrónico ya está verificado.');
+        return;
+      }
+      toast.success('Código de verificación enviado', {
+        description: `Revisa tu correo ${user.email} para completar la verificación.`,
+      });
+      navigate(`/verify-email?email=${encodeURIComponent(user.email)}`, {
+        state: {
+          email: user.email,
+          name: user.name,
+          justRegistered: true,
+        },
+      });
+    } catch (error) {
+      toast.error('No se pudo enviar el correo de verificación', {
+        description: extractErrorMessage(error),
+      });
+    } finally {
+      setIsSendingVerification(false);
+    }
+  };
+
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !email.trim()) {
       toast.error('El nombre y el correo electrónico son obligatorios.');
       return;
     }
+
+    const emailChanged =
+      email.trim().toLowerCase() !== user.email.trim().toLowerCase();
 
     setIsSavingProfile(true);
     try {
@@ -229,8 +266,16 @@ export function ProfilePage() {
         name: updatedUser.name,
         email: updatedUser.email,
         phone: updatedUser.phone,
+        isEmailVerified: updatedUser.isEmailVerified,
       });
-      toast.success('Datos de perfil actualizados correctamente');
+      if (emailChanged && updatedUser.isEmailVerified === false) {
+        toast.success('Datos actualizados. Verifica tu nuevo correo', {
+          description:
+            'Haz clic en "Verificar ahora" junto a tu correo para confirmar tu nueva dirección.',
+        });
+      } else {
+        toast.success('Datos de perfil actualizados correctamente');
+      }
       setIsProfileModalOpen(false);
     } catch (error) {
       toast.error('Error al actualizar perfil', {
@@ -332,9 +377,36 @@ export function ProfilePage() {
               </h1>
               <RoleBadge role={user.role} />
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              {user.email}
-            </p>
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {user.email}
+              </p>
+              {user.isEmailVerified === true ? (
+                <Badge
+                  variant="success"
+                  icon={<MailCheck className="w-3.5 h-3.5" />}
+                >
+                  Correo verificado
+                </Badge>
+              ) : user.isEmailVerified === false ? (
+                <div className="inline-flex items-center gap-2">
+                  <Badge
+                    variant="warning"
+                    icon={<Clock className="w-3.5 h-3.5" />}
+                  >
+                    Sin verificar
+                  </Badge>
+                  <button
+                    type="button"
+                    onClick={handleVerifyMyEmail}
+                    disabled={isSendingVerification}
+                    className="text-xs font-bold text-orange-600 hover:text-orange-700 dark:text-orange-400 underline underline-offset-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {isSendingVerification ? 'Enviando...' : 'Verificar ahora'}
+                  </button>
+                </div>
+              ) : null}
+            </div>
             {user.phone && (
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center justify-center sm:justify-start gap-1.5">
                 <Phone className="w-3.5 h-3.5 text-orange-600" />
@@ -670,7 +742,7 @@ export function ProfilePage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 leftIcon={<Mail className="w-4 h-4" />}
-                helperText="El backend valida que el correo no esté duplicado en otra cuenta."
+                helperText="Si cambias tu correo, deberás verificar la nueva dirección."
               />
 
               <Input
