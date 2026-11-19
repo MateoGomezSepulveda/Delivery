@@ -21,8 +21,27 @@ export class User {
   @Prop({ type: [String], default: [] })
   fcmTokens: string[];
 
-  @Prop({ required: true })
-  password: string;
+  @Prop({ required: false })
+  password?: string;
+
+  @ApiProperty({ description: 'ID único de cuenta de Google vinculada', required: false })
+  @Prop({ index: true, sparse: true })
+  googleId?: string;
+
+  @ApiProperty({ description: 'ID único de cuenta de Facebook vinculada', required: false })
+  @Prop({ index: true, sparse: true })
+  facebookId?: string;
+
+  @ApiProperty({
+    description: 'Proveedores de autenticación activos (local, google, facebook)',
+    default: ['local'],
+  })
+  @Prop({ type: [String], default: ['local'] })
+  authProviders: string[];
+
+  @ApiProperty({ description: 'URL de la foto de perfil del usuario', required: false })
+  @Prop({ type: String, default: null })
+  avatarUrl?: string | null;
 
   @Prop({ type: String, enum: Role, default: Role.CLIENT })
   role: Role;

@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Clock,
   KeyRound,
+  Link2,
   Lock,
   LogOut,
   Mail,
@@ -20,6 +21,7 @@ import {
   ShieldCheck,
   Sparkles,
   Tag,
+  Unlink,
   UploadCloud,
   User as UserIcon,
   ZoomIn,
@@ -28,9 +30,20 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { updateUserApi } from '@/api/endpoints/users.api';
 import { uploadImageToS3Api } from '@/api/endpoints/uploads.api';
 import {
+  linkFacebookApi,
+  linkGoogleApi,
   refreshTokensApi,
   resendVerificationApi,
+  unlinkProviderApi,
 } from '@/api/endpoints/auth.api';
+import {
+  requestFacebookAuthCode,
+  requestGoogleAccessToken,
+} from '@/utils/oauthPopups';
+import {
+  FacebookBrandIcon,
+  GoogleBrandIcon,
+} from '@/components/auth/SocialAuthButtons';
 import {
   createDeliveryProfileApi,
   getDeliveryProfileApi,
@@ -116,6 +129,9 @@ export function ProfilePage() {
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isSendingVerification, setIsSendingVerification] = useState(false);
+  const [socialActionLoading, setSocialActionLoading] = useState<
+    'google' | 'facebook' | null
+  >(null);
   const [notifPermission, setNotifPermission] =
     useState<BrowserNotificationPermission>(() => getNotificationPermission());
 
@@ -299,8 +315,14 @@ export function ProfilePage() {
 
     setIsSavingPassword(true);
     try {
-      await updateUserApi(user._id, {
+      const updatedUser = await updateUserApi(user._id, {
         password: newPassword,
+      });
+      updateUserState({
+        authProviders: updatedUser.authProviders ?? [
+          ...(user.authProviders ?? []),
+          'local',
+        ],
       });
       setNewPassword('');
       setConfirmPassword('');
@@ -311,6 +333,78 @@ export function ProfilePage() {
       });
     } finally {
       setIsSavingPassword(false);
+    }
+  };
+
+  const isGoogleLinked = Boolean(
+    user.googleId || user.authProviders?.includes('google'),
+  );
+  const isFacebookLinked = Boolean(
+    user.facebookId || user.authProviders?.includes('facebook'),
+  );
+  const hasLocalPassword = user.authProviders
+    ? user.authProviders.includes('local')
+    : true;
+  const activeAuthMethodsCount =
+    (hasLocalPassword ? 1 : 0) +
+    (isGoogleLinked ? 1 : 0) +
+    (isFacebookLinked ? 1 : 0);
+
+  const handleLinkSocial = async (provider: 'google' | 'facebook') => {
+    setSocialActionLoading(provider);
+    try {
+      const response =
+        provider === 'google'
+          ? await linkGoogleApi(await requestGoogleAccessToken())
+          : await linkFacebookApi(await requestFacebookAuthCode());
+
+      updateUserState({
+        googleId: response.user.googleId,
+        facebookId: response.user.facebookId,
+        authProviders: response.user.authProviders,
+        isEmailVerified: response.user.isEmailVerified,
+        avatarUrl: user.avatarUrl || response.user.avatarUrl,
+      });
+      toast.success(response.message);
+    } catch (error) {
+      toast.error(
+        `No se pudo vincular ${provider === 'google' ? 'Google' : 'Facebook'}`,
+        {
+          description: extractErrorMessage(error),
+        },
+      );
+    } finally {
+      setSocialActionLoading(null);
+    }
+  };
+
+  const handleUnlinkSocial = async (provider: 'google' | 'facebook') => {
+    if (activeAuthMethodsCount <= 1) {
+      toast.warning('Configura una contraseña antes de desvincular', {
+        description:
+          'Necesitas al menos un método de inicio de sesión activo para no perder el acceso a tu cuenta.',
+      });
+      return;
+    }
+
+    setSocialActionLoading(provider);
+    try {
+      const response = await unlinkProviderApi(provider);
+      updateUserState({
+        googleId: response.user.googleId,
+        facebookId: response.user.facebookId,
+        authProviders: response.user.authProviders,
+      });
+      toast.success(response.message);
+    } catch (error) {
+      toast.error(
+        `No se pudo desvincular ${provider === 'google' ? 'Google' : 'Facebook'}`,
+        {
+          description: extractErrorMessage(error),
+        },
+      );
+    } finally {
+      setSocialActionLoading(null);
     }
   };
 
@@ -806,6 +900,134 @@ export function ProfilePage() {
                 Actualizar Contraseña
               </Button>
             </form>
+          </div>
+
+          {/* Linked Social Accounts Card */}
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-card space-y-5">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="flex items-center gap-2.5">
+                <Link2 className="w-5 h-5 text-orange-600 shrink-0" />
+                <div>
+                  <h2 className="text-base font-bold">Cuentas vinculadas</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Conecta Google o Facebook para iniciar sesión con un solo
+                    clic sin escribir tu contraseña.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Google Row */}
+              <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 p-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="h-10 w-10 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-sm shrink-0">
+                    <GoogleBrandIcon className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">
+                      Google
+                    </p>
+                    {isGoogleLinked ? (
+                      <Badge variant="success">Conectada</Badge>
+                    ) : (
+                      <Badge variant="neutral">No vinculada</Badge>
+                    )}
+                  </div>
+                </div>
+
+                {isGoogleLinked ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    isLoading={socialActionLoading === 'google'}
+                    disabled={
+                      socialActionLoading !== null ||
+                      activeAuthMethodsCount <= 1
+                    }
+                    title={
+                      activeAuthMethodsCount <= 1
+                        ? 'Configura primero una contraseña para poder desvincular Google'
+                        : 'Desvincular cuenta de Google'
+                    }
+                    onClick={() => handleUnlinkSocial('google')}
+                    leftIcon={<Unlink className="w-3.5 h-3.5" />}
+                  >
+                    Desvincular
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    isLoading={socialActionLoading === 'google'}
+                    disabled={socialActionLoading !== null}
+                    onClick={() => handleLinkSocial('google')}
+                    leftIcon={<Link2 className="w-3.5 h-3.5 text-orange-600" />}
+                  >
+                    Vincular
+                  </Button>
+                )}
+              </div>
+
+              {/* Facebook Row */}
+              <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 p-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="h-10 w-10 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-sm shrink-0">
+                    <FacebookBrandIcon className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">
+                      Facebook
+                    </p>
+                    {isFacebookLinked ? (
+                      <Badge variant="success">Conectada</Badge>
+                    ) : (
+                      <Badge variant="neutral">No vinculada</Badge>
+                    )}
+                  </div>
+                </div>
+
+                {isFacebookLinked ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    isLoading={socialActionLoading === 'facebook'}
+                    disabled={
+                      socialActionLoading !== null ||
+                      activeAuthMethodsCount <= 1
+                    }
+                    title={
+                      activeAuthMethodsCount <= 1
+                        ? 'Configura primero una contraseña para poder desvincular Facebook'
+                        : 'Desvincular cuenta de Facebook'
+                    }
+                    onClick={() => handleUnlinkSocial('facebook')}
+                    leftIcon={<Unlink className="w-3.5 h-3.5" />}
+                  >
+                    Desvincular
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    isLoading={socialActionLoading === 'facebook'}
+                    disabled={socialActionLoading !== null}
+                    onClick={() => handleLinkSocial('facebook')}
+                    leftIcon={<Link2 className="w-3.5 h-3.5 text-blue-600" />}
+                  >
+                    Vincular
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {!hasLocalPassword && (
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Tu cuenta inició con un proveedor externo. Si deseas
+                desvincularlo más adelante, define primero una contraseña en la
+                tarjeta de <strong>Seguridad y Contraseña</strong>.
+              </p>
+            )}
           </div>
 
           {/* Browser Notifications Card */}

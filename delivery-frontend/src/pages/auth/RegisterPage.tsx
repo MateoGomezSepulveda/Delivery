@@ -8,6 +8,7 @@ import { extractErrorMessage, setStoredTokens } from '@/api/axios.client';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons';
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -206,6 +207,8 @@ export function RegisterPage() {
           Crear mi Cuenta
         </Button>
       </form>
+
+      <SocialAuthButtons disabled={isSubmitting} />
 
       <div className="border-t border-slate-100 dark:border-slate-800 pt-5 text-center text-sm text-slate-600 dark:text-slate-400">
         ¿Ya tienes una cuenta?{' '}

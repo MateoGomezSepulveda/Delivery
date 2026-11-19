@@ -7,6 +7,9 @@ export interface User {
   role: UserRole;
   phone?: string;
   isEmailVerified?: boolean;
+  googleId?: string;
+  facebookId?: string;
+  authProviders?: string[];
   riderRequestStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
   vehicleType?: string;
   plate?: string;
@@ -61,6 +64,30 @@ export interface ResendVerificationPayload {
 export interface ResendVerificationResponse {
   message: string;
   alreadyVerified?: boolean;
+}
+
+export interface GoogleAuthPayload {
+  idToken?: string;
+  accessToken?: string;
+}
+
+export interface FacebookAuthPayload {
+  accessToken?: string;
+  code?: string;
+  redirectUri?: string;
+}
+
+export interface SocialAuthResponse {
+  access_token: string;
+  refresh_token: string;
+  user: User;
+  isNewUser: boolean;
+  linkedExistingAccount: boolean;
+}
+
+export interface LinkProviderResponse {
+  message: string;
+  user: User;
 }
 
 export interface ForgotPasswordPayload {

@@ -70,6 +70,7 @@ export class UsersService {
       ...userData,
       email: normalizedEmail,
       password: hashedPassword,
+      authProviders: ['local'],
       isEmailVerified: options?.isEmailVerified ?? true,
     });
     const saved = await newUser.save();
@@ -77,8 +78,91 @@ export class UsersService {
     return result;
   }
 
+  async createOAuthUser(data: {
+    name: string;
+    email: string;
+    provider: 'google' | 'facebook';
+    providerId: string;
+    avatarUrl?: string | null;
+  }) {
+    const normalizedEmail = data.email.trim().toLowerCase();
+    const providerField =
+      data.provider === 'google' ? 'googleId' : 'facebookId';
+
+    const newUser = new this.userModel({
+      name: data.name.trim() || 'Usuario DeliveryPro',
+      email: normalizedEmail,
+      role: Role.CLIENT,
+      isEmailVerified: true,
+      [providerField]: data.providerId,
+      authProviders: [data.provider],
+      ...(data.avatarUrl ? { avatarUrl: data.avatarUrl } : {}),
+    });
+
+    const saved = await newUser.save();
+    const { password, ...result } = saved.toObject();
+    return result;
+  }
+
   async findOne(id: string) {
     return this.userModel.findById(id).select('-password').exec();
+  }
+
+  async findByIdWithAuth(id: string) {
+    return this.userModel.findById(id).exec();
+  }
+
+  async findByGoogleId(googleId: string) {
+    return this.userModel.findOne({ googleId }).select('-password').exec();
+  }
+
+  async findByFacebookId(facebookId: string) {
+    return this.userModel.findOne({ facebookId }).select('-password').exec();
+  }
+
+  async linkOAuthProvider(
+    id: string,
+    provider: 'google' | 'facebook',
+    providerId: string,
+    options?: { avatarUrl?: string | null; markEmailVerified?: boolean },
+  ) {
+    const providerField = provider === 'google' ? 'googleId' : 'facebookId';
+    const setFields: Record<string, unknown> = {
+      [providerField]: providerId,
+    };
+
+    if (options?.markEmailVerified) {
+      setFields.isEmailVerified = true;
+    }
+    if (options?.avatarUrl) {
+      setFields.avatarUrl = options.avatarUrl;
+    }
+
+    return this.userModel
+      .findByIdAndUpdate(
+        id,
+        {
+          $set: setFields,
+          $addToSet: { authProviders: provider },
+        },
+        { new: true },
+      )
+      .select('-password');
+  }
+
+  async unlinkOAuthProvider(id: string, provider: 'google' | 'facebook') {
+    const providerField = provider === 'google' ? 'googleId' : 'facebookId';
+
+    return this.userModel
+      .findByIdAndUpdate(
+        id,
+        {
+          $unset: { [providerField]: '' },
+          $pull: { authProviders: provider },
+        },
+        { new: true },
+      )
+      .select('-password');
   }
 
   async update(id: string, updateData: UpdateUserDto) {
@@ -106,6 +190,16 @@ export class UsersService {
 
     if (updateData.password) {
       payloadToUpdate.password = await bcrypt.hash(updateData.password, 10);
+      return this.userModel
+        .findByIdAndUpdate(
+          id,
+          {
+            $set: payloadToUpdate,
+            $addToSet: { authProviders: 'local' },
+          },
+          { new: true },
+        )
+        .select('-password');
     }
 
     return this.userModel

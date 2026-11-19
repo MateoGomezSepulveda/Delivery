@@ -19,6 +19,8 @@ vi.mock('@/api/endpoints/auth.api', () => ({
   loginApi: (...args: unknown[]) => mockLoginApi(...args),
   resendVerificationApi: (...args: unknown[]) =>
     mockResendVerificationApi(...args),
+  loginWithGoogleApi: vi.fn(),
+  loginWithFacebookApi: vi.fn(),
   logoutApi: vi.fn(),
 }));
 

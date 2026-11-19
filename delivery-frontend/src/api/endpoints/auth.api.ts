@@ -1,14 +1,18 @@
 import { apiClient } from '@/api/axios.client';
 import type {
   AuthTokensResponse,
+  FacebookAuthPayload,
   ForgotPasswordPayload,
   ForgotPasswordResponse,
+  GoogleAuthPayload,
+  LinkProviderResponse,
   LoginPayload,
   RegisterPayload,
   RegisterResponse,
   ResendVerificationPayload,
   ResendVerificationResponse,
   ResetPasswordPayload,
+  SocialAuthResponse,
   VerifyEmailPayload,
   VerifyEmailResponse,
 } from '@/types/auth.types';
@@ -87,6 +91,55 @@ export async function resetPasswordApi(
   const response = await apiClient.post<{ message: string }>(
     '/auth/reset-password',
     payload,
+  );
+  return response.data;
+}
+
+export async function loginWithGoogleApi(
+  payload: GoogleAuthPayload,
+): Promise<SocialAuthResponse> {
+  const response = await apiClient.post<SocialAuthResponse>(
+    '/auth/google',
+    payload,
+  );
+  return response.data;
+}
+
+export async function loginWithFacebookApi(
+  payload: FacebookAuthPayload,
+): Promise<SocialAuthResponse> {
+  const response = await apiClient.post<SocialAuthResponse>(
+    '/auth/facebook',
+    payload,
+  );
+  return response.data;
+}
+
+export async function linkGoogleApi(
+  payload: GoogleAuthPayload,
+): Promise<LinkProviderResponse> {
+  const response = await apiClient.post<LinkProviderResponse>(
+    '/auth/link/google',
+    payload,
+  );
+  return response.data;
+}
+
+export async function linkFacebookApi(
+  payload: FacebookAuthPayload,
+): Promise<LinkProviderResponse> {
+  const response = await apiClient.post<LinkProviderResponse>(
+    '/auth/link/facebook',
+    payload,
+  );
+  return response.data;
+}
+
+export async function unlinkProviderApi(
+  provider: 'google' | 'facebook',
+): Promise<LinkProviderResponse> {
+  const response = await apiClient.delete<LinkProviderResponse>(
+    `/auth/unlink/${provider}`,
   );
   return response.data;
 }

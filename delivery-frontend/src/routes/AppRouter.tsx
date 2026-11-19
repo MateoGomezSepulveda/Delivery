@@ -33,6 +33,11 @@ const ResetPasswordPage = lazy(() =>
     pickExport('ResetPasswordPage'),
   ),
 );
+const FacebookCallbackPage = lazy(() =>
+  import('@/pages/auth/FacebookCallbackPage').then(
+    pickExport('FacebookCallbackPage'),
+  ),
+);
 
 const CatalogPage = lazy(() =>
   import('@/pages/client/CatalogPage').then(pickExport('CatalogPage')),
@@ -112,6 +117,12 @@ export function AppRouter() {
     <BrowserRouter>
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
+          {/* Callback OAuth de Facebook (ventana emergente) */}
+          <Route
+            path="/auth/facebook/callback"
+            element={<FacebookCallbackPage />}
+          />
+
           {/* Rutas Públicas de Identidad (AuthLayout) */}
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<LoginPage />} />

@@ -23,6 +23,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { decodeJwtPayload } from '@/utils/jwt';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -284,6 +285,8 @@ export function LoginPage() {
           Entrar a mi Cuenta
         </Button>
       </form>
+
+      <SocialAuthButtons disabled={isSubmitting} />
 
       <div className="border-t border-slate-100 dark:border-slate-800 pt-5 text-center text-sm text-slate-600 dark:text-slate-400">
         ¿Aún no tienes una cuenta?{' '}

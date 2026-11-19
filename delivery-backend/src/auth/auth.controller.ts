@@ -1,5 +1,20 @@
-import { Body, Controller, Post, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  Req,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { Public } from './public.decorator';
 import { RegisterDto } from './dto/register.dto';
@@ -9,7 +24,17 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
+import { GoogleAuthDto } from './dto/google-auth.dto';
+import { FacebookAuthDto } from './dto/facebook-auth.dto';
 import { Throttle } from '@nestjs/throttler';
+
+interface AuthenticatedRequest {
+  user: {
+    userId: string;
+    email: string;
+    role: string;
+  };
+}
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -116,5 +141,95 @@ export class AuthController {
       resetPasswordDto.token,
       resetPasswordDto.newPassword,
     );
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Post('google')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Login or register with Google OAuth 2.0' })
+  @ApiResponse({
+    status: 200,
+    description: 'Authenticated with Google and session tokens issued.',
+  })
+  @ApiResponse({ status: 401, description: 'Invalid or expired Google token.' })
+  loginWithGoogle(@Body() dto: GoogleAuthDto) {
+    return this.authService.loginWithGoogle(dto);
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Post('facebook')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Login or register with Facebook OAuth 2.0' })
+  @ApiResponse({
+    status: 200,
+    description: 'Authenticated with Facebook and session tokens issued.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid or expired Facebook credentials.',
+  })
+  loginWithFacebook(@Body() dto: FacebookAuthDto) {
+    return this.authService.loginWithFacebook(dto);
+  }
+
+  @ApiBearerAuth()
+  @Post('link/google')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Link a Google account to the authenticated user profile',
+  })
+  @ApiResponse({ status: 200, description: 'Google account linked.' })
+  @ApiResponse({
+    status: 409,
+    description: 'Google account already linked to another user.',
+  })
+  linkGoogle(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: GoogleAuthDto,
+  ) {
+    return this.authService.linkGoogle(req.user.userId, dto);
+  }
+
+  @ApiBearerAuth()
+  @Post('link/facebook')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Link a Facebook account to the authenticated user profile',
+  })
+  @ApiResponse({ status: 200, description: 'Facebook account linked.' })
+  @ApiResponse({
+    status: 409,
+    description: 'Facebook account already linked to another user.',
+  })
+  linkFacebook(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: FacebookAuthDto,
+  ) {
+    return this.authService.linkFacebook(req.user.userId, dto);
+  }
+
+  @ApiBearerAuth()
+  @Delete('unlink/:provider')
+  @HttpCode(HttpStatus.OK)
+  @ApiParam({
+    name: 'provider',
+    enum: ['google', 'facebook'],
+    description: 'Proveedor social a desvincular',
+  })
+  @ApiOperation({
+    summary: 'Unlink Google or Facebook from the authenticated user profile',
+  })
+  @ApiResponse({ status: 200, description: 'Provider unlinked successfully.' })
+  @ApiResponse({
+    status: 400,
+    description: 'Cannot unlink the only remaining authentication method.',
+  })
+  unlinkProvider(
+    @Req() req: AuthenticatedRequest,
+    @Param('provider') provider: string,
+  ) {
+    return this.authService.unlinkProvider(req.user.userId, provider);
   }
 }

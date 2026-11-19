@@ -15,6 +15,8 @@ const mockToastError = vi.fn();
 vi.mock('@/api/endpoints/auth.api', () => ({
   registerApi: (...args: unknown[]) => mockRegisterApi(...args),
   loginApi: (...args: unknown[]) => mockLoginApi(...args),
+  loginWithGoogleApi: vi.fn(),
+  loginWithFacebookApi: vi.fn(),
   logoutApi: vi.fn(),
 }));
 

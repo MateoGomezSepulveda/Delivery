@@ -83,6 +83,11 @@ src/
 | `POST` | `/auth/logout` | Pública | Invalidar `refresh_token` activo |
 | `POST` | `/auth/forgot-password` | Pública | Solicitar token de recuperación de contraseña |
 | `POST` | `/auth/reset-password` | Pública | Restablecer contraseña con token temporal |
+| `POST` | `/auth/google` | Pública | Iniciar sesión, registrarse o vincular cuenta automáticamente con Google OAuth 2.0 |
+| `POST` | `/auth/facebook` | Pública | Iniciar sesión, registrarse o vincular cuenta automáticamente con Facebook OAuth 2.0 |
+| `POST` | `/auth/link/google` | JWT | Vincular cuenta de Google al perfil del usuario autenticado |
+| `POST` | `/auth/link/facebook` | JWT | Vincular cuenta de Facebook al perfil del usuario autenticado |
+| `DELETE` | `/auth/unlink/:provider` | JWT | Desvincular Google o Facebook (valida que quede al menos un método de acceso activo) |
 
 ### 👤 Usuarios (`/users`)
 | Método | Endpoint | Protección | Descripción |
@@ -212,7 +217,7 @@ docker compose up -d --build api
 
 ## 📌 Estado del Proyecto (Progreso Real)
 
-- ✅ **Fase 0.1 (Auth)**: Autenticación JWT, Refresh Tokens, verificación de correo electrónico por SMTP real (código OTP de 6 dígitos + enlace con TTL de 15 min) y flujos de recuperación de contraseñas.
+- ✅ **Fase 0.1 (Auth)**: Autenticación JWT, Refresh Tokens, verificación de correo electrónico por SMTP real (código OTP de 6 dígitos + enlace con TTL de 15 min), inicio de sesión y vinculación de cuentas con Google y Facebook OAuth 2.0 y flujos de recuperación de contraseñas.
 - ✅ **Fase 0.2 (Users)**: CRUD de usuarios con validaciones de email duplicado, Ownership Guards, prevención de Inyección de Roles, paginación (`PaginationQueryDto`) y documentación en Swagger.
 - ✅ **Fase 0.3 (Categories)**: Endpoints protegidos, manejo de excepciones (`NotFoundException`), validación de Mongo IDs con `ParseMongoIdPipe`, paginación y Tests Unitarios.
 - ✅ **Fase 0.4 (Products)**: Índices de texto y búsqueda avanzada, paginación con filtros (`ProductPaginationDto`), validaciones y Tests Unitarios.

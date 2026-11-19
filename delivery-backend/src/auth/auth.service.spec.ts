@@ -12,6 +12,7 @@ import {
   UnauthorizedException,
   BadRequestException,
   ForbiddenException,
+  ConflictException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 
@@ -22,8 +23,14 @@ describe('AuthService', () => {
 
   const mockUsersService = {
     create: jest.fn(),
+    createOAuthUser: jest.fn(),
     findByEmail: jest.fn(),
     findOne: jest.fn(),
+    findByIdWithAuth: jest.fn(),
+    findByGoogleId: jest.fn(),
+    findByFacebookId: jest.fn(),
+    linkOAuthProvider: jest.fn(),
+    unlinkOAuthProvider: jest.fn(),
     update: jest.fn(),
     markEmailAsVerified: jest.fn(),
   };
@@ -499,6 +506,211 @@ describe('AuthService', () => {
       await expect(
         service.resetPassword('expired-token', 'NewPass123!'),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // ─── OAuth Social (Google & Facebook) ────────────────────────────────────────
+  describe('OAuth Social (Google & Facebook)', () => {
+    const originalFetch = global.fetch;
+
+    afterEach(() => {
+      global.fetch = originalFetch;
+    });
+
+    it('debe crear un usuario nuevo verificado al iniciar sesión con Google por primera vez', async () => {
+      mockConfigService.get.mockImplementation((key: string) => {
+        if (key === 'GOOGLE_CLIENT_ID') return 'google-client-id-123';
+        return undefined;
+      });
+      global.fetch = jest
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ aud: 'google-client-id-123' }),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            sub: 'google-sub-99',
+            email: 'nuevo@gmail.com',
+            email_verified: true,
+            name: 'Mateo Google',
+            picture: 'https://lh3.googleusercontent.com/avatar.jpg',
+          }),
+        } as Response);
+
+      mockUsersService.findByGoogleId.mockResolvedValue(null);
+      mockUsersService.findByEmail.mockResolvedValue(null);
+      mockUsersService.createOAuthUser.mockResolvedValue({
+        _id: 'user-google-1',
+        name: 'Mateo Google',
+        email: 'nuevo@gmail.com',
+        role: 'CLIENT',
+        googleId: 'google-sub-99',
+        authProviders: ['google'],
+        isEmailVerified: true,
+      });
+      mockRefreshTokenModel.create.mockResolvedValue({});
+
+      const result = await service.loginWithGoogle({
+        accessToken: 'valid-google-access-token',
+      });
+
+      expect(mockUsersService.createOAuthUser).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'nuevo@gmail.com',
+          provider: 'google',
+          providerId: 'google-sub-99',
+        }),
+      );
+      expect(result.isNewUser).toBe(true);
+      expect(result.access_token).toBe('mock-access-token');
+    });
+
+    it('debe vincular automáticamente Google a una cuenta local existente con el mismo correo', async () => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          sub: 'google-sub-existing',
+          email: 'mateo@gmail.com',
+          email_verified: true,
+          name: 'Mateo',
+        }),
+      } as Response);
+
+      mockUsersService.findByGoogleId.mockResolvedValue(null);
+      mockUsersService.findByEmail.mockResolvedValue({
+        _id: 'local-user-1',
+        email: 'mateo@gmail.com',
+        role: 'CLIENT',
+      });
+      mockUsersService.linkOAuthProvider.mockResolvedValue({
+        _id: 'local-user-1',
+        email: 'mateo@gmail.com',
+        role: 'CLIENT',
+        googleId: 'google-sub-existing',
+        authProviders: ['local', 'google'],
+        isEmailVerified: true,
+      });
+      mockRefreshTokenModel.create.mockResolvedValue({});
+
+      const result = await service.loginWithGoogle({
+        accessToken: 'google-token',
+      });
+
+      expect(mockUsersService.linkOAuthProvider).toHaveBeenCalledWith(
+        'local-user-1',
+        'google',
+        'google-sub-existing',
+        expect.objectContaining({ markEmailVerified: true }),
+      );
+      expect(result.linkedExistingAccount).toBe(true);
+      expect(result.isNewUser).toBe(false);
+    });
+
+    it('debe autenticar con Facebook intercambiando el authorization code', async () => {
+      mockConfigService.get.mockImplementation((key: string) => {
+        if (key === 'FACEBOOK_APP_ID') return 'fb-app-1';
+        if (key === 'FACEBOOK_APP_SECRET') return 'fb-secret-1';
+        return undefined;
+      });
+      global.fetch = jest
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ access_token: 'fb-user-access-token' }),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            data: { is_valid: true, app_id: 'fb-app-1' },
+          }),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            id: 'fb-id-777',
+            name: 'Laura FB',
+            email: 'laura@fb.com',
+            picture: { data: { url: 'https://graph.facebook.com/pic.jpg' } },
+          }),
+        } as Response);
+
+      mockUsersService.findByFacebookId.mockResolvedValue({
+        _id: 'user-fb-1',
+        name: 'Laura FB',
+        email: 'laura@fb.com',
+        role: 'CLIENT',
+        facebookId: 'fb-id-777',
+        authProviders: ['facebook'],
+        isEmailVerified: true,
+      });
+      mockRefreshTokenModel.create.mockResolvedValue({});
+
+      const result = await service.loginWithFacebook({
+        code: 'fb-oauth-code',
+        redirectUri: 'http://localhost:5173/auth/facebook/callback',
+      });
+
+      expect(result.user.facebookId).toBe('fb-id-777');
+      expect(result.access_token).toBe('mock-access-token');
+    });
+
+    it('debe rechazar linkGoogle con ConflictException si esa cuenta de Google ya pertenece a otro usuario', async () => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          sub: 'google-taken-id',
+          email: 'otro@gmail.com',
+          name: 'Otro',
+        }),
+      } as Response);
+
+      mockUsersService.findOne.mockResolvedValue({
+        _id: 'mi-user-id',
+        email: 'yo@gmail.com',
+      });
+      mockUsersService.findByGoogleId.mockResolvedValue({
+        _id: 'otro-user-id',
+        googleId: 'google-taken-id',
+      });
+
+      await expect(
+        service.linkGoogle('mi-user-id', { accessToken: 'token' }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('debe impedir desvincular el único método de inicio de sesión si el usuario no tiene contraseña', async () => {
+      mockUsersService.findByIdWithAuth.mockResolvedValue({
+        _id: 'social-only-user',
+        googleId: 'g-1',
+        facebookId: undefined,
+        password: undefined,
+      });
+
+      await expect(
+        service.unlinkProvider('social-only-user', 'google'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('debe desvincular Google correctamente si el usuario tiene contraseña local', async () => {
+      mockUsersService.findByIdWithAuth.mockResolvedValue({
+        _id: 'hybrid-user',
+        googleId: 'g-1',
+        password: 'hashed-password',
+      });
+      mockUsersService.unlinkOAuthProvider.mockResolvedValue({
+        _id: 'hybrid-user',
+        authProviders: ['local'],
+      });
+
+      const result = await service.unlinkProvider('hybrid-user', 'google');
+
+      expect(mockUsersService.unlinkOAuthProvider).toHaveBeenCalledWith(
+        'hybrid-user',
+        'google',
+      );
+      expect(result.message).toContain('desvinculada');
     });
   });
 });
