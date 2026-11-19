@@ -139,7 +139,7 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
 
 - ✅ **Frontend Fase 5 (Tiempo Real y Notificaciones)**:
   - ✅ **WebSockets (`useSocket.ts`)**: Socket.io autenticado con `auth.token`; eventos `order_status_updated` (toast + sonido Web Audio + notificación nativa del navegador en segundo plano con `browserNotifications.ts`) y `delivery_location_updated`.
-  - ✅ **Service Workers & Perfil (`sw.js`, `firebase-messaging-sw.js`, `ProfilePage.tsx`)**: manejo de `notificationclick`, activación/prueba desde el perfil y cabeceras `no-cache` en `nginx.conf`.
+  - ✅ **Service Workers, Íconos PNG & Perfil (`sw.js`, `firebase-messaging-sw.js`, `browserNotifications.ts`, `ProfilePage.tsx`)**: registro seguro de `/sw.js` en `localhost` y producción (`window.isSecureContext`), íconos PNG compatibles (`icon-192.png` / `icon-512.png`), fallback automático a `new Notification`, `tag` único en pruebas, sincronización automática de permisos, guía accesible (`role="alert"`) para desbloquear notificaciones bloqueadas, manejo de `notificationclick` y cabeceras `no-cache` en `nginx.conf`.
   - ✅ **Tracking en vivo (`LiveTrackingMap.tsx`)**: posición del repartidor en `/orders/:id` cuando la orden está `OUT_FOR_DELIVERY`.
   - ✅ **Backend**: gateway acepta `auth.token` y usa `sub` del JWT; `DeliveryService` emite ubicación y estados.
   - ⏳ Push FCM remoto pendiente de credenciales de Firebase (`serviceAccount` en backend) y campo `fcmTokens` en DTOs de usuario.
@@ -148,7 +148,7 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
 
 - ✅ **Frontend Fase 7 (Panel de Administración y Analytics)**: dashboard con KPIs y gráficas (`/analytics/*`), despacho dual **Kanban | Tabla** de pedidos con búsqueda y filtro por estado (`/admin/orders`), CRUD de productos (con subida a S3), categorías, cupones y gestión de usuarios/roles.
 
-- ✅ **Frontend Fase 8 (Testing, ESLint, Code Splitting, PWA y Dockerización)**: suite unitaria con **Vitest + Testing Library** (13 archivos / 36 tests pasando), flujo E2E multirrol con **Playwright**, configuración **ESLint 9**, **Code Splitting** (`React.lazy` + `manualChunks`), soporte **PWA** (`manifest.webmanifest` + Service Workers), `Dockerfile` **Nginx unprivileged** (puerto `8080`), integración en **Docker Compose** y pipeline **GitHub Actions CI (`frontend-ci`)**.
+- ✅ **Frontend Fase 8 (Testing, ESLint, Code Splitting, PWA y Dockerización)**: suite unitaria con **Vitest + Testing Library** (15 archivos / 43 tests pasando), flujo E2E multirrol con **Playwright**, configuración **ESLint 9**, **Code Splitting** (`React.lazy` + `manualChunks`), soporte **PWA** (`manifest.webmanifest` + íconos PNG/SVG + Service Workers), `Dockerfile` **Nginx unprivileged** (puerto `8080`), integración en **Docker Compose** y pipeline **GitHub Actions CI (`frontend-ci`)**.
 
 *Siguiente paso: Infraestructura Cloud — Backend Fase 7 (AWS ECS Fargate) y Fase 8 (Kubernetes).*
 

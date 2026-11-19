@@ -78,7 +78,7 @@ npm run build
   - `analytics.api.ts` y páginas `/admin` (dashboard), `/admin/orders` (vista dual **Kanban | Tabla**, búsqueda por `#ID`/cliente/correo/dirección y filtro por estado), `/admin/products`, `/admin/categories`, `/admin/coupons` y `/admin/users`.
 
 - ✅ **Fase 5 (Tiempo Real + Notificaciones de Navegador / SW)**:
-  - `useSocket.ts` (Socket.io con JWT en `auth.token`, reconexión al rotar token), `utils/sound.ts` (Web Audio API), `utils/browserNotifications.ts` (notificación de navegador cuando la pestaña está oculta + configuración en `ProfilePage`), `public/sw.js` (`notificationclick`), plantilla `public/firebase-messaging-sw.js` y `LiveTrackingMap` en `/orders/:id` para órdenes `OUT_FOR_DELIVERY`.
+  - `useSocket.ts` (Socket.io con JWT en `auth.token`, reconexión al rotar token), `utils/sound.ts` (Web Audio API), `utils/browserNotifications.ts` (notificación de navegador con íconos PNG `icon-192.png`, registro de `/sw.js` en contextos seguros `localhost`/`HTTPS`, fallback a `new Notification`, `tag` único en pruebas y tarjeta con sincronización de permisos y guía de desbloqueo en `ProfilePage`), `public/sw.js` (`deliverypro-shell-v2`, `notificationclick`), plantilla `public/firebase-messaging-sw.js` y `LiveTrackingMap` en `/orders/:id` para órdenes `OUT_FOR_DELIVERY`.
   - Pendiente para Push FCM remoto: credenciales Firebase en backend/frontend y habilitar `fcmTokens` en DTOs de usuarios del backend.
 
 - ✅ **Fase 4 (Checkout, Pasarela MercadoPago, Mis Pedidos y Reseñas Verificadas)**:
@@ -90,7 +90,7 @@ npm run build
 
 - ✅ **Fase 8 (Calidad, Testing, PWA, Code Splitting y Dockerización)**:
   - **ESLint 9 (`eslint.config.js`)** + scripts `lint`, `typecheck`, `test`, `test:watch` y `test:e2e`.
-  - **Tests Unitarios y de Componentes (Vitest + Testing Library + jsdom)**: 8 archivos / 23 tests (`jwt.test.ts`, `formatters.test.ts`, `useAuthStore.test.ts`, `useCartMutations.test.tsx`, `CouponInputBox.test.tsx`, `LoginPage.test.tsx`, `CheckoutPage.test.tsx` y `AdminOrdersPage.test.tsx`).
+  - **Tests Unitarios y de Componentes (Vitest + Testing Library + jsdom)**: 15 archivos / 43 tests (`jwt.test.ts`, `formatters.test.ts`, `browserNotifications.test.ts`, `useAuthStore.test.ts`, `useCartMutations.test.tsx`, `CouponInputBox.test.tsx`, `SocialAuthButtons.test.tsx`, `ClientLayout.test.tsx`, `UserAvatar.test.tsx`, `LoginPage.test.tsx`, `RegisterPage.test.tsx`, `VerifyEmailPage.test.tsx`, `ProfilePage.test.tsx`, `CheckoutPage.test.tsx` y `AdminOrdersPage.test.tsx`).
   - **Tests E2E Multirrol (`e2e/delivery-flow.spec.ts` con Playwright)**: flujo completo Cliente -> Admin -> Repartidor -> Cliente reseña.
-  - **Performance & PWA**: `React.lazy` + `Suspense` en `AppRouter.tsx`, `manualChunks` en `vite.config.ts`, `public/manifest.webmanifest`, íconos SVG (`192`/`512`) y Service Workers (`public/sw.js` + `public/firebase-messaging-sw.js`).
+  - **Performance & PWA**: `React.lazy` + `Suspense` en `AppRouter.tsx`, `manualChunks` en `vite.config.ts`, `public/manifest.webmanifest`, íconos PNG y SVG (`192`/`512`) y Service Workers (`public/sw.js` + `public/firebase-messaging-sw.js`).
   - **Docker Producción (Non-Root)**: `Dockerfile` multi-stage con `nginxinc/nginx-unprivileged:1.27-alpine` en puerto `8080`, `nginx.conf` (Gzip, caché `/assets/`, no-cache para SWs, `/healthz`, SPA fallback) y `.dockerignore`.

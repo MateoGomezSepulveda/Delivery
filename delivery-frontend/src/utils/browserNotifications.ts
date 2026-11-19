@@ -2,6 +2,8 @@ export type BrowserNotificationPermission =
   | NotificationPermission
   | 'unsupported';
 
+const NOTIFICATION_ICON_URL = '/icons/icon-192.png';
+
 export function isBrowserNotificationsSupported(): boolean {
   return typeof window !== 'undefined' && 'Notification' in window;
 }
@@ -21,6 +23,26 @@ export function isFirebaseWebConfigured(): boolean {
       import.meta.env.VITE_FIREBASE_APP_ID &&
       import.meta.env.VITE_FIREBASE_VAPID_KEY,
   );
+}
+
+export async function registerNotificationServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+  if (
+    typeof window === 'undefined' ||
+    !('serviceWorker' in navigator) ||
+    !window.isSecureContext
+  ) {
+    return null;
+  }
+
+  try {
+    const existing = await navigator.serviceWorker.getRegistration('/sw.js');
+    if (existing) {
+      return existing;
+    }
+    return await navigator.serviceWorker.register('/sw.js');
+  } catch {
+    return null;
+  }
 }
 
 export async function requestBrowserNotificationPermission(): Promise<BrowserNotificationPermission> {
@@ -43,29 +65,49 @@ export async function showOrderStatusNotification(
     return false;
   }
 
-  const targetUrl = orderId ? `/orders/${orderId}` : '/orders';
-  const tag = orderId ? `delivery-order-${orderId}` : 'delivery-order-status';
+  const targetUrl = orderId ? `/orders/${orderId}` : '/profile';
+  const tag = orderId
+    ? `delivery-order-${orderId}`
+    : `delivery-order-test-${Date.now()}`;
 
-  try {
-    if ('serviceWorker' in navigator) {
-      const reg = await navigator.serviceWorker.getRegistration();
-      if (reg) {
+  // 1. Intentar primero mediante el Service Worker activo (permite click incluso en segundo plano)
+  if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+    try {
+      const reg =
+        (await navigator.serviceWorker.getRegistration('/sw.js')) ??
+        (await navigator.serviceWorker.getRegistration());
+
+      if (reg && reg.active && typeof reg.showNotification === 'function') {
         await reg.showNotification(title, {
           body,
-          icon: '/icons/icon-192.svg',
-          badge: '/icons/icon-192.svg',
+          icon: NOTIFICATION_ICON_URL,
+          badge: NOTIFICATION_ICON_URL,
           tag,
           data: { url: targetUrl },
         });
         return true;
       }
+    } catch {
+      // Si el Service Worker falla o aún no está activo, continuamos al fallback nativo
     }
+  }
 
-    new Notification(title, {
+  // 2. Fallback directo con la Web Notifications API del navegador
+  try {
+    const notification = new Notification(title, {
       body,
-      icon: '/icons/icon-192.svg',
+      icon: NOTIFICATION_ICON_URL,
       tag,
     });
+
+    notification.onclick = () => {
+      window.focus();
+      if (window.location.pathname !== targetUrl) {
+        window.location.assign(targetUrl);
+      }
+      notification.close();
+    };
+
     return true;
   } catch {
     return false;

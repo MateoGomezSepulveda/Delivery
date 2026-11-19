@@ -1,8 +1,9 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
+  AlertTriangle,
   ArrowRight,
   Bell,
   Bike,
@@ -18,6 +19,7 @@ import {
   MailCheck,
   Package,
   Phone,
+  RefreshCw,
   ShieldCheck,
   Sparkles,
   Tag,
@@ -58,6 +60,7 @@ import {
   showOrderStatusNotification,
   type BrowserNotificationPermission,
 } from '@/utils/browserNotifications';
+import { playNotificationSound } from '@/utils/sound';
 import { MyOrdersPage } from '@/pages/client/MyOrdersPage';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -136,6 +139,35 @@ export function ProfilePage() {
   >(null);
   const [notifPermission, setNotifPermission] =
     useState<BrowserNotificationPermission>(() => getNotificationPermission());
+  const [isTestingNotif, setIsTestingNotif] = useState(false);
+
+  useEffect(() => {
+    const syncPermission = () => {
+      setNotifPermission(getNotificationPermission());
+    };
+
+    window.addEventListener('focus', syncPermission);
+    document.addEventListener('visibilitychange', syncPermission);
+
+    let permissionStatus: PermissionStatus | null = null;
+    if (typeof navigator !== 'undefined' && 'permissions' in navigator) {
+      navigator.permissions
+        .query({ name: 'notifications' as PermissionName })
+        .then((status) => {
+          permissionStatus = status;
+          status.onchange = syncPermission;
+        })
+        .catch(() => undefined);
+    }
+
+    return () => {
+      window.removeEventListener('focus', syncPermission);
+      document.removeEventListener('visibilitychange', syncPermission);
+      if (permissionStatus) {
+        permissionStatus.onchange = null;
+      }
+    };
+  }, []);
 
   const isRider = user?.role === 'DELIVERY';
 
@@ -409,6 +441,82 @@ export function ProfilePage() {
     queryClient.clear();
     toast.success('Has cerrado sesión correctamente.');
     navigate('/login', { replace: true });
+  };
+
+  const handleEnableNotifications = async () => {
+    const next = await requestBrowserNotificationPermission();
+    setNotifPermission(next);
+
+    if (next === 'granted') {
+      const sent = await showOrderStatusNotification(
+        'DeliveryPro — Alertas Activadas',
+        'A partir de ahora te avisaremos cada cambio de estado de tus pedidos.',
+      );
+      playNotificationSound();
+      toast.success('Notificaciones activadas en tu navegador', {
+        description: sent
+          ? 'Enviamos una notificación de bienvenida para confirmar el canal.'
+          : 'Permiso concedido. También recibirás alertas con sonido dentro de la app.',
+      });
+      return;
+    }
+
+    if (next === 'denied') {
+      toast.error('Notificaciones bloqueadas por el navegador', {
+        description:
+          'Haz clic en el icono junto a la URL del navegador para cambiar Notificaciones a "Permitir".',
+      });
+      return;
+    }
+
+    toast.info('Permiso de notificaciones pendiente', {
+      description:
+        'Cerraste el aviso sin elegir una opción. Puedes intentarlo nuevamente cuando quieras.',
+    });
+  };
+
+  const handleTestNotification = async () => {
+    setIsTestingNotif(true);
+    try {
+      let current = getNotificationPermission();
+      setNotifPermission(current);
+
+      if (current === 'default') {
+        current = await requestBrowserNotificationPermission();
+        setNotifPermission(current);
+      }
+
+      if (current !== 'granted') {
+        playNotificationSound();
+        toast.warning('Notificación nativa no disponible (alerta de respaldo)', {
+          description:
+            current === 'denied'
+              ? 'El navegador tiene bloqueadas las notificaciones para este sitio. Sigue los pasos debajo para habilitarlas.'
+              : 'Concede el permiso de notificaciones en tu navegador para ver alertas fuera de la pestaña.',
+        });
+        return;
+      }
+
+      const sent = await showOrderStatusNotification(
+        'DeliveryPro — Prueba de Alerta',
+        'Las notificaciones de pedidos están funcionando correctamente.',
+      );
+      playNotificationSound();
+
+      if (sent) {
+        toast.success('Notificación de prueba enviada', {
+          description:
+            'Si no ves el banner del sistema en Windows, verifica que el modo "No molestar" esté desactivado.',
+        });
+      } else {
+        toast.warning('No se pudo mostrar la notificación nativa', {
+          description:
+            'Mostramos esta alerta de respaldo en pantalla. Revisa los permisos de notificaciones del navegador o del sistema operativo.',
+        });
+      }
+    } finally {
+      setIsTestingNotif(false);
+    }
   };
 
   return (
@@ -1024,64 +1132,121 @@ export function ProfilePage() {
           </div>
 
           {/* Browser Notifications Card */}
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="space-y-1.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-sm font-bold flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-orange-600" />
-                  <span>Notificaciones de tu Pedido</span>
-                </h3>
-                {notifPermission === 'granted' ? (
-                  <Badge variant="success">Activas en este navegador</Badge>
-                ) : notifPermission === 'denied' ? (
-                  <Badge variant="danger">Bloqueadas en navegador</Badge>
-                ) : notifPermission === 'unsupported' ? (
-                  <Badge variant="neutral">No soportado</Badge>
-                ) : (
-                  <Badge variant="warning">Permiso pendiente</Badge>
-                )}
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-card space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-sm font-bold flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-orange-600" />
+                    <span>Notificaciones de tu Pedido</span>
+                  </h3>
+                  {notifPermission === 'granted' ? (
+                    <Badge variant="success">Activas en este navegador</Badge>
+                  ) : notifPermission === 'denied' ? (
+                    <Badge variant="danger">Bloqueadas en navegador</Badge>
+                  ) : notifPermission === 'unsupported' ? (
+                    <Badge variant="neutral">No soportado</Badge>
+                  ) : (
+                    <Badge variant="warning">Permiso pendiente</Badge>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Recibe avisos instantáneos cuando tu pedido sea confirmado,
+                  esté en camino o llegue a tu dirección.
+                </p>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Recibe avisos instantáneos cuando tu pedido sea confirmado, esté
-                en camino o llegue a tu dirección.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
-              {notifPermission !== 'granted' &&
-                notifPermission !== 'unsupported' && (
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {notifPermission === 'default' && (
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={async () => {
-                      const next = await requestBrowserNotificationPermission();
-                      setNotifPermission(next);
-                      if (next === 'granted') {
-                        toast.success('Notificaciones activadas en tu navegador');
-                      } else {
-                        toast.info('Permiso de notificaciones no concedido');
-                      }
-                    }}
+                    onClick={handleEnableNotifications}
                     leftIcon={<Bell className="w-4 h-4" />}
                   >
                     Activar Alertas
                   </Button>
                 )}
-              {notifPermission === 'granted' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    await showOrderStatusNotification(
-                      'DeliveryPro — Prueba de Alerta',
-                      'Las notificaciones de pedidos están funcionando correctamente.',
-                    );
-                  }}
-                  leftIcon={<Bell className="w-4 h-4" />}
-                >
-                  Probar Notificación
-                </Button>
-              )}
+
+                {notifPermission === 'denied' && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const updated = getNotificationPermission();
+                        setNotifPermission(updated);
+                        if (updated === 'granted') {
+                          toast.success(
+                            'Permiso detectado. Ya puedes probar tus notificaciones.',
+                          );
+                        } else {
+                          toast.info(
+                            'Las notificaciones siguen bloqueadas en el navegador.',
+                          );
+                        }
+                      }}
+                      leftIcon={<RefreshCw className="w-4 h-4" />}
+                    >
+                      Verificar permiso
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        playNotificationSound();
+                        toast.info('Alerta de respaldo en pantalla', {
+                          description:
+                            'Mientras mantengas la app abierta seguirás recibiendo avisos con sonido.',
+                        });
+                      }}
+                      leftIcon={<Bell className="w-4 h-4" />}
+                    >
+                      Probar alerta en pantalla
+                    </Button>
+                  </>
+                )}
+
+                {notifPermission === 'granted' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    isLoading={isTestingNotif}
+                    onClick={handleTestNotification}
+                    leftIcon={<Bell className="w-4 h-4" />}
+                  >
+                    Probar Notificación
+                  </Button>
+                )}
+              </div>
             </div>
+
+            {notifPermission === 'denied' && (
+              <div
+                role="alert"
+                className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/80 dark:bg-amber-950/40 p-4 flex items-start gap-3 text-xs text-amber-900 dark:text-amber-200"
+              >
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-bold">
+                    Cómo desbloquear las notificaciones en tu navegador:
+                  </p>
+                  <ol className="list-decimal list-inside space-y-0.5 text-amber-800 dark:text-amber-300">
+                    <li>
+                      Haz clic en el icono de configuración (candado o ajustes)
+                      a la izquierda de la URL.
+                    </li>
+                    <li>
+                      Cambia el permiso <strong>Notificaciones</strong> a{' '}
+                      <strong>Permitir</strong>.
+                    </li>
+                    <li>
+                      Pulsa <strong>Verificar permiso</strong> o recarga la
+                      página.
+                    </li>
+                  </ol>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}

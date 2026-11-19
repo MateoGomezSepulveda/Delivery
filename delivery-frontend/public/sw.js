@@ -1,15 +1,19 @@
-const CACHE_NAME = 'deliverypro-shell-v1';
+const CACHE_NAME = 'deliverypro-shell-v2';
 const APP_SHELL_URLS = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
   '/icons/icon-192.svg',
   '/icons/icon-512.svg',
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL_URLS)),
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.allSettled(APP_SHELL_URLS.map((url) => cache.add(url))),
+    ),
   );
   self.skipWaiting();
 });
@@ -33,7 +37,19 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-  if (url.pathname.startsWith('/api') || url.pathname.startsWith('/socket.io')) {
+
+  const isLocalDev =
+    self.location.hostname === 'localhost' ||
+    self.location.hostname === '127.0.0.1';
+
+  if (
+    isLocalDev ||
+    url.pathname.startsWith('/api') ||
+    url.pathname.startsWith('/socket.io') ||
+    url.pathname.startsWith('/@') ||
+    url.pathname.startsWith('/src/') ||
+    url.pathname.startsWith('/node_modules/')
+  ) {
     return;
   }
 
