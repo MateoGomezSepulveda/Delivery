@@ -40,6 +40,12 @@ export class Order {
   @Prop({ default: 0 })
   riderDiscount?: number;
 
+  @Prop({ type: String, default: null })
+  couponCode?: string | null;
+
+  @Prop({ default: 0 })
+  couponDiscount?: number;
+
   @Prop({ required: true })
   total: number;
 

@@ -99,6 +99,8 @@ export interface Order {
   items: OrderItem[];
   subtotal?: number;
   riderDiscount?: number;
+  couponCode?: string | null;
+  couponDiscount?: number;
   total: number;
   address: string;
   status: OrderStatus;
@@ -110,6 +112,16 @@ export interface Order {
 
 export interface CreateOrderPayload {
   address: string;
+  couponCode?: string;
+}
+
+export interface RiderDiscountQuota {
+  eligible: boolean;
+  isRider: boolean;
+  monthlyLimit: number;
+  usedThisMonth: number;
+  remaining: number;
+  discountPercent: number;
 }
 
 export interface OrderQueryParams {

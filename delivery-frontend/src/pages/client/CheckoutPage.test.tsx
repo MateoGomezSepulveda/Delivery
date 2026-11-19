@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CheckoutPage } from '@/pages/client/CheckoutPage';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useCartDrawerStore } from '@/store/useCartDrawerStore';
 import type { Address, Cart, Order } from '@/types/order.types';
 
@@ -11,6 +12,7 @@ const mockGetCartApi = vi.fn();
 const mockGetMyAddressesApi = vi.fn();
 const mockCreateOrderApi = vi.fn();
 const mockPayOrderApi = vi.fn();
+const mockGetRiderDiscountQuotaApi = vi.fn();
 const mockNavigate = vi.fn();
 const mockToastSuccess = vi.fn();
 const mockToastError = vi.fn();
@@ -28,6 +30,8 @@ vi.mock('@/api/endpoints/addresses.api', () => ({
 vi.mock('@/api/endpoints/orders.api', () => ({
   createOrderApi: (...args: unknown[]) => mockCreateOrderApi(...args),
   payOrderApi: (...args: unknown[]) => mockPayOrderApi(...args),
+  getRiderDiscountQuotaApi: (...args: unknown[]) =>
+    mockGetRiderDiscountQuotaApi(...args),
 }));
 
 vi.mock('@/components/addresses/AddressesModal', () => ({
@@ -109,6 +113,19 @@ describe('CheckoutPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    useAuthStore.setState({
+      user: {
+        _id: 'user-1',
+        name: 'Cliente',
+        email: 'cliente@correo.com',
+        role: 'CLIENT',
+      },
+      accessToken: 'tok',
+      refreshToken: 'ref',
+      isAuthenticated: true,
+      isHydrating: false,
+      avatarsByUserId: {},
+    });
     useCartDrawerStore.setState({
       isOpen: false,
       isAddressModalOpen: false,
@@ -187,6 +204,7 @@ describe('CheckoutPage', () => {
     await waitFor(() => {
       expect(mockCreateOrderApi).toHaveBeenCalledWith({
         address: expect.stringContaining('Calle 123 #45-67'),
+        couponCode: 'DESCUENTO10',
       });
     });
 
@@ -196,5 +214,36 @@ describe('CheckoutPage', () => {
       expect.any(Object),
     );
     expect(mockNavigate).toHaveBeenCalledWith('/orders/order-abc123');
+  });
+
+  it('hides rider -10% discount when monthly 4-order quota is exhausted', async () => {
+    useAuthStore.setState({
+      user: {
+        _id: 'rider-1',
+        name: 'Rider Test',
+        email: 'rider@correo.com',
+        role: 'DELIVERY',
+      },
+      isAuthenticated: true,
+    });
+    mockGetCartApi.mockResolvedValue(activeCart);
+    mockGetMyAddressesApi.mockResolvedValue([defaultAddress]);
+    mockGetRiderDiscountQuotaApi.mockResolvedValue({
+      eligible: false,
+      isRider: true,
+      monthlyLimit: 4,
+      usedThisMonth: 4,
+      remaining: 0,
+      discountPercent: 10,
+    });
+
+    renderCheckoutPage();
+
+    expect(
+      await screen.findByText(/Cupo mensual -10% repartidor agotado \(4\/4\)/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Beneficio Socio Mensajero/i),
+    ).not.toBeInTheDocument();
   });
 });

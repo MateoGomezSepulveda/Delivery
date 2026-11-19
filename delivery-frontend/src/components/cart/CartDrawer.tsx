@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { getCartApi } from '@/api/endpoints/cart.api';
 import { useCartMutations } from '@/hooks/useCartMutations';
+import { useRiderDiscountQuota } from '@/hooks/useRiderDiscountQuota';
 import type { Product } from '@/types/catalog.types';
 import { useCartDrawerStore } from '@/store/useCartDrawerStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -37,13 +38,15 @@ export function CartDrawer() {
   });
 
   const { addMutation, removeMutation, clearMutation } = useCartMutations();
+  const { data: riderQuota } = useRiderDiscountQuota();
 
   const items = isAuthenticated ? (cart?.items ?? []) : [];
   const subtotal = isAuthenticated ? (cart?.total ?? 0) : 0;
+  const isRider = isAuthenticated && user?.role === 'DELIVERY';
   const riderDiscount =
-    user?.role === 'DELIVERY' ? Math.round(subtotal * 0.1) : 0;
+    isRider && riderQuota?.eligible ? Math.round(subtotal * 0.1) : 0;
   const discount = appliedCoupon
-    ? Math.min(appliedCoupon.discountAmount, subtotal)
+    ? Math.min(appliedCoupon.discountAmount, Math.max(0, subtotal - riderDiscount))
     : 0;
   const finalTotal = Math.max(0, subtotal - riderDiscount - discount);
 
@@ -63,10 +66,22 @@ export function CartDrawer() {
                 <span>Subtotal ({items.length} productos)</span>
                 <span>{formatCurrency(subtotal)}</span>
               </div>
-              {riderDiscount > 0 && (
+              {riderDiscount > 0 && riderQuota && (
                 <div className="flex items-center justify-between text-blue-600 font-semibold">
-                  <span>Beneficio Mensajero (-10%)</span>
+                  <span>
+                    Beneficio Mensajero (-10% · {riderQuota.remaining}/
+                    {riderQuota.monthlyLimit} disp.)
+                  </span>
                   <span>-{formatCurrency(riderDiscount)}</span>
+                </div>
+              )}
+              {isRider && riderQuota && !riderQuota.eligible && (
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span>
+                    Cupo mensual -10% agotado ({riderQuota.usedThisMonth}/
+                    {riderQuota.monthlyLimit})
+                  </span>
+                  <span>$0</span>
                 </div>
               )}
               {discount > 0 && (

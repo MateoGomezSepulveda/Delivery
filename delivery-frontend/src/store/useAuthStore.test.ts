@@ -4,6 +4,7 @@ import type { User } from '@/types/auth.types';
 
 const mockLogoutApi = vi.fn();
 const mockGetUserByIdApi = vi.fn();
+const mockUpdateUserApi = vi.fn();
 
 vi.mock('@/api/endpoints/auth.api', () => ({
   logoutApi: (...args: unknown[]) => mockLogoutApi(...args),
@@ -11,6 +12,7 @@ vi.mock('@/api/endpoints/auth.api', () => ({
 
 vi.mock('@/api/endpoints/users.api', () => ({
   getUserByIdApi: (...args: unknown[]) => mockGetUserByIdApi(...args),
+  updateUserApi: (...args: unknown[]) => mockUpdateUserApi(...args),
 }));
 
 import { useAuthStore } from '@/store/useAuthStore';
@@ -205,5 +207,30 @@ describe('useAuthStore', () => {
     const cartUi = useCartDrawerStore.getState();
     expect(cartUi.selectedAddress).toBeNull();
     expect(cartUi.activeAddressLabel).toBe(DEFAULT_ADDRESS_LABEL);
+  });
+
+  it('migrates legacy local avatar to backend during hydrateSession when DB avatarUrl is empty', async () => {
+    const access = buildJwt(sampleUser._id, 'CLIENT');
+    localStorage.setItem(
+      AUTH_STORAGE_KEY,
+      JSON.stringify({ accessToken: access, refreshToken: 'refresh-ok' }),
+    );
+    useAuthStore.setState({
+      avatarsByUserId: { [sampleUser._id]: 'data:image/jpeg;base64,legacy' },
+    });
+    mockGetUserByIdApi.mockResolvedValue({ ...sampleUser, avatarUrl: null });
+    mockUpdateUserApi.mockResolvedValue({
+      ...sampleUser,
+      avatarUrl: 'data:image/jpeg;base64,legacy',
+    });
+
+    await useAuthStore.getState().hydrateSession();
+
+    expect(mockUpdateUserApi).toHaveBeenCalledWith(sampleUser._id, {
+      avatarUrl: 'data:image/jpeg;base64,legacy',
+    });
+    expect(useAuthStore.getState().user?.avatarUrl).toBe(
+      'data:image/jpeg;base64,legacy',
+    );
   });
 });

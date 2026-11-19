@@ -7,6 +7,7 @@ import { PaymentsService } from 'src/payments/payments.service';
 import { UsersService } from 'src/users/users.service';
 import { MailService } from 'src/mail/mail.service';
 import { NotificationsService } from 'src/notifications/notifications.service';
+import { CouponsService } from 'src/coupons/coupons.service';
 import { EventsGateway } from '../events/events/events.gateway';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { OrderStatus } from './order-status.enum';
@@ -63,6 +64,17 @@ const mockCartService = {
   getActiveCart: jest.fn().mockResolvedValue(mockCart),
 };
 
+const mockUsersService = {
+  findOne: jest
+    .fn()
+    .mockResolvedValue({ email: 'test@test.com', role: 'CLIENT', fcmTokens: [] }),
+};
+
+const mockCouponsService = {
+  redeemCoupon: jest.fn(),
+  releaseCoupon: jest.fn(),
+};
+
 // ── Suite ─────────────────────────────────────────────────────────────────────
 
 describe('OrdersService', () => {
@@ -80,11 +92,7 @@ describe('OrdersService', () => {
         },
         {
           provide: UsersService,
-          useValue: {
-            findOne: jest
-              .fn()
-              .mockResolvedValue({ email: 'test@test.com', fcmTokens: [] }),
-          },
+          useValue: mockUsersService,
         },
         { provide: MailService, useValue: { sendOrderStatusEmail: jest.fn() } },
         {
@@ -95,11 +103,20 @@ describe('OrdersService', () => {
           provide: EventsGateway,
           useValue: { emitOrderStatusUpdate: jest.fn() },
         },
+        {
+          provide: CouponsService,
+          useValue: mockCouponsService,
+        },
       ],
     }).compile();
 
     service = module.get<OrdersService>(OrdersService);
     jest.clearAllMocks();
+    mockUsersService.findOne.mockResolvedValue({
+      email: 'test@test.com',
+      role: 'CLIENT',
+      fcmTokens: [],
+    });
   });
 
   // ── createOrder ─────────────────────────────────────────────────────────────
@@ -124,6 +141,59 @@ describe('OrdersService', () => {
       await expect(
         service.createOrder(mockUserId, 'Calle 123'),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('debe aplicar y persistir el cupón promocional en la orden creada', async () => {
+      mockCartService.getActiveCart.mockResolvedValue({ ...mockCart });
+      mockCouponsService.redeemCoupon.mockResolvedValue({
+        code: 'BIENVENIDA20',
+        discountAmount: 6000,
+        finalTotal: 24000,
+      });
+
+      const result = await service.createOrder(
+        mockUserId,
+        'Calle 123',
+        'bienvenida20',
+      );
+
+      expect(mockCouponsService.redeemCoupon).toHaveBeenCalledWith(
+        mockUserId,
+        'bienvenida20',
+        30000,
+      );
+      expect(result.couponCode).toBe('BIENVENIDA20');
+      expect(result.couponDiscount).toBe(6000);
+      expect(result.total).toBe(24000);
+    });
+
+    it('debe consultar el cupo mensual de descuento del repartidor respetando el tope de 4 pedidos', async () => {
+      mockUsersService.findOne.mockResolvedValue({
+        _id: mockUserId,
+        role: 'DELIVERY',
+      });
+      mockOrderModel.countDocuments.mockResolvedValueOnce(4);
+
+      const exhausted = await service.getRiderDiscountQuota(mockUserId);
+      expect(exhausted).toEqual(
+        expect.objectContaining({
+          isRider: true,
+          eligible: false,
+          usedThisMonth: 4,
+          remaining: 0,
+        }),
+      );
+
+      mockOrderModel.countDocuments.mockResolvedValueOnce(2);
+      const available = await service.getRiderDiscountQuota(mockUserId);
+      expect(available).toEqual(
+        expect.objectContaining({
+          isRider: true,
+          eligible: true,
+          usedThisMonth: 2,
+          remaining: 2,
+        }),
+      );
     });
   });
 

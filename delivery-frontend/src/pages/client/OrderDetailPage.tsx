@@ -469,6 +469,12 @@ export function OrderDetailPage() {
                   <span>-{formatCurrency(order.riderDiscount ?? 0)}</span>
                 </div>
               )}
+              {Boolean(order.couponDiscount && order.couponDiscount > 0) && (
+                <div className="flex items-center justify-between text-emerald-600 font-bold">
+                  <span>Cupón ({order.couponCode || 'PROMO'})</span>
+                  <span>-{formatCurrency(order.couponDiscount ?? 0)}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between text-slate-500">
                 <span>Costo de envío</span>
                 <span className="text-xs font-bold text-emerald-600">

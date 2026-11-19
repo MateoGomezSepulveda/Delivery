@@ -40,13 +40,32 @@ export class PaymentsService {
 
       const preference = new Preference(this.client);
 
-      const items = order.items.map((item) => ({
-        id: item.productId.toString(),
-        title: item.name,
-        quantity: item.quantity,
-        unit_price: item.price,
-        currency_id: 'COP', // Replace with your currency if different
-      }));
+      const itemsSubtotal = order.items.reduce(
+        (acc, item) => acc + item.price * item.quantity,
+        0,
+      );
+      const hasDiscount =
+        typeof order.total === 'number' &&
+        order.total >= 0 &&
+        order.total < itemsSubtotal;
+
+      const items = hasDiscount
+        ? [
+            {
+              id: orderId,
+              title: `Pedido DeliveryPro #${orderId.slice(-6).toUpperCase()}${order.couponCode ? ` (Cupón ${order.couponCode})` : ''}`,
+              quantity: 1,
+              unit_price: Math.max(1, Number(order.total)),
+              currency_id: 'COP',
+            },
+          ]
+        : order.items.map((item) => ({
+            id: item.productId.toString(),
+            title: item.name,
+            quantity: item.quantity,
+            unit_price: item.price,
+            currency_id: 'COP',
+          }));
 
       const appUrl =
         this.configService.get<string>('APP_URL') || 'http://localhost:3000';

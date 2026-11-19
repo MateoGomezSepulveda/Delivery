@@ -37,6 +37,7 @@ describe('AuthService', () => {
 
   const mockMailService = {
     sendEmailVerification: jest.fn(),
+    sendPasswordResetEmail: jest.fn(),
     sendOrderStatusEmail: jest.fn(),
   };
 
@@ -59,6 +60,7 @@ describe('AuthService', () => {
     create: jest.fn(),
     findOne: jest.fn(),
     deleteOne: jest.fn(),
+    deleteMany: jest.fn(),
   };
 
   const mockEmailVerificationModel = {
@@ -447,18 +449,37 @@ describe('AuthService', () => {
 
       const result = await service.forgotPassword('noexiste@test.com');
 
-      expect(result.message).toContain('If the email exists');
+      expect(result.message).toContain('Si el correo está registrado');
+      expect(result).not.toHaveProperty('devToken');
       expect(mockPasswordResetModel.create).not.toHaveBeenCalled();
+      expect(mockMailService.sendPasswordResetEmail).not.toHaveBeenCalled();
     });
 
-    it('debe crear un token de reset si el email existe', async () => {
-      mockUsersService.findByEmail.mockResolvedValue({ _id: 'user-123' });
+    it('debe crear un token de reset, enviarlo por correo SMTP y no exponer devToken', async () => {
+      mockUsersService.findByEmail.mockResolvedValue({
+        _id: 'user-123',
+        name: 'Mateo',
+        email: 'existe@test.com',
+      });
+      mockPasswordResetModel.deleteMany.mockResolvedValue({});
       mockPasswordResetModel.create.mockResolvedValue({});
+      mockMailService.sendPasswordResetEmail.mockResolvedValue({
+        sent: true,
+        provider: 'smtp',
+      });
 
-      const result = await service.forgotPassword('existe@test.com');
+      const result = await service.forgotPassword('EXISTE@test.com');
 
+      expect(mockPasswordResetModel.deleteMany).toHaveBeenCalledWith({
+        user: 'user-123',
+      });
       expect(mockPasswordResetModel.create).toHaveBeenCalled();
-      expect(result).toHaveProperty('devToken');
+      expect(mockMailService.sendPasswordResetEmail).toHaveBeenCalledWith(
+        'existe@test.com',
+        'Mateo',
+        expect.stringContaining('http://localhost:5173/reset-password?token='),
+      );
+      expect(result).not.toHaveProperty('devToken');
     });
   });
 

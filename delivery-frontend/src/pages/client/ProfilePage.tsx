@@ -51,7 +51,7 @@ import {
   createDeliveryProfileApi,
   getDeliveryProfileApi,
 } from '@/api/endpoints/delivery.api';
-import { getMyOrdersApi } from '@/api/endpoints/orders.api';
+import { useRiderDiscountQuota } from '@/hooks/useRiderDiscountQuota';
 import { extractErrorMessage, getStoredTokens } from '@/api/axios.client';
 import type { VehicleType } from '@/types/delivery.types';
 import {
@@ -178,25 +178,11 @@ export function ProfilePage() {
     retry: false,
   });
 
-  const { data: myOrdersThisMonth } = useQuery({
-    queryKey: ['my-orders-rider-quota'],
-    queryFn: () => {
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      return getMyOrdersApi({
-        page: 1,
-        limit: 20,
-        dateFrom: startOfMonth.toISOString(),
-      });
-    },
-    enabled: Boolean(user && isRider),
-  });
+  const { data: riderQuota } = useRiderDiscountQuota();
 
   if (!user) return null;
 
-  const monthlyNonCancelledCount =
-    myOrdersThisMonth?.data?.filter((o) => o.status !== 'CANCELLED').length ?? 0;
-  const remainingRiderDiscounts = Math.max(0, 4 - monthlyNonCancelledCount);
+  const remainingRiderDiscounts = riderQuota?.remaining ?? 4;
 
   const handleActivateRiderAccount = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -239,10 +225,17 @@ export function ProfilePage() {
     setIsUploadingAvatar(true);
     try {
       const uploaded = await uploadImageToS3Api(file, 'avatars');
-      // Guardamos el DataURL optimizado para visualización inmediata (evita errores 403 si el bucket S3 es privado)
-      setUserAvatar(user._id, uploaded.previewDataUrl || uploaded.url);
+      // Guardamos el DataURL optimizado en MongoDB (evita errores 403 si S3 es privado y permite que Admin y otros dispositivos vean la foto)
+      const resolvedAvatar = uploaded.previewDataUrl || uploaded.url;
+      const updatedUser = await updateUserApi(user._id, {
+        avatarUrl: resolvedAvatar,
+      });
+      const persistedAvatar = updatedUser.avatarUrl || resolvedAvatar;
+      setUserAvatar(user._id, persistedAvatar);
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       toast.success('¡Foto de perfil actualizada con éxito!', {
-        description: 'Tu nueva imagen ya está visible en tu cuenta.',
+        description:
+          'Tu nueva imagen fue guardada en tu cuenta y ya está visible en toda la plataforma.',
       });
     } catch (error) {
       toast.error('No se pudo actualizar la foto de perfil', {

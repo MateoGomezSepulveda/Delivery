@@ -15,8 +15,12 @@ import { OrderPaginationDto } from './dto/order-pagination.dto';
 import { MailService } from 'src/mail/mail.service';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { UsersService } from 'src/users/users.service';
+import { CouponsService } from 'src/coupons/coupons.service';
 import { EventsGateway } from '../events/events/events.gateway';
 import { QueuesService } from '../queues/queues.service';
+
+export const RIDER_MONTHLY_DISCOUNT_LIMIT = 4;
+export const RIDER_DISCOUNT_PERCENT = 10;
 
 const validTransitions: Record<OrderStatus, OrderStatus[]> = {
   [OrderStatus.PENDING]: [OrderStatus.PAID, OrderStatus.CANCELLED],
@@ -40,9 +44,53 @@ export class OrdersService {
     private notificationsService: NotificationsService,
     private eventsGateway: EventsGateway,
     @Optional() private queuesService?: QueuesService,
+    @Optional() private couponsService?: CouponsService,
   ) {}
 
-  async createOrder(userId: string, address: string) {
+  async getRiderDiscountQuota(userId: string) {
+    const base = {
+      eligible: false,
+      isRider: false,
+      monthlyLimit: RIDER_MONTHLY_DISCOUNT_LIMIT,
+      usedThisMonth: 0,
+      remaining: 0,
+      discountPercent: RIDER_DISCOUNT_PERCENT,
+    };
+
+    try {
+      const user = await this.usersService.findOne(userId);
+      if (user?.role !== 'DELIVERY') {
+        return base;
+      }
+
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const usedThisMonth =
+        (await this.orderModel.countDocuments({
+          userId,
+          createdAt: { $gte: startOfMonth },
+          status: { $ne: OrderStatus.CANCELLED },
+        })) ?? 0;
+
+      const remaining = Math.max(
+        0,
+        RIDER_MONTHLY_DISCOUNT_LIMIT - usedThisMonth,
+      );
+
+      return {
+        eligible: remaining > 0,
+        isRider: true,
+        monthlyLimit: RIDER_MONTHLY_DISCOUNT_LIMIT,
+        usedThisMonth,
+        remaining,
+        discountPercent: RIDER_DISCOUNT_PERCENT,
+      };
+    } catch {
+      return base;
+    }
+  }
+
+  async createOrder(userId: string, address: string, couponCode?: string) {
     const cart = await this.cartService.getActiveCart(userId);
 
     if (!cart.items.length) {
@@ -58,35 +106,38 @@ export class OrdersService {
 
     // Beneficio Socio Repartidor: 10% de descuento en los primeros 4 pedidos del mes
     const subtotal = cart.total;
-    let riderDiscount = 0;
+    const riderQuota = await this.getRiderDiscountQuota(userId);
+    const riderDiscount = riderQuota.eligible
+      ? Math.round(subtotal * (RIDER_DISCOUNT_PERCENT / 100))
+      : 0;
 
-    try {
-      const user = await this.usersService.findOne(userId);
-      if (user?.role === 'DELIVERY') {
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const monthlyOrdersCount =
-          (await this.orderModel.countDocuments({
-            userId,
-            createdAt: { $gte: startOfMonth },
-            status: { $ne: OrderStatus.CANCELLED },
-          })) ?? 0;
+    // Cupón promocional real: se valida y redime en el backend antes de cerrar el carrito
+    let appliedCouponCode: string | null = null;
+    let couponDiscount = 0;
+    const normalizedCouponCode = couponCode?.trim();
 
-        if (monthlyOrdersCount < 4) {
-          riderDiscount = Math.round(subtotal * 0.1);
-        }
-      }
-    } catch {
-      riderDiscount = 0;
+    if (normalizedCouponCode && this.couponsService) {
+      const redeemed = await this.couponsService.redeemCoupon(
+        userId,
+        normalizedCouponCode,
+        subtotal,
+      );
+      appliedCouponCode = redeemed.code;
+      couponDiscount = redeemed.discountAmount;
     }
 
-    const finalTotal = Math.max(0, subtotal - riderDiscount);
+    const finalTotal = Math.max(
+      0,
+      Math.round(subtotal - riderDiscount - couponDiscount),
+    );
 
     const order = new this.orderModel({
       userId,
       items: orderItems,
       subtotal,
       riderDiscount,
+      couponCode: appliedCouponCode,
+      couponDiscount,
       total: finalTotal,
       address,
     });
@@ -199,7 +250,17 @@ export class OrdersService {
       );
     }
     order.status = OrderStatus.CANCELLED;
-    return order.save();
+    const saved = await order.save();
+
+    if (order.couponCode && this.couponsService) {
+      try {
+        await this.couponsService.releaseCoupon(userId, order.couponCode);
+      } catch {
+        // No bloqueamos la cancelación si no se pudo liberar el cupón
+      }
+    }
+
+    return saved;
   }
 
   async updateStatus(orderId: string, status: OrderStatus) {

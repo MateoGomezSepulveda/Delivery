@@ -108,6 +108,7 @@ export interface UpdateProfilePayload {
   email?: string;
   phone?: string;
   password?: string;
+  avatarUrl?: string | null;
 }
 
 export interface AuthTokensResponse {
@@ -117,7 +118,6 @@ export interface AuthTokensResponse {
 
 export interface ForgotPasswordResponse {
   message: string;
-  devToken?: string;
 }
 
 export interface UploadFileResponse {

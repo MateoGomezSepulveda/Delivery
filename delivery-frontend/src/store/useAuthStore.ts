@@ -6,7 +6,7 @@ import {
   setStoredTokens,
 } from '@/api/axios.client';
 import { logoutApi } from '@/api/endpoints/auth.api';
-import { getUserByIdApi } from '@/api/endpoints/users.api';
+import { getUserByIdApi, updateUserApi } from '@/api/endpoints/users.api';
 import { useCartDrawerStore } from '@/store/useCartDrawerStore';
 import type { User } from '@/types/auth.types';
 import { decodeJwtPayload } from '@/utils/jwt';
@@ -55,8 +55,9 @@ export const useAuthStore = create<AuthState>()(
           refreshToken: tokens.refresh_token,
         });
         const savedAvatar = get().avatarsByUserId[user._id];
+        const resolvedAvatar = user.avatarUrl || savedAvatar;
         set({
-          user: savedAvatar ? { ...user, avatarUrl: savedAvatar } : user,
+          user: resolvedAvatar ? { ...user, avatarUrl: resolvedAvatar } : user,
           accessToken: tokens.access_token,
           refreshToken: tokens.refresh_token,
           isAuthenticated: true,
@@ -122,9 +123,19 @@ export const useAuthStore = create<AuthState>()(
 
           const latestTokens = getStoredTokens();
           const savedAvatar = get().avatarsByUserId[freshUser._id];
+          const resolvedAvatar = freshUser.avatarUrl || savedAvatar;
+
+          // Migración silenciosa: si el usuario subió su foto antes cuando solo se guardaba localmente,
+          // la sincronizamos a MongoDB para que también aparezca en Admin -> Usuarios y Roles.
+          if (!freshUser.avatarUrl && savedAvatar) {
+            void updateUserApi(freshUser._id, { avatarUrl: savedAvatar }).catch(
+              () => undefined,
+            );
+          }
+
           set({
-            user: savedAvatar
-              ? { ...freshUser, avatarUrl: savedAvatar }
+            user: resolvedAvatar
+              ? { ...freshUser, avatarUrl: resolvedAvatar }
               : freshUser,
             accessToken: latestTokens.accessToken,
             refreshToken: latestTokens.refreshToken,

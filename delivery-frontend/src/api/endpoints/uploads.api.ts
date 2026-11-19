@@ -27,6 +27,7 @@ export function validateImageFile(file: File): string | null {
 export function normalizeImageToJpeg(
   file: File,
   maxDimension = 1024,
+  quality = 0.88,
 ): Promise<{ normalizedFile: File; dataUrl: string }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -59,7 +60,7 @@ export function normalizeImageToJpeg(
         ctx.fillRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
 
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
         canvas.toBlob(
           (blob) => {
             if (!blob) {
@@ -75,7 +76,7 @@ export function normalizeImageToJpeg(
             resolve({ normalizedFile, dataUrl });
           },
           'image/jpeg',
-          0.88,
+          quality,
         );
       };
       img.onerror = () =>
@@ -97,8 +98,16 @@ export async function uploadImageToS3Api(
     throw new Error(validationError);
   }
 
+  // Avatares se optimizan a 320px (~15KB) para persistencia ligera en MongoDB y carga instantánea en Admin
+  const maxDimension = folder === 'avatars' ? 320 : 1024;
+  const quality = folder === 'avatars' ? 0.82 : 0.88;
+
   // Convertimos cualquier .jfif / .jpeg / .avif a .jpg estándar para que Multer nunca lo rechace
-  const { normalizedFile, dataUrl } = await normalizeImageToJpeg(file);
+  const { normalizedFile, dataUrl } = await normalizeImageToJpeg(
+    file,
+    maxDimension,
+    quality,
+  );
 
   const formData = new FormData();
   formData.append('file', normalizedFile);

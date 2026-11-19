@@ -17,6 +17,7 @@ import {
 import { getCartApi } from '@/api/endpoints/cart.api';
 import { getMyAddressesApi } from '@/api/endpoints/addresses.api';
 import { createOrderApi, payOrderApi } from '@/api/endpoints/orders.api';
+import { useRiderDiscountQuota } from '@/hooks/useRiderDiscountQuota';
 import { extractErrorMessage } from '@/api/axios.client';
 import type { Product } from '@/types/catalog.types';
 import type { Address } from '@/types/order.types';
@@ -92,21 +93,34 @@ export function CheckoutPage() {
     setSelectedAddress(addr);
   };
 
+  const { data: riderQuota } = useRiderDiscountQuota();
+
   const items = cart?.items ?? [];
   const subtotal = cart?.total ?? 0;
+  const isRider = user?.role === 'DELIVERY';
   const riderDiscount =
-    user?.role === 'DELIVERY' ? Math.round(subtotal * 0.1) : 0;
+    isRider && riderQuota?.eligible ? Math.round(subtotal * 0.1) : 0;
   const discount = appliedCoupon
-    ? Math.min(appliedCoupon.discountAmount, subtotal)
+    ? Math.min(appliedCoupon.discountAmount, Math.max(0, subtotal - riderDiscount))
     : 0;
   const finalTotal = Math.max(0, subtotal - riderDiscount - discount);
 
   const createOrderMutation = useMutation({
-    mutationFn: (addressToUse: string) =>
-      createOrderApi({ address: addressToUse }),
+    mutationFn: ({
+      addressToUse,
+      couponCode,
+    }: {
+      addressToUse: string;
+      couponCode?: string;
+    }) =>
+      createOrderApi({
+        address: addressToUse,
+        ...(couponCode ? { couponCode } : {}),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });
       queryClient.invalidateQueries({ queryKey: ['my-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['rider-discount-quota'] });
       setAppliedCoupon(null);
     },
   });
@@ -123,7 +137,10 @@ export function CheckoutPage() {
 
     try {
       setIsProcessingMp(payWithMercadoPago);
-      const createdOrder = await createOrderMutation.mutateAsync(trimmedAddress);
+      const createdOrder = await createOrderMutation.mutateAsync({
+        addressToUse: trimmedAddress,
+        couponCode: appliedCoupon?.code,
+      });
 
       toast.success('¡Pedido creado con éxito!', {
         description: `Orden #${createdOrder._id.slice(-6).toUpperCase()} recibida correctamente.`,
@@ -428,10 +445,23 @@ export function CheckoutPage() {
                 </span>
               </div>
 
-              {riderDiscount > 0 && (
+              {riderDiscount > 0 && riderQuota && (
                 <div className="flex items-center justify-between text-blue-600 font-bold">
-                  <span>Beneficio Socio Mensajero (-10%)</span>
+                  <span>
+                    Beneficio Socio Mensajero (-10% · {riderQuota.remaining}/
+                    {riderQuota.monthlyLimit} disp.)
+                  </span>
                   <span>-{formatCurrency(riderDiscount)}</span>
+                </div>
+              )}
+
+              {isRider && riderQuota && !riderQuota.eligible && (
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span>
+                    Cupo mensual -10% repartidor agotado (
+                    {riderQuota.usedThisMonth}/{riderQuota.monthlyLimit})
+                  </span>
+                  <span>$0</span>
                 </div>
               )}
 

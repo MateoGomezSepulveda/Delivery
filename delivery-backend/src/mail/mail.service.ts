@@ -217,6 +217,88 @@ export class MailService {
     }
   }
 
+  async sendPasswordResetEmail(
+    to: string,
+    name: string,
+    resetUrl: string,
+  ): Promise<SendMailResult> {
+    const transporter = await this.ensureTransporter();
+    const safeName = this.escapeHtml(name || 'Cliente');
+    const safeUrl = this.escapeHtml(resetUrl);
+
+    if (!transporter) {
+      this.logger.log(
+        `[RECUPERACIÓN DE CONTRASEÑA] Destinatario: ${to} | Enlace: ${resetUrl}`,
+      );
+      return { sent: false, provider: 'console' };
+    }
+
+    try {
+      const info = await transporter.sendMail({
+        from: this.getFromAddress(),
+        to,
+        subject: 'Restablece tu contraseña — DeliveryPro',
+        text: `Hola ${name || 'Cliente'},\n\nRecibimos una solicitud para restablecer la contraseña de tu cuenta en DeliveryPro.\n\nAbre este enlace seguro (válido por 15 minutos) para definir tu nueva contraseña:\n${resetUrl}\n\nSi no realizaste esta solicitud, puedes ignorar este mensaje de forma segura.`,
+        html: `
+          <div style="background-color:#f8fafc;padding:32px 16px;font-family:'Segoe UI',Arial,sans-serif;color:#0f172a;">
+            <div style="max-width:520px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:20px;overflow:hidden;box-shadow:0 10px 25px rgba(15,23,42,0.06);">
+              <div style="background:linear-gradient(135deg,#ea580c 0%,#dc2626 100%);padding:28px 32px;text-align:center;color:#ffffff;">
+                <h1 style="margin:0;font-size:24px;font-weight:800;letter-spacing:-0.02em;">DeliveryPro</h1>
+                <p style="margin:6px 0 0;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;opacity:0.9;">Seguridad de tu Cuenta</p>
+              </div>
+              <div style="padding:32px;">
+                <h2 style="margin:0 0 12px;font-size:20px;font-weight:800;color:#0f172a;">Restablece tu contraseña</h2>
+                <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#475569;">
+                  ¡Hola, <strong>${safeName}</strong>! Recibimos una solicitud para cambiar la contraseña de tu cuenta en <strong>DeliveryPro</strong>.
+                  Haz clic en el siguiente botón para crear una nueva clave:
+                </p>
+                <div style="text-align:center;margin:28px 0;">
+                  <a href="${safeUrl}" style="display:inline-block;background:#ea580c;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:14px 28px;border-radius:12px;">
+                    Restablecer mi contraseña
+                  </a>
+                </div>
+                <p style="margin:0 0 8px;font-size:12px;color:#64748b;line-height:1.5;">
+                  Este enlace es de un solo uso y vence en <strong>15 minutos</strong>. Si el botón no funciona, copia y pega este enlace en tu navegador:
+                </p>
+                <p style="margin:0;font-size:11px;word-break:break-all;color:#ea580c;">
+                  <a href="${safeUrl}" style="color:#ea580c;">${safeUrl}</a>
+                </p>
+              </div>
+              <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:18px 32px;text-align:center;font-size:11px;color:#64748b;">
+                Si no solicitaste restablecer tu contraseña, ignora este correo. Tu clave actual seguirá intacta.
+              </div>
+            </div>
+          </div>
+        `,
+      });
+
+      const testUrl = nodemailer.getTestMessageUrl(info);
+      const previewUrl = typeof testUrl === 'string' ? testUrl : undefined;
+      if (previewUrl) {
+        this.logger.log(
+          `Correo de recuperación enviado (Ethereal): ${previewUrl}`,
+        );
+      } else {
+        this.logger.log(`Correo de recuperación enviado a ${to}`);
+      }
+
+      return {
+        sent: true,
+        previewUrl,
+        provider: this.provider,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error enviando correo de recuperación a ${to}`,
+        error,
+      );
+      this.logger.log(
+        `[FALLBACK RECUPERACIÓN] Destinatario: ${to} | Enlace: ${resetUrl}`,
+      );
+      return { sent: false, provider: 'console' };
+    }
+  }
+
   async sendOrderStatusEmail(to: string, orderId: string, status: string) {
     const transporter = await this.ensureTransporter();
     if (!transporter) {

@@ -8,6 +8,7 @@ import { PaymentsModule } from 'src/payments/payments.module';
 import { UsersModule } from 'src/users/users.module';
 import { MailModule } from 'src/mail/mail.module';
 import { NotificationsModule } from 'src/notifications/notifications.module';
+import { CouponsModule } from 'src/coupons/coupons.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { NotificationsModule } from 'src/notifications/notifications.module';
     forwardRef(() => PaymentsModule),
     MailModule,
     NotificationsModule,
+    CouponsModule,
   ],
   providers: [OrdersService],
   controllers: [OrdersController],

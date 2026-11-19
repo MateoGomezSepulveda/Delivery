@@ -788,11 +788,19 @@ export class AuthService {
   }
 
   async forgotPassword(email: string) {
-    const user = await this.userService.findByEmail(email);
+    const normalizedEmail = email.trim().toLowerCase();
+    const genericResponse = {
+      message:
+        'Si el correo está registrado, enviamos un enlace para restablecer tu contraseña. Revisa tu bandeja de entrada o spam (válido por 15 minutos).',
+    };
+
+    const user = await this.userService.findByEmail(normalizedEmail);
     if (!user) {
       // Para evitar email enumeration attacks, retornamos éxito de todos modos
-      return { message: 'If the email exists, a reset link was generated.' };
+      return genericResponse;
     }
+
+    await this.passwordResetModel.deleteMany({ user: user._id });
 
     const resetToken = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date();
@@ -804,15 +812,14 @@ export class AuthService {
       expiresAt,
     });
 
-    // TODO: En la fase 5 se implementará el envío real por correo.
-    console.log(
-      `[DEVELOPMENT ONLY] Password reset token for ${email}: ${resetToken}`,
+    const resetUrl = `${this.getFrontendUrl()}/reset-password?token=${resetToken}`;
+    await this.mailService.sendPasswordResetEmail(
+      user.email,
+      user.name,
+      resetUrl,
     );
 
-    return {
-      message: 'If the email exists, a reset link was generated.',
-      devToken: resetToken,
-    };
+    return genericResponse;
   }
 
   async resetPassword(token: string, newPassword: string) {

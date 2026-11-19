@@ -37,4 +37,14 @@ describe('MailService', () => {
 
     expect(result).toEqual({ sent: false, provider: 'console' });
   });
+
+  it('usa fallback de consola al enviar correo de recuperación en entorno test', async () => {
+    const result = await service.sendPasswordResetEmail(
+      'cliente@correo.com',
+      'Mateo',
+      'http://localhost:5173/reset-password?token=xyz',
+    );
+
+    expect(result).toEqual({ sent: false, provider: 'console' });
+  });
 });

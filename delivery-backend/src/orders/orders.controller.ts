@@ -30,7 +30,20 @@ export class OrdersController {
   @Post()
   @ApiOperation({ summary: 'Crear un pedido a partir del carrito activo' })
   createOrder(@Req() req, @Body() body: CreateOrderDto) {
-    return this.ordersService.createOrder(req.user.userId, body.address);
+    return this.ordersService.createOrder(
+      req.user.userId,
+      body.address,
+      body.couponCode,
+    );
+  }
+
+  @Get('rider-discount-quota')
+  @ApiOperation({
+    summary:
+      'Consultar el cupo mensual restante del beneficio de -10% para repartidores',
+  })
+  getRiderDiscountQuota(@Req() req) {
+    return this.ordersService.getRiderDiscountQuota(req.user.userId);
   }
 
   @Get('me')

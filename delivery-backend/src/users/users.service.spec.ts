@@ -81,4 +81,24 @@ describe('UsersService', () => {
     );
     expect(result?.isEmailVerified).toBe(true);
   });
+
+  it('debería persistir avatarUrl al actualizar el perfil de usuario', async () => {
+    mockUserModel.findByIdAndUpdate.mockReturnValue({
+      select: jest.fn().mockResolvedValue({
+        _id: 'mi_id_real',
+        avatarUrl: 'data:image/jpeg;base64,avatar123',
+      }),
+    });
+
+    const result = await service.update('mi_id_real', {
+      avatarUrl: 'data:image/jpeg;base64,avatar123',
+    });
+
+    expect(mockUserModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      'mi_id_real',
+      { avatarUrl: 'data:image/jpeg;base64,avatar123' },
+      { new: true },
+    );
+    expect(result?.avatarUrl).toBe('data:image/jpeg;base64,avatar123');
+  });
 });

@@ -5,6 +5,7 @@ import {
   Bike,
   CheckCircle2,
   Clock,
+  Mail,
   MailCheck,
   Phone,
   Search,
@@ -24,6 +25,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge, RoleBadge } from '@/components/ui/Badge';
+import { Modal } from '@/components/ui/Modal';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { PaginationBar } from '@/components/catalog/PaginationBar';
 import { cn } from '@/utils/cn';
@@ -38,9 +40,13 @@ function isPendingRider(u: User): boolean {
 export function AdminUsersPage() {
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((s) => s.user);
+  const avatarsByUserId = useAuthStore((s) => s.avatarsByUserId);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<UserTab>('ALL');
+  const [selectedUserProfile, setSelectedUserProfile] = useState<User | null>(
+    null,
+  );
   const debouncedSearch = useDebounce(search, 350);
 
   useEffect(() => {
@@ -188,15 +194,28 @@ export function AdminUsersPage() {
                 >
                   <td className="p-3">
                     <div className="flex items-center gap-3">
-                      <UserAvatar
-                        src={u.avatarUrl}
-                        name={u.name}
-                        className="h-10 w-10 rounded-xl shrink-0"
-                        imgClassName="border border-slate-200 dark:border-slate-700"
-                        fallbackClassName="text-xs"
-                      />
+                      <button
+                        type="button"
+                        onClick={() => setSelectedUserProfile(u)}
+                        title={`Ver perfil y foto de ${u.name}`}
+                        className="rounded-xl shrink-0 focus:outline-none focus:ring-2 focus:ring-orange-500/40 transition-opacity hover:opacity-90 cursor-pointer"
+                      >
+                        <UserAvatar
+                          src={u.avatarUrl || avatarsByUserId[u._id]}
+                          name={u.name}
+                          className="h-10 w-10 rounded-xl shrink-0"
+                          imgClassName="border border-slate-200 dark:border-slate-700"
+                          fallbackClassName="text-xs"
+                        />
+                      </button>
                       <div className="min-w-0">
-                        <p className="font-semibold truncate">{u.name}</p>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedUserProfile(u)}
+                          className="font-semibold truncate block text-left hover:text-orange-600 transition-colors cursor-pointer"
+                        >
+                          {u.name}
+                        </button>
                         <p className="text-xs text-slate-500 truncate">
                           {u.email}
                         </p>
@@ -322,6 +341,58 @@ export function AdminUsersPage() {
           onPageChange={setPage}
         />
       )}
+
+      {/* Modal de vista rápida de perfil y foto del usuario */}
+      <Modal
+        isOpen={Boolean(selectedUserProfile)}
+        onClose={() => setSelectedUserProfile(null)}
+        title="Perfil de Usuario"
+        description="Información de contacto, rol y foto de perfil registrada."
+        size="sm"
+        footer={
+          <div className="flex justify-end w-full">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedUserProfile(null)}
+            >
+              Cerrar
+            </Button>
+          </div>
+        }
+      >
+        {selectedUserProfile && (
+          <div className="flex flex-col items-center gap-4 py-2">
+            <UserAvatar
+              src={
+                selectedUserProfile.avatarUrl ||
+                avatarsByUserId[selectedUserProfile._id]
+              }
+              name={selectedUserProfile.name}
+              className="h-36 w-36 rounded-3xl shadow-lg"
+              imgClassName="border-4 border-orange-500/80"
+              fallbackClassName="text-4xl"
+            />
+            <div className="text-center space-y-1.5">
+              <div className="flex items-center justify-center gap-2 flex-wrap">
+                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">
+                  {selectedUserProfile.name}
+                </h3>
+                <RoleBadge role={selectedUserProfile.role} />
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1.5">
+                <Mail className="w-3.5 h-3.5" />
+                <span>{selectedUserProfile.email}</span>
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1.5">
+                <Phone className="w-3.5 h-3.5" />
+                <span>{selectedUserProfile.phone || 'Sin teléfono registrado'}</span>
+              </p>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

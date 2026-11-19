@@ -5,6 +5,7 @@ import type {
   Order,
   OrderQueryParams,
   PayOrderResponse,
+  RiderDiscountQuota,
 } from '@/types/order.types';
 
 /**
@@ -25,6 +26,13 @@ export async function createOrderApi(
   payload: CreateOrderPayload,
 ): Promise<Order> {
   const response = await apiClient.post<Order>('/orders', payload);
+  return response.data;
+}
+
+export async function getRiderDiscountQuotaApi(): Promise<RiderDiscountQuota> {
+  const response = await apiClient.get<RiderDiscountQuota>(
+    '/orders/rider-discount-quota',
+  );
   return response.data;
 }
 

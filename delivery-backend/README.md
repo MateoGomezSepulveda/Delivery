@@ -81,8 +81,8 @@ src/
 | `POST` | `/auth/login` | Pública | Iniciar sesión y obtener `access_token` + `refresh_token` (requiere correo verificado) |
 | `POST` | `/auth/refresh` | Pública | Rotar `refresh_token` y emitir nuevo `access_token` |
 | `POST` | `/auth/logout` | Pública | Invalidar `refresh_token` activo |
-| `POST` | `/auth/forgot-password` | Pública | Solicitar token de recuperación de contraseña |
-| `POST` | `/auth/reset-password` | Pública | Restablecer contraseña con token temporal |
+| `POST` | `/auth/forgot-password` | Pública | Enviar enlace seguro de recuperación de contraseña por correo SMTP real (expira en 15 min, sin `devToken`) |
+| `POST` | `/auth/reset-password` | Pública | Restablecer contraseña con el token recibido en el enlace del correo |
 | `POST` | `/auth/google` | Pública | Iniciar sesión, registrarse o vincular cuenta automáticamente con Google OAuth 2.0 |
 | `POST` | `/auth/facebook` | Pública | Iniciar sesión, registrarse o vincular cuenta automáticamente con Facebook OAuth 2.0 |
 | `POST` | `/auth/link/google` | JWT | Vincular cuenta de Google al perfil del usuario autenticado |
@@ -95,7 +95,7 @@ src/
 | `POST` | `/users` | Pública | Registro de nuevos usuarios |
 | `GET` | `/users` | JWT + Admin | Obtener lista completa de usuarios |
 | `GET` | `/users/:id` | JWT | Obtener detalles de un usuario |
-| `PATCH` | `/users/:id` | JWT | Actualizar datos del usuario |
+| `PATCH` | `/users/:id` | JWT | Actualizar datos del usuario (`name`, `email`, `phone`, `password`, `avatarUrl`) |
 | `DELETE` | `/users/:id` | JWT + Admin | Eliminar un usuario |
 
 ### 🏷️ Categorías (`/categories`)
@@ -127,7 +127,8 @@ src/
 ### 📦 Pedidos (`/orders`)
 | Método | Endpoint | Protección | Descripción |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/orders` | JWT | Crear pedido a partir del carrito actual |
+| `POST` | `/orders` | JWT | Crear pedido a partir del carrito actual (soporta `couponCode` opcional y aplica beneficio `-10%` Rider máx. 4/mes) |
+| `GET` | `/orders/rider-discount-quota` | JWT | Consultar el cupo mensual restante del beneficio `-10%` para repartidores |
 | `GET` | `/orders/me` | JWT | Historial de pedidos del cliente (paginado, con filtros) |
 | `GET` | `/orders/:id` | JWT | Ver detalle de un pedido (dueño o Admin) |
 | `PATCH` | `/orders/:id/cancel` | JWT | Cancelar un pedido propio (solo en estado `PENDING`) |
@@ -149,7 +150,7 @@ src/
 | `GET` | `/coupons/:id` | JWT + Admin | Ver detalle de un cupón |
 | `PATCH` | `/coupons/:id` | JWT + Admin | Actualizar un cupón |
 | `DELETE` | `/coupons/:id` | JWT + Admin | Eliminar un cupón |
-| `POST` | `/coupons/apply` | JWT | Validar y aplicar un cupón sobre el total del pedido |
+| `POST` | `/coupons/apply` | JWT | Previsualizar y validar un cupón promocional sobre el total del pedido (se redime al crear la orden en `POST /orders`) |
 
 ### 📊 Analytics (`/analytics`)
 | Método | Endpoint | Protección | Descripción |
@@ -238,7 +239,7 @@ docker compose up -d --build api
   - ✅ **Events**: Integración de WebSockets (`socket.io`) para emitir cambios de estado de órdenes en tiempo real a los clientes.
   - ✅ **Reviews**: Reseñas con validación de pedido `DELIVERED`, verificación de que el producto pertenece a la orden, índice único `{ user, product, order }` y moderación por Admin.
   - ✅ **Coupons**: CRUD de cupones (Admin) y endpoint `apply` con validación de expiración, límite de usos, uso único por usuario, monto mínimo y tope de descuento.
-  - ✅ **CI**: Specs de `delivery`, `events` y `orders` corregidos con mocks; pipeline de GitHub Actions en verde (98 tests unitarios + E2E).
+  - ✅ **CI**: Specs de todos los módulos con mocks completos; **17 suites / 130 tests unitarios** + E2E pasando y `nest build` verificado.
 
 - ✅ **Fase 6 (Rendimiento y Escala)**:
   - ✅ **Cache con Redis**: `@nestjs/cache-manager` + `@keyv/redis` en Categorías (TTL 1h) y Productos (TTL 10min).

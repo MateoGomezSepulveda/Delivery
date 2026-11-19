@@ -102,8 +102,12 @@ export class CouponsService {
     return { message: 'Cupón eliminado correctamente.' };
   }
 
-  async applyCoupon(userId: string, dto: ApplyCouponDto) {
-    const normalizedCode = dto.code.toUpperCase().trim();
+  private async validateAndCalculate(
+    userId: string,
+    code: string,
+    orderTotal: number,
+  ) {
+    const normalizedCode = code.toUpperCase().trim();
     const coupon = await this.couponModel.findOne({ code: normalizedCode });
 
     if (!coupon) {
@@ -133,7 +137,7 @@ export class CouponsService {
       );
     }
 
-    if (dto.orderTotal < (coupon.minOrderAmount || 0)) {
+    if (orderTotal < (coupon.minOrderAmount || 0)) {
       throw new BadRequestException(
         `El monto mínimo de compra para este cupón es de $${coupon.minOrderAmount}.`,
       );
@@ -141,7 +145,7 @@ export class CouponsService {
 
     let discountAmount = 0;
     if (coupon.discountType === DiscountType.PERCENTAGE) {
-      discountAmount = (dto.orderTotal * coupon.discountValue) / 100;
+      discountAmount = (orderTotal * coupon.discountValue) / 100;
       if (
         coupon.maxDiscountAmount !== undefined &&
         coupon.maxDiscountAmount > 0
@@ -153,20 +157,61 @@ export class CouponsService {
     }
 
     // El descuento nunca puede superar el total del pedido
-    discountAmount = Math.min(discountAmount, dto.orderTotal);
-    const finalTotal = Number((dto.orderTotal - discountAmount).toFixed(2));
+    discountAmount = Math.min(discountAmount, orderTotal);
+    const roundedDiscount = Number(discountAmount.toFixed(2));
+    const finalTotal = Number((orderTotal - roundedDiscount).toFixed(2));
 
-    coupon.usedCount += 1;
+    return {
+      coupon,
+      result: {
+        code: coupon.code,
+        discountType: coupon.discountType,
+        discountValue: coupon.discountValue,
+        originalTotal: orderTotal,
+        discountAmount: roundedDiscount,
+        finalTotal,
+      },
+    };
+  }
+
+  async applyCoupon(userId: string, dto: ApplyCouponDto) {
+    const { result } = await this.validateAndCalculate(
+      userId,
+      dto.code,
+      dto.orderTotal,
+    );
+    return result;
+  }
+
+  async redeemCoupon(userId: string, code: string, orderTotal: number) {
+    const { coupon, result } = await this.validateAndCalculate(
+      userId,
+      code,
+      orderTotal,
+    );
+
+    coupon.usedCount = (coupon.usedCount || 0) + 1;
+    coupon.usedBy = coupon.usedBy || [];
     coupon.usedBy.push(new Types.ObjectId(userId));
     await coupon.save();
 
-    return {
-      code: coupon.code,
-      discountType: coupon.discountType,
-      discountValue: coupon.discountValue,
-      originalTotal: dto.orderTotal,
-      discountAmount: Number(discountAmount.toFixed(2)),
-      finalTotal,
-    };
+    return result;
+  }
+
+  async releaseCoupon(userId: string, code: string): Promise<void> {
+    const normalizedCode = code.toUpperCase().trim();
+    const coupon = await this.couponModel.findOne({ code: normalizedCode });
+    if (!coupon) return;
+
+    const hadUser = coupon.usedBy?.some(
+      (id) => id.toString() === userId.toString(),
+    );
+    if (!hadUser) return;
+
+    coupon.usedBy = coupon.usedBy.filter(
+      (id) => id.toString() !== userId.toString(),
+    );
+    coupon.usedCount = Math.max(0, (coupon.usedCount || 0) - 1);
+    await coupon.save();
   }
 }

@@ -33,6 +33,14 @@ export class CreateUserDto {
   @IsString()
   phone?: string;
 
+  @ApiProperty({
+    description: 'URL o DataURL de la foto de perfil del usuario',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  avatarUrl?: string | null;
+
   @IsOptional({
     message: 'El rol es opcional',
   })

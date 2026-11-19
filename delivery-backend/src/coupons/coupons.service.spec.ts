@@ -164,8 +164,8 @@ describe('CouponsService', () => {
     });
   });
 
-  describe('applyCoupon', () => {
-    it('debe aplicar descuento porcentual respetando el tope máximo', async () => {
+  describe('applyCoupon & redeemCoupon', () => {
+    it('debe previsualizar descuento porcentual respetando el tope máximo sin quemar usos', async () => {
       const mockDoc = createMockCouponDoc({
         discountType: DiscountType.PERCENTAGE,
         discountValue: 20,
@@ -181,7 +181,42 @@ describe('CouponsService', () => {
 
       expect(result.discountAmount).toBe(5000);
       expect(result.finalTotal).toBe(45000);
+      expect(mockDoc.usedCount).toBe(0);
+      expect(mockDoc.save).not.toHaveBeenCalled();
+    });
+
+    it('debe redimir el cupón al crear la orden incrementando usedCount y registrando usedBy', async () => {
+      const mockDoc = createMockCouponDoc({
+        discountType: DiscountType.PERCENTAGE,
+        discountValue: 20,
+        maxDiscountAmount: 5000,
+      });
+      MockCouponModel.findOne.mockResolvedValueOnce(mockDoc);
+
+      const result = await service.redeemCoupon(
+        mockUserId,
+        'bienvenida20',
+        50000,
+      );
+
+      expect(result.discountAmount).toBe(5000);
+      expect(result.finalTotal).toBe(45000);
       expect(mockDoc.usedCount).toBe(1);
+      expect(mockDoc.usedBy).toHaveLength(1);
+      expect(mockDoc.save).toHaveBeenCalled();
+    });
+
+    it('debe liberar el cupón cuando se cancela una orden pendiente', async () => {
+      const mockDoc = createMockCouponDoc({
+        usedCount: 1,
+        usedBy: [new Types.ObjectId(mockUserId)],
+      });
+      MockCouponModel.findOne.mockResolvedValueOnce(mockDoc);
+
+      await service.releaseCoupon(mockUserId, 'BIENVENIDA20');
+
+      expect(mockDoc.usedCount).toBe(0);
+      expect(mockDoc.usedBy).toHaveLength(0);
       expect(mockDoc.save).toHaveBeenCalled();
     });
 
