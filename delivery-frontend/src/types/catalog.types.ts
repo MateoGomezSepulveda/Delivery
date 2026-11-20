@@ -11,6 +11,9 @@ export interface Product {
   name: string;
   description: string;
   price: number;
+  costPrice?: number;
+  stock?: number;
+  lowStockThreshold?: number;
   available: boolean;
   image?: string | null;
   categoryId: string | Category | null;
@@ -59,6 +62,9 @@ export interface CreateProductPayload {
   name: string;
   description: string;
   price: number;
+  costPrice?: number;
+  stock?: number;
+  lowStockThreshold?: number;
   available?: boolean;
   image?: string | null;
   categoryId: string;

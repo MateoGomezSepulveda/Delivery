@@ -1,6 +1,7 @@
-import { Eye, Plus, ShoppingBag, Wine } from 'lucide-react';
+import { AlertTriangle, Eye, Plus, ShoppingBag, Wine } from 'lucide-react';
 import type { Category, Product } from '@/types/catalog.types';
 import { formatCurrency } from '@/utils/formatters';
+import { getProductStockState } from '@/utils/inventory';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 
@@ -25,6 +26,7 @@ export function ProductCard({
     (typeof product.categoryId === 'object' && product.categoryId !== null
       ? (product.categoryId as Category).name
       : 'Especialidad');
+  const stockState = getProductStockState(product);
 
   return (
     <article
@@ -41,7 +43,9 @@ export function ProductCard({
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).src = FALLBACK_PRODUCT_IMAGE;
             }}
-            className="h-full w-full object-cover transition-opacity duration-200 group-hover:opacity-95"
+            className={`h-full w-full object-cover transition-opacity duration-200 group-hover:opacity-95 ${
+              stockState.isOutOfStock ? 'grayscale opacity-70' : ''
+            }`}
           />
         ) : (
           <div className="h-full w-full flex flex-col items-center justify-center text-slate-400 gap-2">
@@ -55,10 +59,14 @@ export function ProductCard({
           <span className="rounded-full bg-slate-950/75 backdrop-blur-md text-white px-3 py-1 text-[11px] font-semibold">
             {resolvedCategoryName}
           </span>
-          {product.available ? (
-            <Badge variant="success">Disponible</Badge>
-          ) : (
+          {stockState.isOutOfStock ? (
             <Badge variant="danger">Agotado</Badge>
+          ) : stockState.isLowStock ? (
+            <Badge variant="warning">
+              Quedan {stockState.stock} {stockState.stock === 1 ? 'ud' : 'uds'}
+            </Badge>
+          ) : (
+            <Badge variant="success">Disponible</Badge>
           )}
         </div>
       </div>
@@ -72,6 +80,15 @@ export function ProductCard({
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
             {product.description}
           </p>
+          {stockState.lowStockLabel && (
+            <p
+              role="status"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 px-2.5 py-1 text-xs font-bold text-amber-800 dark:text-amber-300 mt-1"
+            >
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span>{stockState.lowStockLabel}</span>
+            </p>
+          )}
         </div>
 
         <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
@@ -100,19 +117,19 @@ export function ProductCard({
             <Button
               variant="primary"
               size="sm"
-              disabled={!product.available}
+              disabled={stockState.isOutOfStock}
               onClick={() =>
                 onAddToCart ? onAddToCart(product) : onSelectProduct(product)
               }
               leftIcon={
-                product.available ? (
+                !stockState.isOutOfStock ? (
                   <Plus className="w-4 h-4" />
                 ) : (
                   <ShoppingBag className="w-4 h-4" />
                 )
               }
             >
-              {product.available ? 'Agregar' : 'Agotado'}
+              {!stockState.isOutOfStock ? 'Agregar' : 'Agotado'}
             </Button>
           </div>
         </div>

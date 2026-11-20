@@ -8,6 +8,7 @@ import { UsersService } from 'src/users/users.service';
 import { MailService } from 'src/mail/mail.service';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { CouponsService } from 'src/coupons/coupons.service';
+import { ProductsService } from 'src/products/products.service';
 import { EventsGateway } from '../events/events/events.gateway';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { OrderStatus } from './order-status.enum';
@@ -78,6 +79,11 @@ const mockCouponsService = {
   releaseCoupon: jest.fn(),
 };
 
+const mockProductsService = {
+  reserveStockForOrder: jest.fn(),
+  restoreStockForOrder: jest.fn(),
+};
+
 // ── Suite ─────────────────────────────────────────────────────────────────────
 
 describe('OrdersService', () => {
@@ -110,6 +116,10 @@ describe('OrdersService', () => {
           provide: CouponsService,
           useValue: mockCouponsService,
         },
+        {
+          provide: ProductsService,
+          useValue: mockProductsService,
+        },
       ],
     }).compile();
 
@@ -121,18 +131,56 @@ describe('OrdersService', () => {
       phone: '+573001234567',
       fcmTokens: [],
     });
+    mockProductsService.reserveStockForOrder.mockResolvedValue(
+      new Map([
+        [
+          '64a000000000000000000010',
+          {
+            productId: '64a000000000000000000010',
+            costPrice: 9000,
+            remainingStock: 8,
+          },
+        ],
+      ]),
+    );
+    mockProductsService.restoreStockForOrder.mockResolvedValue(undefined);
   });
 
   // ── createOrder ─────────────────────────────────────────────────────────────
 
   describe('createOrder', () => {
-    it('debe crear el pedido y marcar el carrito como CHECKED_OUT', async () => {
+    it('debe crear el pedido, reservar stock, guardar costPrice y calcular ganancia real', async () => {
       mockCartService.getActiveCart.mockResolvedValue({ ...mockCart });
 
       const result = await service.createOrder(mockUserId, 'Calle 123');
 
       expect(mockCartService.getActiveCart).toHaveBeenCalledWith(mockUserId);
+      expect(mockProductsService.reserveStockForOrder).toHaveBeenCalledWith([
+        {
+          productId: '64a000000000000000000010',
+          quantity: 2,
+          name: 'Pizza',
+        },
+      ]);
       expect(result).toBeDefined();
+      expect((result as any).totalCost).toBe(18000);
+      expect((result as any).netProfit).toBe(12000);
+      expect((result as any).items[0].costPrice).toBe(9000);
+    });
+
+    it('debe restaurar el stock si falla la redención de cupón después de reservar', async () => {
+      mockCartService.getActiveCart.mockResolvedValue({ ...mockCart });
+      mockCouponsService.redeemCoupon.mockRejectedValueOnce(
+        new BadRequestException('Cupón inválido'),
+      );
+
+      await expect(
+        service.createOrder(mockUserId, 'Calle 123', 'INVALIDO'),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockProductsService.restoreStockForOrder).toHaveBeenCalledWith([
+        { productId: '64a000000000000000000010', quantity: 2 },
+      ]);
     });
 
     it('debe rechazar createOrder con PHONE_REQUIRED si el usuario no tiene número de celular registrado', async () => {
@@ -323,14 +371,21 @@ describe('OrdersService', () => {
   // ── cancelOrderByClient ──────────────────────────────────────────────────────
 
   describe('cancelOrderByClient', () => {
-    it('debe cancelar el pedido si está en PENDING y el usuario es el dueño', async () => {
-      const order = { ...mockOrder, userId: { toString: () => mockUserId } };
+    it('debe cancelar el pedido si está en PENDING y el usuario es el dueño (restaurando stock)', async () => {
+      const order = {
+        ...mockOrder,
+        items: [{ productId: '64a000000000000000000010', quantity: 2 }],
+        userId: { toString: () => mockUserId },
+      };
       mockOrderModel.findById.mockResolvedValue(order);
 
       await service.cancelOrderByClient(mockOrderId, mockUserId);
 
       expect(order.status).toBe(OrderStatus.CANCELLED);
       expect(order.save).toHaveBeenCalled();
+      expect(mockProductsService.restoreStockForOrder).toHaveBeenCalledWith(
+        order.items,
+      );
     });
 
     it('debe lanzar BadRequestException si el pedido no está en PENDING', async () => {

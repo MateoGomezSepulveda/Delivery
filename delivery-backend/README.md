@@ -112,8 +112,8 @@ src/
 | :--- | :--- | :--- | :--- |
 | `GET` | `/products` | Pública | Listar todos los productos del catálogo |
 | `GET` | `/products/:id` | Pública | Obtener detalles de un producto |
-| `POST` | `/products` | JWT + Admin | Crear un nuevo producto |
-| `PATCH` | `/products/:id` | JWT + Admin | Actualizar un producto |
+| `POST` | `/products` | JWT + Admin | Crear un nuevo producto con precio de venta, `costPrice` (costo de compra), `stock`, `lowStockThreshold` y disponibilidad automática |
+| `PATCH` | `/products/:id` | JWT + Admin | Actualizar producto, stock y costo (marca `available: false` automáticamente si `stock === 0`, rechaza activar con stock `0`) |
 | `DELETE` | `/products/:id` | JWT + Admin | Eliminar un producto |
 
 ### 🛒 Carrito de Compras (`/cart`)
@@ -155,9 +155,9 @@ src/
 ### 📊 Analytics (`/analytics`)
 | Método | Endpoint | Protección | Descripción |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/analytics/dashboard` | JWT + Admin | KPIs generales (ingresos, ticket promedio, usuarios, productos) y órdenes por estado |
-| `GET` | `/analytics/top-products` | JWT + Admin | Ranking de productos más vendidos (unidades e ingresos) |
-| `GET` | `/analytics/sales` | JWT + Admin | Serie histórica de ventas e ingresos agrupados por día |
+| `GET` | `/analytics/dashboard` | JWT + Admin | KPIs financieros reales (ingresos, costo de compra COGS, ganancia neta real, margen %, valoración de inventario), `inventoryAlerts` y órdenes por estado (acepta `?days=`) |
+| `GET` | `/analytics/top-products` | JWT + Admin | Ranking de productos con unidades vendidas, ingresos, costo de compra, ganancia real, margen % y stock actual (acepta `?limit=&days=`) |
+| `GET` | `/analytics/sales` | JWT + Admin | Serie histórica diaria de pedidos, unidades, ventas, costo de compra y ganancia neta real (acepta `?days=`) |
 
 ---
 
@@ -239,7 +239,7 @@ docker compose up -d --build api
   - ✅ **Events**: Integración de WebSockets (`socket.io`) para emitir cambios de estado de órdenes en tiempo real a los clientes.
   - ✅ **Reviews**: Reseñas con validación de pedido `DELIVERED`, verificación de que el producto pertenece a la orden, índice único `{ user, product, order }` y moderación por Admin.
   - ✅ **Coupons**: CRUD de cupones (Admin) y endpoint `apply` con validación de expiración, límite de usos, uso único por usuario, monto mínimo y tope de descuento.
-  - ✅ **CI**: Specs de todos los módulos con mocks completos; **18 suites / 143 tests unitarios** + E2E pasando y `nest build` verificado.
+  - ✅ **CI**: Specs de todos los módulos con mocks completos; **18 suites / 149 tests unitarios** + E2E pasando y `nest build` verificado.
 
 - ✅ **Fase 6 (Rendimiento y Escala)**:
   - ✅ **Cache con Redis**: `@nestjs/cache-manager` + `@keyv/redis` en Categorías (TTL 1h) y Productos (TTL 10min).

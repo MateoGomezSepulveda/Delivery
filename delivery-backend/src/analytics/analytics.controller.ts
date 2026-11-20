@@ -21,28 +21,52 @@ export class AnalyticsController {
 
   @Get('dashboard')
   @ApiOperation({
-    summary: 'Obtener KPIs generales y desglose de órdenes por estado (Admin)',
+    summary:
+      'Obtener KPIs financieros reales (ingresos, costos, ganancia neta, margen), alertas de inventario y órdenes por estado (Admin)',
   })
-  getDashboardSummary() {
-    return this.analyticsService.getDashboardSummary();
+  @ApiQuery({
+    name: 'days',
+    required: false,
+    description:
+      'Opcional: limitar métricas de ventas y ganancias a los últimos N días (si se omite, histórico completo)',
+  })
+  getDashboardSummary(@Query('days') days?: number) {
+    const parsedDays = days ? Number(days) : undefined;
+    return this.analyticsService.getDashboardSummary(
+      parsedDays && parsedDays > 0 ? parsedDays : undefined,
+    );
   }
 
   @Get('top-products')
   @ApiOperation({
-    summary: 'Obtener el ranking de productos más vendidos (Admin)',
+    summary:
+      'Obtener el ranking de productos con ventas, costo de compra y ganancia real (Admin)',
   })
   @ApiQuery({
     name: 'limit',
     required: false,
-    description: 'Cantidad de productos en el top (por defecto 5)',
+    description: 'Cantidad de productos en el ranking (por defecto 5)',
   })
-  getTopProducts(@Query('limit') limit?: number) {
-    return this.analyticsService.getTopProducts(limit ? Number(limit) : 5);
+  @ApiQuery({
+    name: 'days',
+    required: false,
+    description: 'Opcional: filtrar ventas por los últimos N días',
+  })
+  getTopProducts(
+    @Query('limit') limit?: number,
+    @Query('days') days?: number,
+  ) {
+    const parsedDays = days ? Number(days) : undefined;
+    return this.analyticsService.getTopProducts(
+      limit ? Number(limit) : 5,
+      parsedDays && parsedDays > 0 ? parsedDays : undefined,
+    );
   }
 
   @Get('sales')
   @ApiOperation({
-    summary: 'Obtener evolución de ventas e ingresos diarios (Admin)',
+    summary:
+      'Obtener evolución diaria de ventas, costos de compra y ganancia neta real (Admin)',
   })
   @ApiQuery({
     name: 'days',

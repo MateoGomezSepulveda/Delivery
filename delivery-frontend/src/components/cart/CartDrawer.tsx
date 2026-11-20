@@ -15,6 +15,7 @@ import type { Product } from '@/types/catalog.types';
 import { useCartDrawerStore } from '@/store/useCartDrawerStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { formatCurrency } from '@/utils/formatters';
+import { getProductStockState } from '@/utils/inventory';
 import { Drawer } from '@/components/ui/Drawer';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -191,6 +192,11 @@ export function CartDrawer() {
               const prodId = prod ? prod._id : String(item.productId);
               const prodName = prod ? prod.name : `Producto #${idx + 1}`;
               const prodImage = prod?.image;
+              const stockState = prod ? getProductStockState(prod) : null;
+              const reachedMaxStock =
+                stockState?.stock !== null &&
+                stockState?.stock !== undefined &&
+                item.quantity >= stockState.stock;
 
               return (
                 <div
@@ -215,6 +221,11 @@ export function CartDrawer() {
                       <p className="text-xs font-extrabold text-orange-600 dark:text-orange-400 mt-0.5">
                         {formatCurrency(item.price * item.quantity)}
                       </p>
+                      {stockState?.isLowStock && (
+                        <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 mt-0.5">
+                          {stockState.lowStockLabel}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -224,9 +235,13 @@ export function CartDrawer() {
                       onClick={() =>
                         addMutation.mutate({ productId: prodId, quantity: 1 })
                       }
-                      disabled={addMutation.isPending}
-                      title="Sumar 1 unidad"
-                      className="h-8 w-8 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-orange-50 hover:text-orange-600 transition-colors cursor-pointer"
+                      disabled={addMutation.isPending || reachedMaxStock}
+                      title={
+                        reachedMaxStock
+                          ? 'Stock máximo disponible alcanzado'
+                          : 'Sumar 1 unidad'
+                      }
+                      className="h-8 w-8 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-orange-50 hover:text-orange-600 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       <Plus className="w-3.5 h-3.5" />
                     </button>

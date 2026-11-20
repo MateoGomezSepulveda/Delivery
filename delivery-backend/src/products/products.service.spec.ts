@@ -19,6 +19,9 @@ describe('ProductsService', () => {
   mockProductModel.findById = jest.fn();
   mockProductModel.findByIdAndUpdate = jest.fn();
   mockProductModel.findByIdAndDelete = jest.fn();
+  mockProductModel.findOneAndUpdate = jest.fn();
+  mockProductModel.updateOne = jest.fn();
+  mockProductModel.updateMany = jest.fn();
   mockProductModel.find = jest.fn();
   mockProductModel.countDocuments = jest.fn();
 
@@ -149,6 +152,106 @@ describe('ProductsService', () => {
       await expect(
         service.update('123', { name: 'Pizza Actualizada' } as any),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('marca available=false automáticamente al actualizar stock a 0', async () => {
+      mockProductModel.findById.mockResolvedValue({
+        _id: '123',
+        stock: 5,
+        available: true,
+      });
+      mockProductModel.findByIdAndUpdate.mockResolvedValue({
+        _id: '123',
+        stock: 0,
+        available: false,
+      });
+
+      const res = await service.update('123', { stock: 0 });
+
+      expect(mockProductModel.findByIdAndUpdate).toHaveBeenCalledWith(
+        '123',
+        expect.objectContaining({ stock: 0, available: false }),
+        { new: true },
+      );
+      expect(res?.available).toBe(false);
+    });
+
+    it('rechaza activar available=true cuando el stock es 0', async () => {
+      mockProductModel.findById.mockResolvedValue({
+        _id: '123',
+        stock: 0,
+        available: false,
+      });
+
+      await expect(
+        service.update('123', { available: true }),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('reserveStockForOrder & restoreStockForOrder', () => {
+    it('descuenta stock atómicamente y marca available=false cuando llega a 0', async () => {
+      mockProductModel.findOneAndUpdate.mockResolvedValueOnce({
+        _id: 'prod-1',
+        costPrice: 12000,
+        stock: 0,
+        available: true,
+      });
+      mockProductModel.updateOne.mockResolvedValueOnce({});
+
+      const snapshots = await service.reserveStockForOrder([
+        { productId: 'prod-1', quantity: 2, name: 'Whisky' },
+      ]);
+
+      expect(mockProductModel.findOneAndUpdate).toHaveBeenCalledWith(
+        { _id: 'prod-1', available: true, stock: { $gte: 2 } },
+        { $inc: { stock: -2 } },
+        { new: true },
+      );
+      expect(mockProductModel.updateOne).toHaveBeenCalledWith(
+        { _id: 'prod-1', stock: { $lte: 0 } },
+        { $set: { available: false, stock: 0 } },
+      );
+      expect(snapshots.get('prod-1')).toEqual({
+        productId: 'prod-1',
+        costPrice: 12000,
+        remainingStock: 0,
+      });
+    });
+
+    it('hace rollback si un segundo producto no tiene stock suficiente', async () => {
+      mockProductModel.findOneAndUpdate
+        .mockResolvedValueOnce({
+          _id: 'prod-1',
+          costPrice: 10000,
+          stock: 3,
+          available: true,
+        })
+        .mockResolvedValueOnce(null);
+      mockProductModel.findById.mockResolvedValueOnce({
+        _id: 'prod-2',
+        name: 'Vino Reserva',
+        stock: 1,
+        available: true,
+      });
+      mockProductModel.findByIdAndUpdate.mockResolvedValueOnce({
+        _id: 'prod-1',
+        stock: 5,
+        available: true,
+      });
+
+      await expect(
+        service.reserveStockForOrder([
+          { productId: 'prod-1', quantity: 2, name: 'Queso' },
+          { productId: 'prod-2', quantity: 4, name: 'Vino Reserva' },
+        ]),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockProductModel.findByIdAndUpdate).toHaveBeenCalledWith(
+        'prod-1',
+        { $inc: { stock: 2 } },
+        { new: true },
+      );
     });
   });
 });

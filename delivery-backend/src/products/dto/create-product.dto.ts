@@ -1,10 +1,13 @@
 import {
   IsBoolean,
+  IsInt,
   IsMongoId,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
+  Min,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateProductDto {
@@ -13,7 +16,23 @@ export class CreateProductDto {
   name: string;
 
   @IsNumber()
+  @Min(0)
   price: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  costPrice?: number;
+
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  stock?: number;
+
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  lowStockThreshold?: number;
 
   @IsMongoId()
   categoryId: string;
@@ -26,7 +45,8 @@ export class CreateProductDto {
   @IsOptional()
   available?: boolean;
 
-  @IsString()
   @IsOptional()
-  image?: string;
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  image?: string | null;
 }

@@ -38,6 +38,13 @@ export class CartService {
     if (!product.available)
       throw new NotFoundException('Product not available');
 
+    const hasStockTracking = typeof product.stock === 'number';
+    if (hasStockTracking && product.stock <= 0) {
+      throw new BadRequestException(
+        `El producto "${product.name || 'seleccionado'}" se encuentra agotado.`,
+      );
+    }
+
     const cart = await this.getActiveCart(userId);
 
     const itemIndex = cart.items.findIndex((item: any) => {
@@ -45,8 +52,18 @@ export class CartService {
       return id.toString() === productId;
     });
 
+    const currentQty = itemIndex >= 0 ? cart.items[itemIndex].quantity : 0;
+    const nextQty = currentQty + quantity;
+
+    if (hasStockTracking && nextQty > product.stock) {
+      throw new BadRequestException(
+        `Stock insuficiente para "${product.name || 'este producto'}". Solo quedan ${product.stock} ${product.stock === 1 ? 'unidad' : 'unidades'} disponibles.`,
+      );
+    }
+
     if (itemIndex >= 0) {
-      cart.items[itemIndex].quantity += quantity;
+      cart.items[itemIndex].quantity = nextQty;
+      cart.items[itemIndex].price = product.price;
     } else {
       cart.items.push({
         productId,

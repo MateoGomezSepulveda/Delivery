@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
+  AlertTriangle,
   MessageSquareText,
   Minus,
+  Package,
   Plus,
   ShoppingBag,
   Star,
@@ -18,6 +20,7 @@ import {
 import { extractErrorMessage } from '@/api/axios.client';
 import { useAuthStore } from '@/store/useAuthStore';
 import { formatCurrency, formatDateTime } from '@/utils/formatters';
+import { getProductStockState } from '@/utils/inventory';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -42,6 +45,10 @@ export function ProductDetailModal({
   const [quantity, setQuantity] = useState(1);
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
+
+  useEffect(() => {
+    setQuantity(1);
+  }, [product?._id]);
 
   const { data: reviews = [], isLoading: isLoadingReviews } = useQuery({
     queryKey: ['product-reviews', product?._id],
@@ -68,6 +75,12 @@ export function ProductDetailModal({
 
   if (!product) return null;
 
+  const stockState = getProductStockState(product);
+  const maxQuantity =
+    stockState.stock !== null && stockState.stock > 0
+      ? stockState.stock
+      : undefined;
+
   const totalReviews = reviews.length;
   const averageRating =
     totalReviews > 0
@@ -92,8 +105,9 @@ export function ProductDetailModal({
             <div className="inline-flex items-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1">
               <button
                 type="button"
+                disabled={stockState.isOutOfStock || quantity <= 1}
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 cursor-pointer"
+                className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 aria-label="Disminuir cantidad"
               >
                 <Minus className="w-3.5 h-3.5" />
@@ -103,19 +117,32 @@ export function ProductDetailModal({
               </span>
               <button
                 type="button"
-                onClick={() => setQuantity((q) => q + 1)}
-                className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 cursor-pointer"
+                disabled={
+                  stockState.isOutOfStock ||
+                  (maxQuantity !== undefined && quantity >= maxQuantity)
+                }
+                onClick={() =>
+                  setQuantity((q) =>
+                    maxQuantity !== undefined ? Math.min(maxQuantity, q + 1) : q + 1,
+                  )
+                }
+                className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 aria-label="Aumentar cantidad"
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
             </div>
+            {maxQuantity !== undefined && !stockState.isOutOfStock && (
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                Máx. {maxQuantity}
+              </span>
+            )}
           </div>
 
           <Button
             variant="primary"
             size="lg"
-            disabled={!product.available}
+            disabled={stockState.isOutOfStock}
             onClick={() => {
               if (onAddToCart) {
                 onAddToCart(product, quantity);
@@ -126,7 +153,7 @@ export function ProductDetailModal({
             }}
             leftIcon={<ShoppingBag className="w-4 h-4" />}
           >
-            {product.available
+            {!stockState.isOutOfStock
               ? `Agregar al Carrito · ${formatCurrency(product.price * quantity)}`
               : 'Producto Agotado'}
           </Button>
@@ -143,17 +170,33 @@ export function ProductDetailModal({
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).src = FALLBACK_PRODUCT_IMAGE;
               }}
-              className="h-full w-full object-cover"
+              className={`h-full w-full object-cover ${
+                stockState.isOutOfStock ? 'grayscale opacity-75' : ''
+              }`}
             />
           </div>
 
           <div className="sm:col-span-7 flex flex-col justify-between space-y-2.5">
             <div className="space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
-                {product.available ? (
-                  <Badge variant="success">Disponible ahora</Badge>
+                {stockState.isOutOfStock ? (
+                  <Badge variant="danger">Agotado</Badge>
+                ) : stockState.isLowStock ? (
+                  <Badge
+                    variant="warning"
+                    icon={<AlertTriangle className="w-3.5 h-3.5" />}
+                  >
+                    {stockState.lowStockLabel}
+                  </Badge>
                 ) : (
-                  <Badge variant="danger">Temporalmente agotado</Badge>
+                  <Badge
+                    variant="success"
+                    icon={<Package className="w-3.5 h-3.5" />}
+                  >
+                    {stockState.stock !== null
+                      ? `${stockState.stock} disponibles`
+                      : 'Disponible ahora'}
+                  </Badge>
                 )}
                 <Badge
                   variant="warning"

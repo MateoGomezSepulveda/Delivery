@@ -14,6 +14,11 @@ const recentProductUpdates = new Map<
 >();
 const recentProductDeletes = new Map<string, number>();
 
+export function clearRecentProductMutations(): void {
+  recentProductUpdates.clear();
+  recentProductDeletes.clear();
+}
+
 function applyRecentMutations(products: Product[]): Product[] {
   const now = Date.now();
   return products
@@ -165,6 +170,9 @@ export async function seedDemoCatalogApi(): Promise<void> {
       description:
         'Whisky escocés blended de 12 años con notas suaves de naranja, chocolate y miel. Sello de autenticidad.',
       price: 165000,
+      costPrice: 112000,
+      stock: 12,
+      lowStockThreshold: 5,
       available: true,
       categoryId: spiritsId,
       image:
@@ -175,6 +183,9 @@ export async function seedDemoCatalogApi(): Promise<void> {
       description:
         'Aguardiente colombiano sin azúcar, ideal para compartir bien frío con amigos.',
       price: 52000,
+      costPrice: 34000,
+      stock: 20,
+      lowStockThreshold: 5,
       available: true,
       categoryId: spiritsId,
       image:
@@ -185,6 +196,9 @@ export async function seedDemoCatalogApi(): Promise<void> {
       description:
         'Vino tinto chileno con crianza en barrica de roble, notas de frutos rojos maduros y taninos elegantes.',
       price: 68000,
+      costPrice: 43000,
+      stock: 4,
+      lowStockThreshold: 5,
       available: true,
       categoryId: winesBeersId,
       image:
@@ -195,6 +209,9 @@ export async function seedDemoCatalogApi(): Promise<void> {
       description:
         '6 latas de cerveza tipo lager de maestría cervecera, entregadas bien frías.',
       price: 26500,
+      costPrice: 17500,
+      stock: 25,
+      lowStockThreshold: 5,
       available: true,
       categoryId: winesBeersId,
       image:
@@ -205,6 +222,9 @@ export async function seedDemoCatalogApi(): Promise<void> {
       description:
         'Selección lista para consumir con queso manchego curado, gouda holandés, jamón serrano y aceitunas.',
       price: 48900,
+      costPrice: 29000,
+      stock: 3,
+      lowStockThreshold: 5,
       available: true,
       categoryId: cheesesId,
       image:
@@ -215,6 +235,9 @@ export async function seedDemoCatalogApi(): Promise<void> {
       description:
         'Queso de pasta blanda y corteza blanca, perfecto para acompañar con vino tinto o frutos secos.',
       price: 34000,
+      costPrice: 21500,
+      stock: 10,
+      lowStockThreshold: 5,
       available: true,
       categoryId: cheesesId,
       image:
@@ -225,6 +248,9 @@ export async function seedDemoCatalogApi(): Promise<void> {
       description:
         'Cajetilla de 20 cigarrillos rubios suaves. Producto exclusivo para mayores de edad (+18).',
       price: 11500,
+      costPrice: 8200,
+      stock: 30,
+      lowStockThreshold: 5,
       available: true,
       categoryId: cigarettesSnacksId,
       image:
@@ -235,6 +261,9 @@ export async function seedDemoCatalogApi(): Promise<void> {
       description:
         'Mezcla tostada con toque de sal marina, el acompañante ideal para tus bebidas y licores.',
       price: 22900,
+      costPrice: 13800,
+      stock: 15,
+      lowStockThreshold: 5,
       available: true,
       categoryId: cigarettesSnacksId,
       image:

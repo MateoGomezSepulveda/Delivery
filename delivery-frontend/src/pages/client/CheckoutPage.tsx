@@ -18,6 +18,7 @@ import {
 import { getCartApi } from '@/api/endpoints/cart.api';
 import { getMyAddressesApi } from '@/api/endpoints/addresses.api';
 import { createOrderApi, payOrderApi } from '@/api/endpoints/orders.api';
+import { clearRecentProductMutations } from '@/api/endpoints/products.api';
 import { updateUserApi } from '@/api/endpoints/users.api';
 import { useRiderDiscountQuota } from '@/hooks/useRiderDiscountQuota';
 import { extractErrorMessage } from '@/api/axios.client';
@@ -126,9 +127,15 @@ export function CheckoutPage() {
         ...(couponCode ? { couponCode } : {}),
       }),
     onSuccess: () => {
+      clearRecentProductMutations();
       queryClient.invalidateQueries({ queryKey: ['cart'] });
       queryClient.invalidateQueries({ queryKey: ['my-orders'] });
       queryClient.invalidateQueries({ queryKey: ['rider-discount-quota'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-sales'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-top-products'] });
       setAppliedCoupon(null);
     },
   });

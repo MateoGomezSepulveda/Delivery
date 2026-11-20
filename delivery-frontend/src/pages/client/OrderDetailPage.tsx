@@ -25,6 +25,7 @@ import {
   payOrderApi,
   updateOrderStatusAdminApi,
 } from '@/api/endpoints/orders.api';
+import { clearRecentProductMutations } from '@/api/endpoints/products.api';
 import { extractErrorMessage } from '@/api/axios.client';
 import type { OrderStatus } from '@/types/api.types';
 import type { Product } from '@/types/catalog.types';
@@ -129,8 +130,12 @@ export function OrderDetailPage() {
   const cancelMutation = useMutation({
     mutationFn: () => cancelOrderApi(id),
     onSuccess: (updatedOrder) => {
+      clearRecentProductMutations();
       queryClient.setQueryData(['order', id], updatedOrder);
       queryClient.invalidateQueries({ queryKey: ['my-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
       setIsCancelModalOpen(false);
       toast.success('Pedido cancelado correctamente');
     },
@@ -145,8 +150,16 @@ export function OrderDetailPage() {
     mutationFn: (nextStatus: OrderStatus) =>
       updateOrderStatusAdminApi(id, nextStatus),
     onSuccess: (updatedOrder) => {
+      if (updatedOrder.status === 'CANCELLED') {
+        clearRecentProductMutations();
+        queryClient.invalidateQueries({ queryKey: ['products'] });
+        queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      }
       queryClient.setQueryData(['order', id], updatedOrder);
       queryClient.invalidateQueries({ queryKey: ['my-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-sales'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-top-products'] });
       toast.success(`Estado actualizado a ${updatedOrder.status}`, {
         description:
           'El cliente ha sido notificado en tiempo real sobre el avance de su pedido.',

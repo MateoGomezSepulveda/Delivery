@@ -107,6 +107,33 @@ describe('CartService', () => {
       expect(cartWithSave.items[0].quantity).toBe(4);
       expect(cartWithSave.save).toHaveBeenCalled();
     });
+
+    it('should reject adding more units than available stock', async () => {
+      const product = {
+        _id: 'prod1',
+        name: 'Ron Viejo',
+        price: 55000,
+        available: true,
+        stock: 3,
+      };
+      const cartWithSave = {
+        userId: 'user1',
+        items: [
+          { productId: { toString: () => 'prod1' }, quantity: 2, price: 55000 },
+        ],
+        total: 110000,
+        status: 'ACTIVE',
+        save: jest.fn(),
+      };
+
+      mockProductsService.findOne.mockResolvedValue(product);
+      mockCartModel.findOne.mockReturnValue(mockFindOnePopulate(cartWithSave));
+
+      await expect(service.addProduct('user1', 'prod1', 2)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(cartWithSave.save).not.toHaveBeenCalled();
+    });
   });
 
   describe('removeProduct', () => {

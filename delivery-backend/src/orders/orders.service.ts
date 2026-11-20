@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
   Optional,
@@ -16,6 +18,7 @@ import { MailService } from 'src/mail/mail.service';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { UsersService } from 'src/users/users.service';
 import { CouponsService } from 'src/coupons/coupons.service';
+import { ProductsService } from 'src/products/products.service';
 import { normalizePhoneNumber } from 'src/common/utils/phone.util';
 import { EventsGateway } from '../events/events/events.gateway';
 import { QueuesService } from '../queues/queues.service';
@@ -46,6 +49,9 @@ export class OrdersService {
     private eventsGateway: EventsGateway,
     @Optional() private queuesService?: QueuesService,
     @Optional() private couponsService?: CouponsService,
+    @Optional()
+    @Inject(forwardRef(() => ProductsService))
+    private productsService?: ProductsService,
   ) {}
 
   async getRiderDiscountQuota(userId: string) {
@@ -108,11 +114,37 @@ export class OrdersService {
       throw new BadRequestException('Cart is empty');
     }
 
-    const orderItems = cart.items.map((item: any) => ({
-      productId: item.productId._id || item.productId,
+    const rawItems = cart.items.map((item: any) => ({
+      productId: (item.productId._id || item.productId).toString(),
       name: item.productId.name || 'Producto',
       quantity: item.quantity,
       price: item.price,
+      costPrice: Math.max(0, Number(item.productId?.costPrice ?? 0)),
+    }));
+
+    // Reservar stock atómicamente antes de cerrar el carrito
+    let reservedSnapshots: Map<
+      string,
+      { productId: string; costPrice: number; remainingStock: number }
+    > | null = null;
+
+    if (this.productsService) {
+      reservedSnapshots = await this.productsService.reserveStockForOrder(
+        rawItems.map((i) => ({
+          productId: i.productId,
+          quantity: i.quantity,
+          name: i.name,
+        })),
+      );
+    }
+
+    const orderItems = rawItems.map((item) => ({
+      productId: item.productId,
+      name: item.name,
+      quantity: item.quantity,
+      price: item.price,
+      costPrice:
+        reservedSnapshots?.get(item.productId)?.costPrice ?? item.costPrice,
     }));
 
     // Beneficio Socio Repartidor: 10% de descuento en los primeros 4 pedidos del mes
@@ -127,38 +159,61 @@ export class OrdersService {
     let couponDiscount = 0;
     const normalizedCouponCode = couponCode?.trim();
 
-    if (normalizedCouponCode && this.couponsService) {
-      const redeemed = await this.couponsService.redeemCoupon(
-        userId,
-        normalizedCouponCode,
-        subtotal,
+    try {
+      if (normalizedCouponCode && this.couponsService) {
+        const redeemed = await this.couponsService.redeemCoupon(
+          userId,
+          normalizedCouponCode,
+          subtotal,
+        );
+        appliedCouponCode = redeemed.code;
+        couponDiscount = redeemed.discountAmount;
+      }
+
+      const finalTotal = Math.max(
+        0,
+        Math.round(subtotal - riderDiscount - couponDiscount),
       );
-      appliedCouponCode = redeemed.code;
-      couponDiscount = redeemed.discountAmount;
+      const totalCost = Math.round(
+        orderItems.reduce(
+          (sum, item) => sum + (item.costPrice ?? 0) * item.quantity,
+          0,
+        ),
+      );
+      const netProfit = Math.round(finalTotal - totalCost);
+
+      const order = new this.orderModel({
+        userId,
+        items: orderItems,
+        subtotal,
+        riderDiscount,
+        couponCode: appliedCouponCode,
+        couponDiscount,
+        total: finalTotal,
+        totalCost,
+        netProfit,
+        address,
+      });
+
+      cart.status = 'CHECKED_OUT';
+      await cart.save();
+
+      await this.cartService.getActiveCart(userId);
+
+      return await order.save();
+    } catch (error) {
+      if (reservedSnapshots && this.productsService) {
+        await this.productsService
+          .restoreStockForOrder(
+            rawItems.map((i) => ({
+              productId: i.productId,
+              quantity: i.quantity,
+            })),
+          )
+          .catch(() => undefined);
+      }
+      throw error;
     }
-
-    const finalTotal = Math.max(
-      0,
-      Math.round(subtotal - riderDiscount - couponDiscount),
-    );
-
-    const order = new this.orderModel({
-      userId,
-      items: orderItems,
-      subtotal,
-      riderDiscount,
-      couponCode: appliedCouponCode,
-      couponDiscount,
-      total: finalTotal,
-      address,
-    });
-
-    cart.status = 'CHECKED_OUT';
-    await cart.save();
-
-    await this.cartService.getActiveCart(userId);
-
-    return order.save();
   }
 
   async findMyOrders(userId: string, paginationDto: OrderPaginationDto) {
@@ -263,6 +318,14 @@ export class OrdersService {
     order.status = OrderStatus.CANCELLED;
     const saved = await order.save();
 
+    if (this.productsService && order.items?.length) {
+      try {
+        await this.productsService.restoreStockForOrder(order.items);
+      } catch {
+        // No bloqueamos la cancelación si falla la reposición de stock
+      }
+    }
+
     if (order.couponCode && this.couponsService) {
       try {
         await this.couponsService.releaseCoupon(userId, order.couponCode);
@@ -293,6 +356,19 @@ export class OrdersService {
 
     order.status = status;
     const savedOrder = await order.save();
+
+    if (
+      status === OrderStatus.CANCELLED &&
+      currentStatus !== OrderStatus.CANCELLED &&
+      this.productsService &&
+      order.items?.length
+    ) {
+      try {
+        await this.productsService.restoreStockForOrder(order.items);
+      } catch {
+        // No bloqueamos la transición de estado si falla la reposición de stock
+      }
+    }
 
     // Enviar notificaciones (vía cola BullMQ si está disponible, o directo)
     try {

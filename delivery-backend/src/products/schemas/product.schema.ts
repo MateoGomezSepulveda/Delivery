@@ -15,11 +15,20 @@ export class Product {
   @Prop({ required: true })
   price: number;
 
+  @Prop({ type: Number, default: 0, min: 0 })
+  costPrice: number;
+
+  @Prop({ type: Number, default: 10, min: 0 })
+  stock: number;
+
+  @Prop({ type: Number, default: 5, min: 1 })
+  lowStockThreshold: number;
+
   @Prop({ default: true })
   available: boolean;
 
-  @Prop()
-  image?: string;
+  @Prop({ type: String, default: null })
+  image?: string | null;
 
   @Prop({ type: Types.ObjectId, ref: Category.name, required: true })
   categoryId: string;
@@ -32,3 +41,4 @@ export const ProductSchema = SchemaFactory.createForClass(Product);
 ProductSchema.index({ name: 'text', description: 'text' });
 ProductSchema.index({ categoryId: 1, available: 1, price: 1 });
 ProductSchema.index({ price: 1 });
+ProductSchema.index({ stock: 1, available: 1 });

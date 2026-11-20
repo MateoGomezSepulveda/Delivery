@@ -15,6 +15,7 @@ describe('AnalyticsService', () => {
 
   const mockProductModel = {
     countDocuments: jest.fn(),
+    aggregate: jest.fn(),
   };
 
   const mockUserModel = {
@@ -40,11 +41,14 @@ describe('AnalyticsService', () => {
   });
 
   describe('getDashboardSummary', () => {
-    it('debe calcular los KPIs y el desglose por estado correctamente', async () => {
+    it('debe calcular los KPIs financieros reales (ingresos, costos, ganancia neta, margen) e inventario', async () => {
       mockOrderModel.aggregate
         .mockResolvedValueOnce([
           {
             totalRevenue: 120000,
+            totalCost: 75000,
+            netProfit: 45000,
+            totalUnitsSold: 6,
             paidOrdersCount: 4,
             averageOrderValue: 30000,
           },
@@ -55,21 +59,50 @@ describe('AnalyticsService', () => {
         ]);
       mockUserModel.countDocuments.mockResolvedValueOnce(15);
       mockProductModel.countDocuments.mockResolvedValueOnce(8);
+      mockProductModel.aggregate
+        .mockResolvedValueOnce([
+          {
+            lowStockProducts: 2,
+            outOfStockProducts: 1,
+            inventoryCostValue: 500000,
+            inventoryRetailValue: 820000,
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
+            productId: 'prod-low-1',
+            name: 'Whisky 12 Años',
+            stock: 2,
+            lowStockThreshold: 5,
+            price: 165000,
+            costPrice: 110000,
+            available: true,
+          },
+        ]);
 
       const result = await service.getDashboardSummary();
 
       expect(result.kpis).toEqual({
         totalRevenue: 120000,
+        totalCost: 75000,
+        netProfit: 45000,
+        profitMargin: 37.5,
+        totalUnitsSold: 6,
         totalOrders: 5,
         paidOrdersCount: 4,
         averageOrderValue: 30000,
         totalUsers: 15,
         activeProducts: 8,
+        lowStockProducts: 2,
+        outOfStockProducts: 1,
+        inventoryCostValue: 500000,
+        inventoryRetailValue: 820000,
       });
       expect(result.ordersByStatus).toEqual({
         [OrderStatus.DELIVERED]: 4,
         [OrderStatus.PENDING]: 1,
       });
+      expect(result.inventoryAlerts).toHaveLength(1);
     });
 
     it('debe retornar valores en 0 cuando aún no hay órdenes pagadas', async () => {
@@ -78,29 +111,43 @@ describe('AnalyticsService', () => {
         .mockResolvedValueOnce([]);
       mockUserModel.countDocuments.mockResolvedValueOnce(1);
       mockProductModel.countDocuments.mockResolvedValueOnce(0);
+      mockProductModel.aggregate
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
 
       const result = await service.getDashboardSummary();
 
       expect(result.kpis.totalRevenue).toBe(0);
+      expect(result.kpis.totalCost).toBe(0);
+      expect(result.kpis.netProfit).toBe(0);
+      expect(result.kpis.profitMargin).toBe(0);
       expect(result.kpis.totalOrders).toBe(0);
       expect(result.kpis.averageOrderValue).toBe(0);
+      expect(result.inventoryAlerts).toEqual([]);
     });
   });
 
   describe('getTopProducts', () => {
-    it('debe retornar el ranking de productos más vendidos', async () => {
+    it('debe retornar el ranking de productos con costos y ganancia real', async () => {
       const mockTop = [
         {
           productId: 'prod1',
-          name: 'Pizza Margarita',
-          totalQuantitySold: 25,
-          totalRevenue: 500000,
-          ordersCount: 18,
+          name: 'Whisky 12 Años',
+          totalQuantitySold: 5,
+          totalRevenue: 825000,
+          totalCost: 550000,
+          totalProfit: 275000,
+          profitMargin: 33.3,
+          avgUnitPrice: 165000,
+          avgUnitCost: 110000,
+          currentStock: 4,
+          lowStockThreshold: 5,
+          ordersCount: 4,
         },
       ];
       mockOrderModel.aggregate.mockResolvedValueOnce(mockTop);
 
-      const result = await service.getTopProducts(5);
+      const result = await service.getTopProducts(5, 30);
 
       expect(mockOrderModel.aggregate).toHaveBeenCalled();
       expect(result).toEqual(mockTop);
@@ -108,9 +155,16 @@ describe('AnalyticsService', () => {
   });
 
   describe('getSalesByDay', () => {
-    it('debe retornar las ventas diarias de los últimos N días', async () => {
+    it('debe retornar ventas, costos y ganancia diaria de los últimos N días', async () => {
       const mockDaily = [
-        { date: '2026-10-18', ordersCount: 3, dailyRevenue: 90000 },
+        {
+          date: '2026-10-18',
+          ordersCount: 3,
+          unitsSold: 6,
+          dailyRevenue: 90000,
+          dailyCost: 54000,
+          dailyProfit: 36000,
+        },
       ];
       mockOrderModel.aggregate.mockResolvedValueOnce(mockDaily);
 

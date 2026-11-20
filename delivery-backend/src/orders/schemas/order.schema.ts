@@ -19,6 +19,9 @@ export class OrderItem {
 
   @Prop()
   price: number;
+
+  @Prop({ type: Number, default: 0 })
+  costPrice?: number;
 }
 
 const OrderItemSchema = SchemaFactory.createForClass(OrderItem);
@@ -48,6 +51,12 @@ export class Order {
 
   @Prop({ required: true })
   total: number;
+
+  @Prop({ type: Number, default: 0 })
+  totalCost?: number;
+
+  @Prop({ type: Number, default: 0 })
+  netProfit?: number;
 
   @Prop()
   address: string;
