@@ -1,9 +1,13 @@
 import { apiClient } from '@/api/axios.client';
+import type { PaginatedResponse } from '@/types/api.types';
 import type {
   CreateDeliveryProfilePayload,
   DeliveryOrder,
+  DeliveryOrderHistoryItem,
   DeliveryProfile,
+  DeliveryProfileStatus,
   DeliveryStats,
+  ReviewDeliveryProfilePayload,
 } from '@/types/delivery.types';
 
 const asList = (data: unknown): DeliveryOrder[] =>
@@ -19,6 +23,26 @@ export async function createDeliveryProfileApi(
 ): Promise<DeliveryProfile> {
   const res = await apiClient.post<DeliveryProfile>(
     '/delivery/profile',
+    payload,
+  );
+  return res.data;
+}
+
+export async function getDeliveryProfilesAdminApi(
+  status?: DeliveryProfileStatus,
+): Promise<DeliveryProfile[]> {
+  const res = await apiClient.get<DeliveryProfile[]>('/delivery/profiles', {
+    params: status ? { status } : undefined,
+  });
+  return Array.isArray(res.data) ? res.data : [];
+}
+
+export async function reviewDeliveryProfileAdminApi(
+  profileId: string,
+  payload: ReviewDeliveryProfilePayload,
+): Promise<DeliveryProfile> {
+  const res = await apiClient.patch<DeliveryProfile>(
+    `/delivery/profiles/${profileId}/status`,
     payload,
   );
   return res.data;
@@ -52,6 +76,26 @@ export async function getAvailableOrdersApi(): Promise<DeliveryOrder[]> {
 export async function getActiveOrdersApi(): Promise<DeliveryOrder[]> {
   const res = await apiClient.get<DeliveryOrder[]>('/delivery/orders/active');
   return asList(res.data);
+}
+
+export async function getDeliveryHistoryApi(
+  page = 1,
+  limit = 10,
+): Promise<PaginatedResponse<DeliveryOrderHistoryItem>> {
+  const res = await apiClient.get<PaginatedResponse<DeliveryOrderHistoryItem>>(
+    '/delivery/orders/history',
+    { params: { page, limit } },
+  );
+  if (res.data && Array.isArray(res.data.data)) {
+    return res.data;
+  }
+  const raw = Array.isArray(res.data)
+    ? (res.data as DeliveryOrderHistoryItem[])
+    : [];
+  return {
+    data: raw,
+    meta: { total: raw.length, page: 1, lastPage: 1 },
+  };
 }
 
 export async function acceptOrderApi(orderId: string): Promise<DeliveryOrder> {

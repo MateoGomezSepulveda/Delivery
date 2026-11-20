@@ -428,6 +428,19 @@ export class OrdersService {
       savedOrder,
     );
 
+    // Alertar al instante a repartidores conectados cuando un pedido entra en PREPARING sin asignar
+    if (status === OrderStatus.PREPARING && !savedOrder.deliveryId) {
+      this.eventsGateway.emitNewAvailableOrder?.(savedOrder);
+    }
+
+    // Si el Admin asigna y despacha directamente un pedido, retirarlo de las pantallas de otros repartidores
+    if (status === OrderStatus.OUT_FOR_DELIVERY) {
+      this.eventsGateway.emitOrderTaken?.(
+        (savedOrder._id ?? orderId).toString(),
+        savedOrder.deliveryId?.toString(),
+      );
+    }
+
     return savedOrder;
   }
 

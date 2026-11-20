@@ -153,9 +153,7 @@ export class AuthService {
         channel,
         verificationMode,
         code:
-          verificationMode === 'twilio-verify'
-            ? 'TWILIO_VERIFY_MANAGED'
-            : code,
+          verificationMode === 'twilio-verify' ? 'TWILIO_VERIFY_MANAGED' : code,
         token,
         attempts: 0,
         expiresAt,
@@ -390,8 +388,7 @@ export class AuthService {
     if (user.isEmailVerified === true) {
       return {
         alreadyVerified: true,
-        message:
-          'Esta cuenta ya está verificada. Ya puedes iniciar sesión.',
+        message: 'Esta cuenta ya está verificada. Ya puedes iniciar sesión.',
       };
     }
 
@@ -511,9 +508,7 @@ export class AuthService {
         providerId: data.sub,
         email: data.email?.trim().toLowerCase(),
         name:
-          data.name?.trim() ||
-          data.email?.split('@')[0] ||
-          'Usuario de Google',
+          data.name?.trim() || data.email?.split('@')[0] || 'Usuario de Google',
         avatarUrl: data.picture || null,
       };
     }
@@ -814,7 +809,7 @@ export class AuthService {
         avatarUrl: currentUser.avatarUrl ? undefined : profile.avatarUrl,
         markEmailVerified: Boolean(
           profile.email &&
-            profile.email.toLowerCase() === currentUser.email.toLowerCase(),
+          profile.email.toLowerCase() === currentUser.email.toLowerCase(),
         ),
       },
     );

@@ -14,9 +14,13 @@ describe('DeliveryController', () => {
           useValue: {
             createProfile: jest.fn(),
             getMyProfile: jest.fn(),
+            listProfiles: jest.fn(),
+            reviewProfileStatus: jest.fn(),
             updateAvailability: jest.fn(),
             updateLocation: jest.fn(),
             getAvailableOrders: jest.fn(),
+            getActiveOrders: jest.fn(),
+            getOrderHistory: jest.fn(),
             acceptOrder: jest.fn(),
             deliverOrder: jest.fn(),
             getMyStats: jest.fn(),

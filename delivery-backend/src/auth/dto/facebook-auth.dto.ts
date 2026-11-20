@@ -17,7 +17,8 @@ export class FacebookAuthDto {
   code?: string;
 
   @ApiPropertyOptional({
-    description: 'URI de redirección exacto usado al iniciar el flujo OAuth de Facebook',
+    description:
+      'URI de redirección exacto usado al iniciar el flujo OAuth de Facebook',
   })
   @IsOptional()
   @IsString()

@@ -11,4 +11,14 @@ export class CreateDeliveryProfileDto {
   @IsOptional()
   @IsString()
   plate?: string;
+
+  @ApiPropertyOptional({ example: 'ABC-123' })
+  @IsOptional()
+  @IsString()
+  licensePlate?: string;
+
+  @ApiPropertyOptional({ example: '+573001234567' })
+  @IsOptional()
+  @IsString()
+  phone?: string;
 }

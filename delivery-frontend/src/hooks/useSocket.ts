@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useAuthStore } from '@/store/useAuthStore';
 import { playNotificationSound } from '@/utils/sound';
 import { showOrderStatusNotification } from '@/utils/browserNotifications';
+import { formatCurrency } from '@/utils/formatters';
 import type { Order } from '@/types/order.types';
 import type { OrderStatus } from '@/types/api.types';
 
@@ -18,10 +19,10 @@ const STATUS_MESSAGES: Record<OrderStatus, string> = {
   PENDING: 'Tu pedido está pendiente de pago.',
   PAID: 'Pago confirmado. Esperando confirmación del local.',
   FAILED: 'El pago fue rechazado. Puedes reintentarlo.',
-  CONFIRMED: 'El restaurante confirmó tu pedido.',
-  PREPARING: 'Tu pedido se está preparando en cocina.',
+  CONFIRMED: 'El local confirmó tu pedido.',
+  PREPARING: 'Tu pedido se está alistando para envío.',
   OUT_FOR_DELIVERY: '¡Tu repartidor va en camino!',
-  DELIVERED: '¡Pedido entregado! Ya puedes calificar tus platos.',
+  DELIVERED: '¡Pedido entregado! Ya puedes calificar tus productos.',
   CANCELLED: 'Tu pedido fue cancelado.',
 };
 
@@ -33,6 +34,8 @@ export const WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:3000';
  * - Se reconecta con el nuevo token cuando el Refresh Token lo rota.
  * - `order_status_updated` -> actualiza caché, toast y sonido.
  * - `delivery_location_updated` -> guarda posición en caché ['delivery-location', orderId].
+ * - `new_available_order` -> alerta en vivo con sonido a repartidores conectados.
+ * - `order_taken` -> remueve al instante el pedido ya tomado de la lista de disponibles.
  */
 export function useSocket(): { connected: boolean } {
   const queryClient = useQueryClient();
@@ -81,6 +84,40 @@ export function useSocket(): { connected: boolean } {
     socket.on('delivery_location_updated', (loc: DeliveryLocation) => {
       if (!loc?.orderId) return;
       queryClient.setQueryData(['delivery-location', loc.orderId], loc);
+    });
+
+    socket.on('new_available_order', (order: Order) => {
+      if (!order?._id) return;
+      queryClient.invalidateQueries({ queryKey: ['delivery-available'] });
+      queryClient.invalidateQueries({ queryKey: ['rider-available-orders'] });
+
+      const shortId = order._id.slice(-6).toUpperCase();
+      const summary = `${order.address || 'Nueva entrega'} · ${formatCurrency(order.total ?? 0)}`;
+      toast.success(`¡Nuevo pedido disponible #${shortId}!`, {
+        description: summary,
+      });
+      playNotificationSound();
+
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        void showOrderStatusNotification(
+          `Nuevo pedido disponible #${shortId}`,
+          summary,
+          order._id,
+        );
+      }
+    });
+
+    socket.on('order_taken', (payload: { orderId?: string }) => {
+      if (!payload?.orderId) return;
+      queryClient.setQueryData<Order[] | undefined>(
+        ['delivery-available'],
+        (prev) =>
+          Array.isArray(prev)
+            ? prev.filter((o) => o._id !== payload.orderId)
+            : prev,
+      );
+      queryClient.invalidateQueries({ queryKey: ['delivery-available'] });
+      queryClient.invalidateQueries({ queryKey: ['rider-available-orders'] });
     });
 
     return () => {

@@ -22,7 +22,10 @@ export class RegisterDto {
   @IsEmail({}, { message: 'Ingresa un correo electrónico válido.' })
   email: string;
 
-  @ApiProperty({ example: '123456', description: 'Contraseña (mín. 6 caracteres)' })
+  @ApiProperty({
+    example: '123456',
+    description: 'Contraseña (mín. 6 caracteres)',
+  })
   @MinLength(6, { message: 'La contraseña debe tener mínimo 6 caracteres.' })
   password: string;
 

@@ -119,7 +119,9 @@ export class UploadsService {
       if (this.bucketName) {
         allowedHosts.add(`${this.bucketName}.s3.amazonaws.com`);
         if (this.region) {
-          allowedHosts.add(`${this.bucketName}.s3.${this.region}.amazonaws.com`);
+          allowedHosts.add(
+            `${this.bucketName}.s3.${this.region}.amazonaws.com`,
+          );
         }
       }
       if (this.cloudFrontDomain) {

@@ -34,7 +34,9 @@ export class SeedService implements OnModuleInit {
         await this.usersService.markEmailAsVerified(
           existingAdmin._id.toString(),
         );
-        this.logger.log(`Correo de Admin marcado como verificado: ${adminEmail}`);
+        this.logger.log(
+          `Correo de Admin marcado como verificado: ${adminEmail}`,
+        );
       }
       this.logger.log(`Admin ya existe: ${adminEmail}`);
       return;

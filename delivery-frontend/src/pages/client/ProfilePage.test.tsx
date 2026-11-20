@@ -38,6 +38,16 @@ vi.mock('sonner', () => ({
   },
 }));
 
+const mockGetDeliveryProfileApi = vi.fn();
+const mockCreateDeliveryProfileApi = vi.fn();
+
+vi.mock('@/api/endpoints/delivery.api', () => ({
+  getDeliveryProfileApi: (...args: unknown[]) =>
+    mockGetDeliveryProfileApi(...args),
+  createDeliveryProfileApi: (...args: unknown[]) =>
+    mockCreateDeliveryProfileApi(...args),
+}));
+
 vi.mock('@/pages/client/MyOrdersPage', () => ({
   MyOrdersPage: () => null,
 }));
@@ -61,6 +71,7 @@ function renderProfile() {
 describe('ProfilePage Browser Notifications (Bug #6)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetDeliveryProfileApi.mockResolvedValue(null);
     useAuthStore.setState({
       user: {
         _id: 'u-1',
@@ -139,5 +150,37 @@ describe('ProfilePage Browser Notifications (Bug #6)', () => {
       'Alerta de respaldo en pantalla',
       expect.any(Object),
     );
+  });
+
+  it('submits rider application as PENDING without promoting CLIENT role immediately', async () => {
+    const user = userEvent.setup();
+    mockGetNotificationPermission.mockReturnValue('granted');
+    mockCreateDeliveryProfileApi.mockResolvedValue({
+      _id: 'prof-new-1',
+      userId: 'u-1',
+      vehicleType: 'MOTO',
+      plate: 'ABC-999',
+      licensePlate: 'ABC-999',
+      status: 'PENDING',
+      isAvailable: false,
+    });
+
+    renderProfile();
+
+    await user.click(
+      screen.getByRole('button', { name: /conviértete en repartidor/i }),
+    );
+    await user.type(
+      screen.getByPlaceholderText(/ej\. abc-123/i),
+      'abc-999',
+    );
+    await user.click(
+      screen.getByRole('button', { name: /enviar solicitud de repartidor/i }),
+    );
+
+    expect(
+      await screen.findByText(/solicitud en revisión por el administrador/i),
+    ).toBeInTheDocument();
+    expect(useAuthStore.getState().user?.role).toBe('CLIENT');
   });
 });

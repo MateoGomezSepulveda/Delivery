@@ -190,10 +190,7 @@ export class AuthController {
     status: 409,
     description: 'Google account already linked to another user.',
   })
-  linkGoogle(
-    @Req() req: AuthenticatedRequest,
-    @Body() dto: GoogleAuthDto,
-  ) {
+  linkGoogle(@Req() req: AuthenticatedRequest, @Body() dto: GoogleAuthDto) {
     return this.authService.linkGoogle(req.user.userId, dto);
   }
 
@@ -208,10 +205,7 @@ export class AuthController {
     status: 409,
     description: 'Facebook account already linked to another user.',
   })
-  linkFacebook(
-    @Req() req: AuthenticatedRequest,
-    @Body() dto: FacebookAuthDto,
-  ) {
+  linkFacebook(@Req() req: AuthenticatedRequest, @Body() dto: FacebookAuthDto) {
     return this.authService.linkFacebook(req.user.userId, dto);
   }
 

@@ -92,7 +92,9 @@ export class MailService {
         },
       });
       this.provider = 'smtp';
-      this.logger.log(`Transporter SMTP configurado (${smtpHost}:${smtpPort}).`);
+      this.logger.log(
+        `Transporter SMTP configurado (${smtpHost}:${smtpPort}).`,
+      );
       return;
     }
 
@@ -251,7 +253,9 @@ export class MailService {
       const testUrl = nodemailer.getTestMessageUrl(info);
       const previewUrl = typeof testUrl === 'string' ? testUrl : undefined;
       if (previewUrl) {
-        this.logger.log(`Correo de verificación enviado (Ethereal): ${previewUrl}`);
+        this.logger.log(
+          `Correo de verificación enviado (Ethereal): ${previewUrl}`,
+        );
       } else {
         this.logger.log(`Correo de verificación enviado a ${to}`);
       }
@@ -341,10 +345,7 @@ export class MailService {
         provider: this.provider,
       };
     } catch (error) {
-      this.logger.error(
-        `Error enviando correo de recuperación a ${to}`,
-        error,
-      );
+      this.logger.error(`Error enviando correo de recuperación a ${to}`, error);
       this.logger.log(
         `[FALLBACK RECUPERACIÓN] Destinatario: ${to} | Enlace: ${resetUrl}`,
       );

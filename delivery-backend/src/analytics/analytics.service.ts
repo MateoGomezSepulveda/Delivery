@@ -405,7 +405,14 @@ export class AnalyticsService {
           },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$pid'] } } },
-            { $project: { _id: 1, costPrice: 1, stock: 1, lowStockThreshold: 1 } },
+            {
+              $project: {
+                _id: 1,
+                costPrice: 1,
+                stock: 1,
+                lowStockThreshold: 1,
+              },
+            },
           ],
           as: '_product',
         },

@@ -159,11 +159,16 @@ export function AdminOrdersPage() {
       }),
   });
 
-  const customerName = (o: Order) =>
-    typeof o.userId === 'object' ? o.userId.name : 'Cliente';
+  // Ojo: typeof null === 'object'. Si el cliente fue eliminado, populate devuelve null.
+  const customerName = (o: Order) => {
+    if (o.userId && typeof o.userId === 'object') {
+      return o.userId.name || 'Cliente';
+    }
+    return o.userId ? 'Cliente' : 'Cliente eliminado';
+  };
 
   const customerEmail = (o: Order) =>
-    typeof o.userId === 'object' ? o.userId.email : '';
+    o.userId && typeof o.userId === 'object' ? (o.userId.email ?? '') : '';
 
   const riderName = useCallback(
     (o: Order): string | null => {
@@ -173,6 +178,7 @@ export function AdminOrdersPage() {
       }
       const id =
         typeof o.deliveryId === 'string' ? o.deliveryId : o.deliveryId._id;
+      if (!id) return null;
       return ridersMap.get(id) ?? `Rider #${id.slice(-4).toUpperCase()}`;
     },
     [ridersMap],

@@ -159,4 +159,24 @@ describe('AdminOrdersPage', () => {
 
     expect(mockToastSuccess).toHaveBeenCalledWith('Estado actualizado');
   });
+
+  it('does not crash when the order customer or rider was deleted (populate returns null)', async () => {
+    mockGetAllOrdersAdminApi.mockResolvedValue({
+      data: [
+        {
+          ...sampleOrders[0],
+          _id: '673a10000000000000000003',
+          userId: null,
+          deliveryId: null,
+        },
+        ...sampleOrders,
+      ],
+      meta: { total: 3, page: 1, lastPage: 1 },
+    });
+
+    renderAdminOrdersPage();
+
+    expect(await screen.findByText('Cliente eliminado')).toBeInTheDocument();
+    expect(screen.getByText('Laura Gómez')).toBeInTheDocument();
+  });
 });

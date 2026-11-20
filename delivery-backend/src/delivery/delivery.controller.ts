@@ -5,10 +5,16 @@ import {
   Patch,
   Param,
   Body,
+  Query,
   UseGuards,
   Request,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { DeliveryService } from './delivery.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
@@ -18,6 +24,7 @@ import { ParseMongoIdPipe } from 'src/common/pipes/parse-mongo-id.pipe';
 import { CreateDeliveryProfileDto } from './dto/create-delivery-profile.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
 import { UpdateAvailabilityDto } from './dto/update-availability.dto';
+import { ReviewDeliveryProfileDto } from './dto/review-delivery-profile.dto';
 
 @ApiTags('Delivery')
 @ApiBearerAuth()
@@ -30,17 +37,50 @@ export class DeliveryController {
   @Roles(Role.CLIENT, Role.DELIVERY)
   @ApiOperation({
     summary:
-      'Crear perfil de repartidor (auto-promueve a CLIENT -> DELIVERY con beneficio de descuento mensual)',
+      'Enviar solicitud de perfil de repartidor (queda PENDING hasta aprobación de Admin)',
   })
   createProfile(@Request() req, @Body() dto: CreateDeliveryProfileDto) {
     return this.deliveryService.createProfile(req.user.userId, dto);
   }
 
   @Get('profile')
-  @Roles(Role.DELIVERY)
-  @ApiOperation({ summary: 'Ver mi perfil de repartidor' })
+  @Roles(Role.CLIENT, Role.DELIVERY)
+  @ApiOperation({
+    summary: 'Ver mi perfil o estado de solicitud de repartidor',
+  })
   getMyProfile(@Request() req) {
     return this.deliveryService.getMyProfile(req.user.userId);
+  }
+
+  @Get('profiles')
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Listar solicitudes y perfiles de repartidores (Admin)',
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description: 'Filtrar por estado: PENDING, APPROVED o REJECTED',
+  })
+  listProfiles(@Query('status') status?: string) {
+    return this.deliveryService.listProfiles(status);
+  }
+
+  @Patch('profiles/:id/status')
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary:
+      'Aprobar o rechazar solicitud de repartidor (promueve CLIENT -> DELIVERY al aprobar)',
+  })
+  reviewProfileStatus(
+    @Param('id', ParseMongoIdPipe) id: string,
+    @Body() dto: ReviewDeliveryProfileDto,
+  ) {
+    return this.deliveryService.reviewProfileStatus(
+      id,
+      dto.status,
+      dto.rejectionReason,
+    );
   }
 
   @Patch('availability')
@@ -71,9 +111,30 @@ export class DeliveryController {
     return this.deliveryService.getActiveOrders(req.user.userId);
   }
 
+  @Get('orders/history')
+  @Roles(Role.DELIVERY)
+  @ApiOperation({
+    summary: 'Ver historial paginado de entregas completadas y ganancias',
+  })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  getOrderHistory(
+    @Request() req,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.deliveryService.getOrderHistory(
+      req.user.userId,
+      page ? Number(page) : 1,
+      limit ? Number(limit) : 10,
+    );
+  }
+
   @Patch('orders/:id/accept')
   @Roles(Role.DELIVERY)
-  @ApiOperation({ summary: 'Aceptar y tomar un pedido' })
+  @ApiOperation({
+    summary: 'Aceptar y tomar un pedido (requiere estar Online)',
+  })
   acceptOrder(@Request() req, @Param('id', ParseMongoIdPipe) id: string) {
     return this.deliveryService.acceptOrder(req.user.userId, id);
   }
@@ -87,7 +148,9 @@ export class DeliveryController {
 
   @Get('stats')
   @Roles(Role.DELIVERY)
-  @ApiOperation({ summary: 'Ver mis estadísticas de entregas' })
+  @ApiOperation({
+    summary: 'Ver mis estadísticas de entregas, hoy y ganancias estimadas',
+  })
   getMyStats(@Request() req) {
     return this.deliveryService.getMyStats(req.user.userId);
   }

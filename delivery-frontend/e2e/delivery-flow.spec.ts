@@ -35,18 +35,24 @@ test.describe('Flujo E2E Multirrol DeliveryPro', () => {
         _id: 'u-client',
         name: 'Laura Cliente',
         email: 'client@delivery.com',
+        phone: '+573001112233',
+        isEmailVerified: true,
         role: 'CLIENT' as const,
       },
       'u-admin': {
         _id: 'u-admin',
         name: 'Carlos Admin',
         email: 'admin@delivery.com',
+        phone: '+573004445566',
+        isEmailVerified: true,
         role: 'ADMIN' as const,
       },
       'u-rider': {
         _id: 'u-rider',
         name: 'Mateo Repartidor',
         email: 'rider@delivery.com',
+        phone: '+573007778899',
+        isEmailVerified: true,
         role: 'DELIVERY' as const,
       },
     };
@@ -362,6 +368,8 @@ test.describe('Flujo E2E Multirrol DeliveryPro', () => {
 
     await expect(page).toHaveURL(/\/delivery\/active$/);
     await page.getByRole('button', { name: /marcar como entregado/i }).click();
+    // Modal de confirmación antes de cerrar la entrega
+    await page.getByRole('button', { name: /sí, confirmar entrega/i }).click();
     await expect(page.getByText('No tienes entregas en curso')).toBeVisible();
 
     // 4. Cliente regresa al detalle del pedido entregado y publica una reseña

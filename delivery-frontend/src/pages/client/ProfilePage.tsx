@@ -129,7 +129,9 @@ export function ProfilePage() {
 
   const [vehicleType, setVehicleType] = useState<VehicleType>('MOTO');
   const [plate, setPlate] = useState('');
+  const [riderPhone, setRiderPhone] = useState(user?.phone || '');
   const [isActivatingRider, setIsActivatingRider] = useState(false);
+  const [isCheckingApproval, setIsCheckingApproval] = useState(false);
 
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
@@ -172,10 +174,19 @@ export function ProfilePage() {
 
   const isRider = user?.role === 'DELIVERY';
 
-  const { data: deliveryProfile } = useQuery({
+  const { data: deliveryProfile, refetch: refetchDeliveryProfile } = useQuery({
     queryKey: ['delivery-profile'],
-    queryFn: getDeliveryProfileApi,
-    enabled: Boolean(user && isRider),
+    queryFn: async () => {
+      try {
+        return await getDeliveryProfileApi();
+      } catch (err) {
+        const status = (err as { response?: { status?: number } })?.response
+          ?.status;
+        if (status === 404) return null;
+        throw err;
+      }
+    },
+    enabled: Boolean(user && user.role !== 'ADMIN'),
     retry: false,
   });
 
@@ -185,35 +196,87 @@ export function ProfilePage() {
 
   const remainingRiderDiscounts = riderQuota?.remaining ?? 4;
 
+  const rotateToDeliverySession = async () => {
+    const { refreshToken } = getStoredTokens();
+    if (refreshToken) {
+      const rotated = await refreshTokensApi(refreshToken);
+      setSession(rotated, { ...user, role: 'DELIVERY' });
+    } else {
+      updateUserState({ role: 'DELIVERY' });
+    }
+  };
+
   const handleActivateRiderAccount = async (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanPhone = (riderPhone.trim() || user.phone || '').trim();
+    if (cleanPhone) {
+      const phoneError = validatePhoneNumber(cleanPhone);
+      if (phoneError) {
+        toast.error(phoneError);
+        return;
+      }
+    }
+
     setIsActivatingRider(true);
     try {
+      const cleanPlate = plate.trim().toUpperCase() || undefined;
       const profile = await createDeliveryProfileApi({
         vehicleType,
-        plate: plate.trim() || undefined,
+        plate: cleanPlate,
+        licensePlate: cleanPlate,
+        phone: cleanPhone || undefined,
       });
       queryClient.setQueryData(['delivery-profile'], profile);
 
-      // Rotamos el JWT para que el nuevo access_token incluya role: 'DELIVERY'
-      const { refreshToken } = getStoredTokens();
-      if (refreshToken) {
-        const rotated = await refreshTokensApi(refreshToken);
-        setSession(rotated, { ...user, role: 'DELIVERY' });
+      if (profile.status === 'APPROVED') {
+        await rotateToDeliverySession();
+        toast.success('¡Felicidades! Ya eres Socio Repartidor en DeliveryPro', {
+          description:
+            'Tienes acceso a la Rider App y 10% de descuento automático en tus primeros 4 pedidos de cada mes.',
+        });
       } else {
-        updateUserState({ role: 'DELIVERY' });
+        toast.success('Solicitud de repartidor enviada para revisión', {
+          description:
+            'Un administrador revisará tus datos antes de habilitar tu acceso a la Rider App.',
+        });
       }
-
-      toast.success('¡Felicidades! Ya eres Socio Repartidor en DeliveryPro', {
-        description:
-          'Tienes acceso a la Rider App y 10% de descuento automático en tus primeros 4 pedidos de cada mes.',
-      });
     } catch (error) {
-      toast.error('No se pudo activar tu cuenta de repartidor', {
+      toast.error('No se pudo enviar tu solicitud de repartidor', {
         description: extractErrorMessage(error),
       });
     } finally {
       setIsActivatingRider(false);
+    }
+  };
+
+  const handleCheckRiderApproval = async () => {
+    setIsCheckingApproval(true);
+    try {
+      const { data: freshProfile } = await refetchDeliveryProfile();
+      if (freshProfile?.status === 'APPROVED') {
+        await rotateToDeliverySession();
+        toast.success('¡Solicitud aprobada! Ya eres Socio Repartidor', {
+          description:
+            'Actualizamos tu sesión automáticamente. Ya puedes ingresar a la Rider App.',
+        });
+      } else if (freshProfile?.status === 'REJECTED') {
+        toast.warning('Tu solicitud fue rechazada', {
+          description:
+            freshProfile.rejectionReason ||
+            'Puedes corregir la información y volver a postularte.',
+        });
+      } else {
+        toast.info('Tu solicitud sigue en revisión', {
+          description:
+            'El administrador aún no ha aprobado tu perfil de repartidor.',
+        });
+      }
+    } catch (error) {
+      toast.error('No se pudo verificar el estado', {
+        description: extractErrorMessage(error),
+      });
+    } finally {
+      setIsCheckingApproval(false);
     }
   };
 
@@ -709,7 +772,11 @@ export function ProfilePage() {
             <span>
               {isRider
                 ? 'Beneficios Mensajero (-10%)'
-                : 'Conviértete en Repartidor (-10%)'}
+                : deliveryProfile?.status === 'PENDING'
+                  ? 'Solicitud Repartidor (En revisión)'
+                  : deliveryProfile?.status === 'APPROVED'
+                    ? '¡Solicitud Aprobada!'
+                    : 'Conviértete en Repartidor (-10%)'}
             </span>
           </button>
         )}
@@ -808,25 +875,146 @@ export function ProfilePage() {
                 </Link>
               </div>
             </div>
+          ) : deliveryProfile?.status === 'APPROVED' ? (
+            <div
+              role="status"
+              className="rounded-3xl border border-emerald-200 dark:border-emerald-900/60 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-card space-y-5"
+            >
+              <div className="flex items-start gap-4">
+                <div className="h-12 w-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <div className="space-y-1.5">
+                  <Badge variant="success">Aprobada por el Administrador</Badge>
+                  <h2 className="font-heading text-2xl font-extrabold text-slate-900 dark:text-white">
+                    ¡Tu solicitud de repartidor fue aprobada!
+                  </h2>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 max-w-2xl">
+                    Actualiza tu sesión con un clic para activar tu rol de{' '}
+                    <strong>Socio Repartidor</strong> y acceder de inmediato a
+                    la Rider App sin tener que cerrar sesión.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="lg"
+                  isLoading={isCheckingApproval}
+                  onClick={handleCheckRiderApproval}
+                  leftIcon={<Bike className="w-5 h-5" />}
+                >
+                  Activar mi sesión de Repartidor ahora
+                </Button>
+              </div>
+            </div>
+          ) : deliveryProfile?.status === 'PENDING' ? (
+            <div
+              role="status"
+              className="rounded-3xl border border-amber-200 dark:border-amber-900/60 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-card space-y-6"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+                <div className="flex items-start gap-4">
+                  <div className="h-12 w-12 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+                    <Clock className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Badge variant="warning">Pendiente de aprobación</Badge>
+                    <h2 className="font-heading text-2xl font-extrabold text-slate-900 dark:text-white">
+                      Solicitud en revisión por el Administrador
+                    </h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-300 max-w-2xl">
+                      Recibimos tu postulación para unirte al equipo de
+                      repartidores. Mientras un administrador valida tus datos,
+                      puedes seguir usando la plataforma como cliente con
+                      normalidad.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-4">
+                  <span className="text-xs font-semibold text-slate-500 block">
+                    Vehículo registrado
+                  </span>
+                  <span className="text-sm font-extrabold text-slate-900 dark:text-white mt-0.5 block">
+                    {deliveryProfile.vehicleType}
+                  </span>
+                </div>
+                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-4">
+                  <span className="text-xs font-semibold text-slate-500 block">
+                    Placa
+                  </span>
+                  <span className="text-sm font-extrabold text-slate-900 dark:text-white mt-0.5 block">
+                    {deliveryProfile.licensePlate ||
+                      deliveryProfile.plate ||
+                      'No aplica'}
+                  </span>
+                </div>
+                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-4">
+                  <span className="text-xs font-semibold text-slate-500 block">
+                    Teléfono de contacto
+                  </span>
+                  <span className="text-sm font-extrabold text-slate-900 dark:text-white mt-0.5 block">
+                    {deliveryProfile.phone || user.phone || 'Sin registrar'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  isLoading={isCheckingApproval}
+                  onClick={handleCheckRiderApproval}
+                  leftIcon={<RefreshCw className="w-4 h-4" />}
+                >
+                  Verificar estado de mi solicitud
+                </Button>
+              </div>
+            </div>
           ) : (
             <form
               onSubmit={handleActivateRiderAccount}
-              className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-card space-y-6"
+              className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-card space-y-6"
             >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+              {deliveryProfile?.status === 'REJECTED' && (
+                <div
+                  role="alert"
+                  className="rounded-2xl border border-red-200 dark:border-red-900/60 bg-red-50/80 dark:bg-red-950/30 p-4 flex items-start gap-3 text-sm text-red-900 dark:text-red-200"
+                >
+                  <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-bold">
+                      Tu solicitud anterior fue rechazada
+                    </p>
+                    <p className="text-xs leading-relaxed">
+                      {deliveryProfile.rejectionReason ||
+                        'Revisa los datos de tu vehículo y teléfono e intenta enviar tu postulación nuevamente.'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
                 <div className="space-y-1.5">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 dark:bg-blue-950/50 px-3 py-1 text-xs font-bold text-blue-700 dark:text-blue-300">
                     <Bike className="w-3.5 h-3.5" />
                     Programa de Socios Repartidores
                   </span>
-                  <h2 className="font-heading text-2xl font-extrabold text-slate-900">
-                    Trabaja como Mensajero y gana descuentos cada mes
+                  <h2 className="font-heading text-2xl font-extrabold text-slate-900 dark:text-white">
+                    {deliveryProfile?.status === 'REJECTED'
+                      ? 'Corrige tus datos y vuelve a postularte'
+                      : 'Postúlate como Mensajero y gana descuentos cada mes'}
                   </h2>
-                  <p className="text-sm text-slate-500 max-w-2xl">
-                    Activa tu perfil de repartidor en un clic sin perder tu
-                    cuenta de cliente. Podrás tomar pedidos en la{' '}
-                    <strong>Rider App</strong> cuando quieras y tendrás{' '}
-                    <strong className="text-emerald-600">
+                  <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
+                    Envía tu solicitud para trabajar en la{' '}
+                    <strong>Rider App</strong> sin perder tu cuenta de cliente.
+                    Una vez aprobada por el administrador, podrás tomar pedidos
+                    y tendrás{' '}
+                    <strong className="text-emerald-600 dark:text-emerald-400">
                       10% de descuento automático en tus primeros 4 pedidos de
                       cada mes
                     </strong>
@@ -850,8 +1038,8 @@ export function ProfilePage() {
                         className={cn(
                           'rounded-2xl border p-4 text-left transition-all cursor-pointer flex flex-col gap-2',
                           selected
-                            ? 'border-blue-600 bg-blue-50/70 text-blue-900 ring-2 ring-blue-500/20'
-                            : 'border-slate-200 hover:border-blue-300 text-slate-700',
+                            ? 'border-blue-600 bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 ring-2 ring-blue-500/20'
+                            : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 text-slate-700 dark:text-slate-200',
                         )}
                       >
                         <div className="flex items-center justify-between">
@@ -860,20 +1048,20 @@ export function ProfilePage() {
                               'h-9 w-9 rounded-xl flex items-center justify-center',
                               selected
                                 ? 'bg-blue-600 text-white'
-                                : 'bg-slate-100 text-slate-600',
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
                             )}
                           >
                             {v.icon}
                           </span>
                           {selected && (
-                            <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                            <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                           )}
                         </div>
                         <div>
                           <span className="font-bold text-sm block">
                             {v.label}
                           </span>
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-slate-500 dark:text-slate-400">
                             {v.desc}
                           </span>
                         </div>
@@ -883,24 +1071,31 @@ export function ProfilePage() {
                 </div>
               </div>
 
-              <div className="max-w-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
                 <Input
                   label="2. Placa del vehículo (Opcional en bicicleta)"
                   placeholder="Ej. ABC-123"
                   value={plate}
                   onChange={(e) => setPlate(e.target.value)}
                 />
+                <Input
+                  label="3. Teléfono de contacto en ruta"
+                  placeholder="+573001234567"
+                  value={riderPhone}
+                  onChange={(e) => setRiderPhone(e.target.value)}
+                  leftIcon={<Phone className="w-4 h-4" />}
+                />
               </div>
 
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 flex items-start gap-3 text-xs text-emerald-900">
-                <Tag className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/70 dark:bg-emerald-950/30 p-4 flex items-start gap-3 text-xs text-emerald-900 dark:text-emerald-200">
+                <Tag className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold block">
-                    Beneficio incluido al activarte hoy:
+                    Beneficio incluido al ser aprobado:
                   </span>
                   <span>
-                    Seguirás pudiendo comprar en el catálogo como siempre,
-                    pero el sistema te descontará automáticamente el{' '}
+                    Seguirás pudiendo comprar en el catálogo como siempre, pero
+                    el sistema te descontará automáticamente el{' '}
                     <strong>10%</strong> en tus primeros 4 pedidos de cada mes.
                   </span>
                 </div>
@@ -914,7 +1109,9 @@ export function ProfilePage() {
                   isLoading={isActivatingRider}
                   leftIcon={<Bike className="w-5 h-5" />}
                 >
-                  Activar mi Cuenta de Mensajero Ahora
+                  {deliveryProfile?.status === 'REJECTED'
+                    ? 'Reenviar Solicitud de Repartidor'
+                    : 'Enviar Solicitud de Repartidor'}
                 </Button>
               </div>
             </form>

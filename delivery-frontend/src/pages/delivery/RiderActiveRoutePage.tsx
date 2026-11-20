@@ -5,8 +5,11 @@ import { toast } from 'sonner';
 import {
   CheckCircle2,
   Crosshair,
+  ExternalLink,
   MapPin,
+  MessageCircle,
   Navigation,
+  Phone,
   PlayCircle,
   Satellite,
   StopCircle,
@@ -17,10 +20,13 @@ import {
   updateLocationApi,
 } from '@/api/endpoints/delivery.api';
 import { extractErrorMessage } from '@/api/axios.client';
-import type { DeliveryProfile } from '@/types/delivery.types';
+import type { DeliveryOutletContext } from '@/components/layout/DeliveryLayout';
+import type { DeliveryOrder } from '@/types/delivery.types';
 import { formatCurrency } from '@/utils/formatters';
+import { formatPhoneDisplay } from '@/utils/phone';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { Modal } from '@/components/ui/Modal';
 
 type Mode = 'off' | 'gps' | 'sim';
 
@@ -28,15 +34,36 @@ const BOGOTA = { lat: 4.711, lng: -74.0721 };
 const SIM_STEPS = 30;
 const SEND_EVERY_MS = 3000;
 
+function sanitizePhoneForWhatsApp(phone?: string): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, '');
+  if (!digits) return null;
+  if (digits.length === 10 && digits.startsWith('3')) {
+    return `57${digits}`;
+  }
+  return digits;
+}
+
+function buildGoogleMapsUrl(address: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+}
+
+function buildWazeUrl(address: string): string {
+  return `https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes`;
+}
+
 export function RiderActiveRoutePage() {
   const queryClient = useQueryClient();
-  const { profile } = useOutletContext<{ profile: DeliveryProfile }>();
+  const { profile } = useOutletContext<DeliveryOutletContext>();
 
   const [mode, setMode] = useState<Mode>('off');
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(
     profile.currentLocation ?? null,
   );
   const [sentCount, setSentCount] = useState(0);
+  const [orderToConfirm, setOrderToConfirm] = useState<DeliveryOrder | null>(
+    null,
+  );
   const lastSentRef = useRef(0);
   const simRef = useRef<number | null>(null);
 
@@ -89,7 +116,7 @@ export function RiderActiveRoutePage() {
     simRef.current = window.setInterval(() => {
       step += 1;
       const t = step / SIM_STEPS;
-      lastSentRef.current = 0; // el simulador envía cada tick
+      lastSentRef.current = 0;
       void sendLocation(
         start.lat + (target.lat - start.lat) * t,
         start.lng + (target.lng - start.lng) * t,
@@ -111,7 +138,9 @@ export function RiderActiveRoutePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['delivery-active'] });
       queryClient.invalidateQueries({ queryKey: ['delivery-stats'] });
-      toast.success('Pedido entregado');
+      queryClient.invalidateQueries({ queryKey: ['delivery-history'] });
+      setOrderToConfirm(null);
+      toast.success('¡Entrega confirmada con éxito!');
     },
     onError: (err) =>
       toast.error('No se pudo marcar como entregado', {
@@ -119,12 +148,20 @@ export function RiderActiveRoutePage() {
       }),
   });
 
+  const confirmCustomer =
+    orderToConfirm && typeof orderToConfirm.userId === 'object'
+      ? orderToConfirm.userId
+      : null;
+
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-heading text-2xl font-extrabold">Ruta activa</h1>
-        <p className="text-xs text-slate-500">
-          Transmite tu ubicación al cliente mientras entregas.
+        <h1 className="font-heading text-2xl font-extrabold text-slate-900 dark:text-white">
+          Ruta activa
+        </h1>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Contacta al cliente, abre tu ruta en Google Maps o Waze y transmite tu
+          ubicación en vivo.
         </p>
       </div>
 
@@ -191,34 +228,101 @@ export function RiderActiveRoutePage() {
         <EmptyState
           icon={<Navigation className="w-7 h-7" />}
           title="No tienes entregas en curso"
-          description="Acepta un pedido en la pestaña Disponibles."
+          description="Acepta un pedido en la pestaña Disponibles para iniciar una ruta."
         />
       ) : (
         orders.map((order) => {
           const customer =
-            typeof order.userId === 'object' ? order.userId : null;
+            typeof order.userId === 'object' && order.userId !== null
+              ? order.userId
+              : null;
+          const customerPhone = customer?.phone;
+          const waPhone = sanitizePhoneForWhatsApp(customerPhone);
+          const shortCode = order._id.slice(-8).toUpperCase();
+          const waMessage = encodeURIComponent(
+            `¡Hola ${customer?.name || ''}! Soy tu repartidor de DeliveryPro, voy en camino con tu pedido #${shortCode}.`,
+          );
+
           return (
             <article
               key={order._id}
               className="rounded-3xl border border-blue-200 dark:border-blue-900/60 bg-white dark:bg-slate-900 p-5 shadow-card space-y-4"
             >
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between gap-3">
                 <div>
-                  <span className="font-mono text-xs font-extrabold uppercase text-blue-600">
-                    #{order._id.slice(-8).toUpperCase()}
+                  <span className="font-mono text-xs font-extrabold uppercase text-blue-600 dark:text-blue-400">
+                    #{shortCode}
                   </span>
                   {customer && (
-                    <p className="text-sm font-semibold">{customer.name}</p>
+                    <p className="text-base font-bold text-slate-900 dark:text-white">
+                      {customer.name}
+                    </p>
+                  )}
+                  {customerPhone && (
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+                      Celular: {formatPhoneDisplay(customerPhone)}
+                    </p>
                   )}
                 </div>
-                <span className="font-heading text-lg font-extrabold">
+                <span className="font-heading text-lg font-extrabold text-slate-900 dark:text-white">
                   {formatCurrency(order.total)}
                 </span>
               </div>
 
+              {/* Dirección de entrega */}
               <div className="flex items-start gap-2 text-sm bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-3">
                 <MapPin className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                <span>{order.address}</span>
+                <span className="text-slate-800 dark:text-slate-200">
+                  {order.address}
+                </span>
+              </div>
+
+              {/* Contacto directo con el cliente */}
+              {customerPhone && (
+                <div className="grid grid-cols-2 gap-2.5">
+                  <a
+                    href={`tel:${customerPhone.replace(/\s+/g, '')}`}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-100 hover:border-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-950/30 transition-colors duration-200 cursor-pointer"
+                  >
+                    <Phone className="w-4 h-4 text-blue-600" />
+                    <span>Llamar al cliente</span>
+                  </a>
+                  {waPhone && (
+                    <a
+                      href={`https://wa.me/${waPhone}?text=${waMessage}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 dark:border-emerald-800/70 bg-emerald-50/80 dark:bg-emerald-950/40 px-3 py-2.5 text-xs font-bold text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 transition-colors duration-200 cursor-pointer"
+                    >
+                      <MessageCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <span>WhatsApp</span>
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {/* Navegación GPS externa: Google Maps & Waze */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <a
+                  href={buildGoogleMapsUrl(order.address)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-orange-200 dark:border-orange-900/60 bg-orange-50/70 dark:bg-orange-950/30 px-3 py-2.5 text-xs font-bold text-orange-800 dark:text-orange-300 hover:bg-orange-100/80 transition-colors duration-200 cursor-pointer"
+                >
+                  <Navigation className="w-4 h-4 text-orange-600" />
+                  <span>Abrir en Google Maps</span>
+                  <ExternalLink className="w-3 h-3 opacity-70" />
+                </a>
+                <a
+                  href={buildWazeUrl(order.address)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-sky-200 dark:border-sky-900/60 bg-sky-50/70 dark:bg-sky-950/30 px-3 py-2.5 text-xs font-bold text-sky-800 dark:text-sky-300 hover:bg-sky-100/80 transition-colors duration-200 cursor-pointer"
+                >
+                  <Navigation className="w-4 h-4 text-sky-600" />
+                  <span>Abrir en Waze</span>
+                  <ExternalLink className="w-3 h-3 opacity-70" />
+                </a>
               </div>
 
               <Button
@@ -227,7 +331,7 @@ export function RiderActiveRoutePage() {
                   deliverMutation.isPending &&
                   deliverMutation.variables === order._id
                 }
-                onClick={() => deliverMutation.mutate(order._id)}
+                onClick={() => setOrderToConfirm(order)}
                 leftIcon={<CheckCircle2 className="w-5 h-5" />}
               >
                 Marcar como Entregado
@@ -236,6 +340,68 @@ export function RiderActiveRoutePage() {
           );
         })
       )}
+
+      {/* Modal de confirmación antes de cerrar una entrega */}
+      <Modal
+        isOpen={Boolean(orderToConfirm)}
+        onClose={() => setOrderToConfirm(null)}
+        title="Confirmar entrega completada"
+        description="Verifica que entregaste todos los productos al cliente antes de finalizar esta ruta."
+        size="sm"
+        footer={
+          <div className="flex w-full items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setOrderToConfirm(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              isLoading={deliverMutation.isPending}
+              onClick={() => {
+                if (orderToConfirm) {
+                  deliverMutation.mutate(orderToConfirm._id);
+                }
+              }}
+              leftIcon={<CheckCircle2 className="w-4 h-4" />}
+            >
+              Sí, confirmar entrega
+            </Button>
+          </div>
+        }
+      >
+        {orderToConfirm && (
+          <div className="space-y-3 text-sm">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-3.5 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-xs font-extrabold uppercase text-blue-600">
+                  Pedido #{orderToConfirm._id.slice(-8).toUpperCase()}
+                </span>
+                <span className="font-heading font-extrabold text-slate-900 dark:text-white">
+                  {formatCurrency(orderToConfirm.total)}
+                </span>
+              </div>
+              {confirmCustomer && (
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                  Cliente: {confirmCustomer.name}
+                </p>
+              )}
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Dirección: {orderToConfirm.address}
+              </p>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Al confirmar, el pedido pasará a estado <strong>DELIVERED</strong>{' '}
+              y se notificará automáticamente al cliente.
+            </p>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

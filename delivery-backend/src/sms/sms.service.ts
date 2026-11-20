@@ -26,16 +26,16 @@ export class SmsService {
   hasVerifyService(): boolean {
     return Boolean(
       this.getConfigValue('TWILIO_ACCOUNT_SID') &&
-        this.getConfigValue('TWILIO_AUTH_TOKEN') &&
-        this.getConfigValue('TWILIO_VERIFY_SERVICE_SID'),
+      this.getConfigValue('TWILIO_AUTH_TOKEN') &&
+      this.getConfigValue('TWILIO_VERIFY_SERVICE_SID'),
     );
   }
 
   hasProgrammableSms(): boolean {
     return Boolean(
       this.getConfigValue('TWILIO_ACCOUNT_SID') &&
-        this.getConfigValue('TWILIO_AUTH_TOKEN') &&
-        this.getConfigValue('TWILIO_FROM_NUMBER'),
+      this.getConfigValue('TWILIO_AUTH_TOKEN') &&
+      this.getConfigValue('TWILIO_FROM_NUMBER'),
     );
   }
 
@@ -91,7 +91,10 @@ export class SmsService {
           return { sent: false, provider: 'console' };
         }
 
-        const data = (await response.json()) as { sid?: string; status?: string };
+        const data = (await response.json()) as {
+          sid?: string;
+          status?: string;
+        };
         this.logger.log(
           `SMS OTP enviado vía Twilio Verify a ${to} (SID: ${data.sid})`,
         );
@@ -198,7 +201,10 @@ export class SmsService {
         return false;
       }
 
-      const data = (await response.json()) as { status?: string; valid?: boolean };
+      const data = (await response.json()) as {
+        status?: string;
+        valid?: boolean;
+      };
       return data.status === 'approved' || data.valid === true;
     } catch (error) {
       this.logger.error(

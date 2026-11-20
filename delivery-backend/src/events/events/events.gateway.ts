@@ -9,6 +9,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
 
+export const RIDERS_AVAILABLE_ROOM = 'riders_available';
+
 @WebSocketGateway({
   cors: {
     origin: '*', // En producción debes cambiarlo a tu dominio del frontend
@@ -55,6 +57,15 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // El JWT usa `sub` como identificador de usuario
       const userId = String(payload.sub ?? payload.userId);
       client.join(userId);
+
+      // Los repartidores autenticados se unen automáticamente a la sala de alertas en vivo
+      if (payload.role === 'DELIVERY') {
+        client.join(RIDERS_AVAILABLE_ROOM);
+        this.logger.log(
+          `Repartidor ${userId} unido a la sala ${RIDERS_AVAILABLE_ROOM}`,
+        );
+      }
+
       this.logger.log(`Cliente conectado exitosamente: ${userId}`);
     } catch (error) {
       this.logger.warn(`Conexión rechazada: ${error.message}`);
@@ -68,10 +79,22 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // Método que usaremos desde otros servicios para emitir eventos
   emitOrderStatusUpdate(userId: string, orderData: any) {
-    this.server.to(userId).emit('order_status_updated', orderData);
+    this.server?.to(userId).emit('order_status_updated', orderData);
   }
 
   emitDeliveryLocationUpdate(userId: string, locationData: any) {
-    this.server.to(userId).emit('delivery_location_updated', locationData);
+    this.server?.to(userId).emit('delivery_location_updated', locationData);
+  }
+
+  emitNewAvailableOrder(orderData: any) {
+    this.server
+      ?.to(RIDERS_AVAILABLE_ROOM)
+      .emit('new_available_order', orderData);
+  }
+
+  emitOrderTaken(orderId: string, takenBy?: string) {
+    this.server
+      ?.to(RIDERS_AVAILABLE_ROOM)
+      .emit('order_taken', { orderId, takenBy });
   }
 }

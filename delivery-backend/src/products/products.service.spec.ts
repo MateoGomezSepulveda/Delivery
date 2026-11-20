@@ -190,9 +190,9 @@ describe('ProductsService', () => {
         available: false,
       });
 
-      await expect(
-        service.update('123', { available: true }),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.update('123', { available: true })).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('elimina en S3 la imagen anterior al reemplazarla en update()', async () => {

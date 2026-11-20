@@ -89,12 +89,14 @@ export interface OrderUserPopulated {
   _id: string;
   name: string;
   email: string;
+  phone?: string;
   role?: string;
 }
 
 export interface Order {
   _id: string;
-  userId: OrderUserPopulated | string;
+  // null cuando el usuario referenciado fue eliminado (populate devuelve null)
+  userId: OrderUserPopulated | string | null;
   deliveryId?: OrderUserPopulated | string | null;
   items: OrderItem[];
   subtotal?: number;

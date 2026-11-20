@@ -113,7 +113,9 @@ describe('SmsService', () => {
   it('hace fallback seguro a consola si Twilio falla por timeout o error de red', async () => {
     global.fetch = jest
       .fn()
-      .mockRejectedValue(new DOMException('The operation timed out', 'TimeoutError'));
+      .mockRejectedValue(
+        new DOMException('The operation timed out', 'TimeoutError'),
+      );
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -178,7 +180,10 @@ describe('SmsService', () => {
     expect(service.hasVerifyService()).toBe(true);
     expect(service.isConfigured()).toBe(true);
 
-    const sendRes = await service.sendVerificationSms('+573001234567', '482913');
+    const sendRes = await service.sendVerificationSms(
+      '+573001234567',
+      '482913',
+    );
     expect(mockFetch).toHaveBeenNthCalledWith(
       1,
       'https://verify.twilio.com/v2/Services/VA999888777/Verifications',
