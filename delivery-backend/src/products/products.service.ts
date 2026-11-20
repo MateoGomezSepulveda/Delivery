@@ -15,6 +15,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { ProductPaginationDto } from './dto/product-pagination.dto';
 import { CategoriesService } from 'src/categories/categories.service';
 import { Order, OrderDocument } from 'src/orders/schemas/order.schema';
+import { UploadsService } from 'src/uploads/uploads.service';
 
 export interface ReservedProductSnapshot {
   productId: string;
@@ -30,6 +31,7 @@ export class ProductsService implements OnModuleInit {
     @Inject(forwardRef(() => CategoriesService))
     private categoriesService: CategoriesService,
     @Optional() @Inject(CACHE_MANAGER) private cacheManager?: Cache,
+    @Optional() private readonly uploadsService?: UploadsService,
   ) {}
 
   async onModuleInit() {
@@ -198,6 +200,14 @@ export class ProductsService implements OnModuleInit {
         ? await (query as any).populate('categoryId')
         : await query;
 
+    if (
+      updateData.image !== undefined &&
+      product.image &&
+      product.image !== updateData.image
+    ) {
+      await this.uploadsService?.deleteFile(product.image);
+    }
+
     await this.invalidateCache();
     return updated;
   }
@@ -323,6 +333,9 @@ export class ProductsService implements OnModuleInit {
       throw new BadRequestException('Cannot delete product used in orders');
     }
     const deleted = await this.productModel.findByIdAndDelete(id);
+    if (product.image) {
+      await this.uploadsService?.deleteFile(product.image);
+    }
     await this.invalidateCache();
     return deleted;
   }

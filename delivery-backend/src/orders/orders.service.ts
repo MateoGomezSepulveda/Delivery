@@ -269,7 +269,8 @@ export class OrdersService {
       .limit(limit)
       .sort({ createdAt: -1 })
       .populate('items.productId')
-      .populate('userId');
+      .populate('userId', '-password')
+      .populate('deliveryId', 'name email phone');
 
     const total = await this.orderModel.countDocuments(filter);
 
@@ -337,7 +338,11 @@ export class OrdersService {
     return saved;
   }
 
-  async updateStatus(orderId: string, status: OrderStatus) {
+  async updateStatus(
+    orderId: string,
+    status: OrderStatus,
+    deliveryId?: string,
+  ) {
     const order = await this.orderModel.findById(orderId);
 
     if (!order) {
@@ -351,6 +356,22 @@ export class OrdersService {
     if (!allowedTransitions.includes(status)) {
       throw new BadRequestException(
         `Cannot change status from ${currentStatus} to ${status}`,
+      );
+    }
+
+    if (deliveryId) {
+      const rider = await this.usersService.findOne(deliveryId);
+      if (!rider || rider.role !== 'DELIVERY') {
+        throw new BadRequestException(
+          'El repartidor seleccionado no existe o no tiene rol DELIVERY.',
+        );
+      }
+      order.deliveryId = deliveryId;
+    }
+
+    if (status === OrderStatus.OUT_FOR_DELIVERY && !order.deliveryId) {
+      throw new BadRequestException(
+        'Debes asignar un repartidor (deliveryId) antes de marcar el pedido en camino (OUT_FOR_DELIVERY).',
       );
     }
 

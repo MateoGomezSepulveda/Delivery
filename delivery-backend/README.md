@@ -59,7 +59,7 @@ src/
 
 ### 2. Protección & Rate Limiting
 - **Helmet:** Encabezados de seguridad HTTP habilitados.
-- **Throttler Guard:** Protección anti-fuerza bruta (Límite: 10 peticiones por minuto por cliente).
+- **Throttler Guard:** Protección anti-fuerza bruta con límite global de **100 peticiones por minuto** y límites estrictos en endpoints sensibles de Auth (`3–5 req/min`).
 - **ValidationPipe Global:** Limpieza estricta de payloads (`whitelist`, `forbidNonWhitelisted`, `transform`).
 
 ---
@@ -133,7 +133,7 @@ src/
 | `GET` | `/orders/:id` | JWT | Ver detalle de un pedido (dueño o Admin) |
 | `PATCH` | `/orders/:id/cancel` | JWT | Cancelar un pedido propio (solo en estado `PENDING`) |
 | `GET` | `/orders` | JWT + Admin | Ver todos los pedidos (paginado, con filtros) |
-| `PATCH` | `/orders/:id/status` | JWT + Admin | Cambiar estado del pedido (`PENDING` → `CONFIRMED` → `PREPARING` → `OUT_FOR_DELIVERY` → `DELIVERED` / `CANCELLED`) |
+| `PATCH` | `/orders/:id/status` | JWT + Admin | Cambiar estado del pedido (`PENDING` → `CONFIRMED` → `PREPARING` → `OUT_FOR_DELIVERY` → `DELIVERED` / `CANCELLED`, validando y asignando `deliveryId` con rol `DELIVERY` al despachar) |
 
 ### ⭐ Reseñas (`/reviews`)
 | Método | Endpoint | Protección | Descripción |
@@ -155,9 +155,9 @@ src/
 ### 📊 Analytics (`/analytics`)
 | Método | Endpoint | Protección | Descripción |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/analytics/dashboard` | JWT + Admin | KPIs financieros reales (ingresos, costo de compra COGS, ganancia neta real, margen %, valoración de inventario), `inventoryAlerts` y órdenes por estado (acepta `?days=`) |
-| `GET` | `/analytics/top-products` | JWT + Admin | Ranking de productos con unidades vendidas, ingresos, costo de compra, ganancia real, margen % y stock actual (acepta `?limit=&days=`) |
-| `GET` | `/analytics/sales` | JWT + Admin | Serie histórica diaria de pedidos, unidades, ventas, costo de compra y ganancia neta real (acepta `?days=`) |
+| `GET` | `/analytics/dashboard` | JWT + Admin | KPIs financieros reales (ingresos, costo de compra COGS, ganancia neta real, margen %, valoración de inventario), `inventoryAlerts` y órdenes por estado (acepta `?days=` o `?from=&to=`) |
+| `GET` | `/analytics/top-products` | JWT + Admin | Ranking de productos con unidades vendidas, ingresos, costo de compra, ganancia real, margen % y stock actual (acepta `?limit=&days=&from=&to=`) |
+| `GET` | `/analytics/sales` | JWT + Admin | Serie histórica diaria de pedidos, unidades, ventas, costo de compra y ganancia neta real (acepta `?days=` o `?from=&to=`) |
 
 ---
 
@@ -232,14 +232,14 @@ docker compose up -d --build api
 
 - ✅ **Fase 5 (Nuevos Módulos Core)**:
   - ✅ **Addresses**: Direcciones de envío.
-  - ✅ **Uploads**: Subida de imágenes a AWS S3.
+  - ✅ **Uploads**: Subida de imágenes a AWS S3 con validación de firma binaria (*magic bytes*), borrado automático de archivos previos (`deleteFile`) y soporte `AWS_CLOUDFRONT_DOMAIN`.
   - ✅ **Payments (MercadoPago)**: Servicio `PaymentsService` y webhook para procesar el éxito del pago.
   - ✅ **Notifications & Mail**: Sistema asíncrono para enviar push notifications (FCM) y correos (Nodemailer) en cada actualización de estado del pedido.
   - ✅ **Delivery**: Módulo completo para repartidores (auto-activación de perfil desde cuenta `CLIENT` → `DELIVERY`, disponibilidad, geolocalización de entrega, estadísticas y descuento mensual del 10% en sus primeros 4 pedidos como cliente).
   - ✅ **Events**: Integración de WebSockets (`socket.io`) para emitir cambios de estado de órdenes en tiempo real a los clientes.
   - ✅ **Reviews**: Reseñas con validación de pedido `DELIVERED`, verificación de que el producto pertenece a la orden, índice único `{ user, product, order }` y moderación por Admin.
   - ✅ **Coupons**: CRUD de cupones (Admin) y endpoint `apply` con validación de expiración, límite de usos, uso único por usuario, monto mínimo y tope de descuento.
-  - ✅ **CI**: Specs de todos los módulos con mocks completos; **18 suites / 149 tests unitarios** + E2E pasando y `nest build` verificado.
+  - ✅ **CI**: Specs de todos los módulos con mocks completos; **18 suites / 158 tests unitarios** + E2E pasando y `nest build` verificado.
 
 - ✅ **Fase 6 (Rendimiento y Escala)**:
   - ✅ **Cache con Redis**: `@nestjs/cache-manager` + `@keyv/redis` en Categorías (TTL 1h) y Productos (TTL 10min).

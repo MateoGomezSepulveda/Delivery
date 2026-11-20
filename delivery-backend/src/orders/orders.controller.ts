@@ -80,7 +80,7 @@ export class OrdersController {
     @Param('id', ParseMongoIdPipe) id: string,
     @Body() body: UpdateOrderStatusDto,
   ) {
-    return this.ordersService.updateStatus(id, body.status);
+    return this.ordersService.updateStatus(id, body.status, body.deliveryId);
   }
 
   @Post(':id/pay')

@@ -173,5 +173,15 @@ describe('AnalyticsService', () => {
       expect(mockOrderModel.aggregate).toHaveBeenCalled();
       expect(result).toEqual(mockDaily);
     });
+
+    it('debe aceptar rango explícito from y to en getSalesByDay', async () => {
+      mockOrderModel.aggregate.mockResolvedValueOnce([]);
+
+      await service.getSalesByDay(30, '2026-11-01', '2026-11-15');
+
+      const pipeline = mockOrderModel.aggregate.mock.calls[0][0];
+      expect(pipeline[0].$match.createdAt.$gte).toBeInstanceOf(Date);
+      expect(pipeline[0].$match.createdAt.$lte).toBeInstanceOf(Date);
+    });
   });
 });

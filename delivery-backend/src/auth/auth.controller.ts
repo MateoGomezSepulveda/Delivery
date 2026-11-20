@@ -123,6 +123,7 @@ export class AuthController {
     return this.authService.logout(refreshTokenDto.refreshToken);
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('forgot-password')
   @Public()
   @ApiOperation({ summary: 'Request password reset' })
@@ -134,6 +135,7 @@ export class AuthController {
     return this.authService.forgotPassword(forgotPasswordDto.email);
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('reset-password')
   @Public()
   @ApiOperation({ summary: 'Reset password using token' })

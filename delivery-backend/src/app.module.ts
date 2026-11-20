@@ -68,7 +68,7 @@ import * as Joi from 'joi';
     ThrottlerModule.forRoot([
       {
         ttl: 60000,
-        limit: 10,
+        limit: 100,
       },
     ]),
 

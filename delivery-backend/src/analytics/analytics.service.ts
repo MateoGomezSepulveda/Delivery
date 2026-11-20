@@ -23,6 +23,39 @@ export class AnalyticsService {
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {}
 
+  private buildDateRangeFilter(
+    days?: number,
+    from?: string,
+    to?: string,
+  ): Record<string, any> {
+    const range: Record<string, Date> = {};
+
+    if (from) {
+      const parsedFrom = new Date(from);
+      if (!Number.isNaN(parsedFrom.getTime())) {
+        range.$gte = parsedFrom;
+      }
+    }
+
+    if (to) {
+      const parsedTo = new Date(to);
+      if (!Number.isNaN(parsedTo.getTime())) {
+        // Si solo se envió YYYY-MM-DD (sin hora), incluimos todo ese día hasta 23:59:59.999
+        if (/^\d{4}-\d{2}-\d{2}$/.test(to.trim())) {
+          parsedTo.setHours(23, 59, 59, 999);
+        }
+        range.$lte = parsedTo;
+      }
+    }
+
+    if (Object.keys(range).length > 0) {
+      return { createdAt: range };
+    }
+
+    const startDate = this.buildDateThreshold(days);
+    return startDate ? { createdAt: { $gte: startDate } } : {};
+  }
+
   private buildDateThreshold(days?: number): Date | null {
     if (!days || !Number.isFinite(days) || days <= 0) return null;
     const startDate = new Date();
@@ -133,9 +166,9 @@ export class AnalyticsService {
    * KPIs financieros reales (ingresos, costos de compra, ganancia neta, margen),
    * salud de inventario y resumen de órdenes por estado usando Aggregation Pipelines
    */
-  async getDashboardSummary(days?: number) {
-    const startDate = this.buildDateThreshold(days);
-    const dateFilter = startDate ? { createdAt: { $gte: startDate } } : {};
+  async getDashboardSummary(days?: number, from?: string, to?: string) {
+    const dateFilter = this.buildDateRangeFilter(days, from, to);
+    const hasDateFilter = Object.keys(dateFilter).length > 0;
 
     const [
       revenueAggregation,
@@ -166,7 +199,7 @@ export class AnalyticsService {
         },
       ]),
       this.orderModel.aggregate([
-        ...(startDate ? [{ $match: dateFilter }] : []),
+        ...(hasDateFilter ? [{ $match: dateFilter }] : []),
         {
           $group: {
             _id: '$status',
@@ -346,9 +379,8 @@ export class AnalyticsService {
   /**
    * Ranking de productos con ingresos, costos reales de compra, ganancia neta y margen %
    */
-  async getTopProducts(limit = 5, days?: number) {
-    const startDate = this.buildDateThreshold(days);
-    const dateFilter = startDate ? { createdAt: { $gte: startDate } } : {};
+  async getTopProducts(limit = 5, days?: number, from?: string, to?: string) {
+    const dateFilter = this.buildDateRangeFilter(days, from, to);
 
     return this.orderModel.aggregate([
       {
@@ -475,14 +507,17 @@ export class AnalyticsService {
   /**
    * Ventas, costos y ganancia real agrupados por día para gráficas comparativas
    */
-  async getSalesByDay(days = 30) {
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - (Number(days) || 30));
+  async getSalesByDay(days = 30, from?: string, to?: string) {
+    const dateFilter = this.buildDateRangeFilter(
+      from || to ? undefined : Number(days) || 30,
+      from,
+      to,
+    );
 
     return this.orderModel.aggregate([
       {
         $match: {
-          createdAt: { $gte: startDate },
+          ...dateFilter,
           status: { $nin: [OrderStatus.CANCELLED, OrderStatus.FAILED] },
         },
       },

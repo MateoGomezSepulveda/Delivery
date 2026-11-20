@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   ConflictException,
+  Optional,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -12,10 +13,14 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 import { normalizePhoneNumber } from 'src/common/utils/phone.util';
 import { Role } from 'src/auth/roles.enum';
+import { UploadsService } from 'src/uploads/uploads.service';
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
+  constructor(
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @Optional() private readonly uploadsService?: UploadsService,
+  ) {}
 
   private escapeRegex(value: string): string {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -202,6 +207,16 @@ export class UsersService {
       }
     }
 
+    let existingUserCache: UserDocument | null | undefined;
+    const getExistingUser = async () => {
+      if (existingUserCache !== undefined) return existingUserCache;
+      existingUserCache =
+        typeof this.userModel.findById === 'function'
+          ? await this.findOne(id)
+          : null;
+      return existingUserCache;
+    };
+
     if (updateData.phone !== undefined) {
       const normalizedPhone = normalizePhoneNumber(updateData.phone);
       if (!normalizedPhone) {
@@ -210,19 +225,27 @@ export class UsersService {
         );
       }
 
-      const existingUser =
-        typeof this.userModel.findById === 'function'
-          ? await this.findOne(id)
-          : null;
+      const existingUser = await getExistingUser();
       payloadToUpdate.phone = normalizedPhone;
       if (!existingUser || existingUser.phone !== normalizedPhone) {
         payloadToUpdate.isPhoneVerified = false;
       }
     }
 
+    let previousAvatarUrl: string | null = null;
+    if (updateData.avatarUrl !== undefined && this.uploadsService) {
+      const existingUser = await getExistingUser();
+      if (
+        existingUser?.avatarUrl &&
+        existingUser.avatarUrl !== updateData.avatarUrl
+      ) {
+        previousAvatarUrl = existingUser.avatarUrl;
+      }
+    }
+
     if (updateData.password) {
       payloadToUpdate.password = await bcrypt.hash(updateData.password, 10);
-      return this.userModel
+      const updated = await this.userModel
         .findByIdAndUpdate(
           id,
           {
@@ -232,11 +255,21 @@ export class UsersService {
           { new: true },
         )
         .select('-password');
+      if (previousAvatarUrl) {
+        await this.uploadsService?.deleteFile(previousAvatarUrl);
+      }
+      return updated;
     }
 
-    return this.userModel
+    const updated = await this.userModel
       .findByIdAndUpdate(id, payloadToUpdate, { new: true })
       .select('-password');
+
+    if (previousAvatarUrl) {
+      await this.uploadsService?.deleteFile(previousAvatarUrl);
+    }
+
+    return updated;
   }
 
   async remove(id: string) {

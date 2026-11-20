@@ -450,5 +450,76 @@ describe('OrdersService', () => {
         service.updateStatus(mockOrderId, OrderStatus.CONFIRMED),
       ).rejects.toThrow(NotFoundException);
     });
+
+    it('debe rechazar pasar de PREPARING a OUT_FOR_DELIVERY sin repartidor asignado', async () => {
+      const order = {
+        ...mockOrder,
+        status: OrderStatus.PREPARING,
+        deliveryId: undefined,
+        save: jest.fn(),
+      };
+      mockOrderModel.findById.mockResolvedValue(order);
+
+      await expect(
+        service.updateStatus(mockOrderId, OrderStatus.OUT_FOR_DELIVERY),
+      ).rejects.toThrow(BadRequestException);
+      expect(order.save).not.toHaveBeenCalled();
+    });
+
+    it('debe rechazar asignar un usuario que no tenga rol DELIVERY', async () => {
+      const order = {
+        ...mockOrder,
+        status: OrderStatus.PREPARING,
+        deliveryId: undefined,
+        save: jest.fn(),
+      };
+      mockOrderModel.findById.mockResolvedValue(order);
+      mockUsersService.findOne.mockResolvedValueOnce({
+        _id: '64a000000000000000000055',
+        role: 'CLIENT',
+      });
+
+      await expect(
+        service.updateStatus(
+          mockOrderId,
+          OrderStatus.OUT_FOR_DELIVERY,
+          '64a000000000000000000055',
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(order.save).not.toHaveBeenCalled();
+    });
+
+    it('debe asignar repartidor DELIVERY válido y permitir pasar a OUT_FOR_DELIVERY', async () => {
+      const riderId = '64a000000000000000000077';
+      const order = {
+        ...mockOrder,
+        status: OrderStatus.PREPARING,
+        deliveryId: undefined as string | undefined,
+        save: jest.fn().mockImplementation(function (this: any) {
+          return Promise.resolve({
+            ...this,
+            userId: mockUserId,
+          });
+        }),
+      };
+      mockOrderModel.findById.mockResolvedValue(order);
+      mockUsersService.findOne
+        .mockResolvedValueOnce({ _id: riderId, role: 'DELIVERY' })
+        .mockResolvedValueOnce({
+          email: 'client@test.com',
+          role: 'CLIENT',
+          fcmTokens: [],
+        });
+
+      await service.updateStatus(
+        mockOrderId,
+        OrderStatus.OUT_FOR_DELIVERY,
+        riderId,
+      );
+
+      expect(order.deliveryId).toBe(riderId);
+      expect(order.status).toBe(OrderStatus.OUT_FOR_DELIVERY);
+      expect(order.save).toHaveBeenCalled();
+    });
   });
 });

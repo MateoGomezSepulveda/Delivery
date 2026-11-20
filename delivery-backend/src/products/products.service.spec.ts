@@ -4,6 +4,7 @@ import { getModelToken } from '@nestjs/mongoose';
 import { Product } from './schemas/product.schema';
 import { Order } from 'src/orders/schemas/order.schema';
 import { CategoriesService } from 'src/categories/categories.service';
+import { UploadsService } from 'src/uploads/uploads.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 describe('ProductsService', () => {
@@ -33,6 +34,10 @@ describe('ProductsService', () => {
     findOne: jest.fn(),
   };
 
+  const mockUploadsService = {
+    deleteFile: jest.fn().mockResolvedValue(true),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -40,11 +45,13 @@ describe('ProductsService', () => {
         { provide: getModelToken(Product.name), useValue: mockProductModel },
         { provide: getModelToken(Order.name), useValue: mockOrderModel },
         { provide: CategoriesService, useValue: mockCategoriesService },
+        { provide: UploadsService, useValue: mockUploadsService },
       ],
     }).compile();
 
     service = module.get<ProductsService>(ProductsService);
     categoriesService = module.get<CategoriesService>(CategoriesService);
+    jest.clearAllMocks();
   });
 
   it('should be defined', () => {
@@ -186,6 +193,28 @@ describe('ProductsService', () => {
       await expect(
         service.update('123', { available: true }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('elimina en S3 la imagen anterior al reemplazarla en update()', async () => {
+      const oldImage =
+        'https://bucket.s3.us-east-1.amazonaws.com/products/old.jpg';
+      const newImage =
+        'https://bucket.s3.us-east-1.amazonaws.com/products/new.jpg';
+
+      mockProductModel.findById.mockResolvedValue({
+        _id: '123',
+        image: oldImage,
+        stock: 5,
+        available: true,
+      });
+      mockProductModel.findByIdAndUpdate.mockResolvedValue({
+        _id: '123',
+        image: newImage,
+      });
+
+      await service.update('123', { image: newImage });
+
+      expect(mockUploadsService.deleteFile).toHaveBeenCalledWith(oldImage);
     });
   });
 

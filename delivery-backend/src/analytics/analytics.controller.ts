@@ -30,10 +30,26 @@ export class AnalyticsController {
     description:
       'Opcional: limitar métricas de ventas y ganancias a los últimos N días (si se omite, histórico completo)',
   })
-  getDashboardSummary(@Query('days') days?: number) {
+  @ApiQuery({
+    name: 'from',
+    required: false,
+    description: 'Fecha inicial opcional en formato YYYY-MM-DD o ISO',
+  })
+  @ApiQuery({
+    name: 'to',
+    required: false,
+    description: 'Fecha final opcional en formato YYYY-MM-DD o ISO',
+  })
+  getDashboardSummary(
+    @Query('days') days?: number,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
     const parsedDays = days ? Number(days) : undefined;
     return this.analyticsService.getDashboardSummary(
       parsedDays && parsedDays > 0 ? parsedDays : undefined,
+      from,
+      to,
     );
   }
 
@@ -52,14 +68,28 @@ export class AnalyticsController {
     required: false,
     description: 'Opcional: filtrar ventas por los últimos N días',
   })
+  @ApiQuery({
+    name: 'from',
+    required: false,
+    description: 'Fecha inicial opcional en formato YYYY-MM-DD o ISO',
+  })
+  @ApiQuery({
+    name: 'to',
+    required: false,
+    description: 'Fecha final opcional en formato YYYY-MM-DD o ISO',
+  })
   getTopProducts(
     @Query('limit') limit?: number,
     @Query('days') days?: number,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
     const parsedDays = days ? Number(days) : undefined;
     return this.analyticsService.getTopProducts(
       limit ? Number(limit) : 5,
       parsedDays && parsedDays > 0 ? parsedDays : undefined,
+      from,
+      to,
     );
   }
 
@@ -73,7 +103,25 @@ export class AnalyticsController {
     required: false,
     description: 'Últimos N días a consultar (por defecto 30)',
   })
-  getSalesByDay(@Query('days') days?: number) {
-    return this.analyticsService.getSalesByDay(days ? Number(days) : 30);
+  @ApiQuery({
+    name: 'from',
+    required: false,
+    description: 'Fecha inicial opcional en formato YYYY-MM-DD o ISO',
+  })
+  @ApiQuery({
+    name: 'to',
+    required: false,
+    description: 'Fecha final opcional en formato YYYY-MM-DD o ISO',
+  })
+  getSalesByDay(
+    @Query('days') days?: number,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.analyticsService.getSalesByDay(
+      days ? Number(days) : 30,
+      from,
+      to,
+    );
   }
 }

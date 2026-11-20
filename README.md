@@ -87,7 +87,7 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
   - Cobertura global de pruebas unitarias ampliada exitosamente al **>80%** (80.06%).
 
 - ✅ **Fase 4 (Seguridad Avanzada)**:
-  - Rate Limiting granular (`@Throttle`) contra ataques de fuerza bruta en Auth.
+  - Rate Limiting granular (`100 req/min` global en `ThrottlerModule` y `@Throttle` estricto de `3–5 req/min` contra fuerza bruta en Auth).
   - Audit Logs mediante interceptor global (IP, usuario, método y tiempo).
   - Sanitización estricta (`express-mongo-sanitize`) contra NoSQL Injection.
   - Protección de sobrecarga (límite JSON payload de 10mb).
@@ -95,7 +95,7 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
 
 - ✅ **Fase 5 (Nuevos Módulos Core)**:
   - ✅ **Addresses**: Direcciones de envío.
-  - ✅ **Uploads**: Subida de imágenes a AWS S3.
+  - ✅ **Uploads**: Subida de imágenes a AWS S3 con validación de firma binaria (*magic bytes* JPEG/PNG/WEBP), limpieza automática de archivos anteriores (`DeleteObjectCommand`) al reemplazar/eliminar productos o avatares y soporte `AWS_CLOUDFRONT_DOMAIN`.
   - ✅ **Payments (MercadoPago)**: Servicio `PaymentsService` y webhook para procesar el éxito del pago.
   - ✅ **Notifications & Mail**: Sistema asíncrono para enviar push notifications (FCM) y correos (Nodemailer) en cada actualización de estado del pedido.
   - ✅ **Delivery**: Gestión de repartidores, disponibilidad, geolocalización, aceptación de pedidos y estadísticas. Rol `DELIVERY`.
