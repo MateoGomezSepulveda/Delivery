@@ -47,7 +47,7 @@ export interface DeliveryStats {
   delivered: number;
   inProgress: number;
   deliveredToday?: number;
-  totalOrderValue?: number;
+  todayEarnings?: number;
   estimatedEarnings?: number;
 }
 

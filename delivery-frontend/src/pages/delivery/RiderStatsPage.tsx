@@ -53,9 +53,9 @@ export function RiderStatsPage() {
       color: 'text-blue-600 bg-blue-50 dark:bg-blue-950/40',
     },
     {
-      label: 'Ganancias estimadas',
+      label: 'Ganancias por envíos',
       value: formatCurrency(stats?.estimatedEarnings ?? 0),
-      subtitle: `Recaudado: ${formatCurrency(stats?.totalOrderValue ?? 0)}`,
+      subtitle: `Hoy: ${formatCurrency(stats?.todayEarnings ?? 0)} · Solo tarifa de envío`,
       icon: <CircleDollarSign className="w-5 h-5" />,
       color: 'text-emerald-700 bg-emerald-100/80 dark:bg-emerald-950/60',
     },
@@ -70,8 +70,8 @@ export function RiderStatsPage() {
           Mis métricas y ganancias
         </h1>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          Resumen de tus entregas realizadas, ingresos estimados y registro
-          histórico de rutas.
+          Resumen de tus entregas realizadas, ganancias por costo de envío y
+          registro histórico de rutas.
         </p>
       </div>
 
@@ -138,7 +138,9 @@ export function RiderStatsPage() {
                   : null;
               const earning =
                 order.riderEarning ??
-                Math.max(5000, Math.round((order.total || 0) * 0.1));
+                (order.deliveryFee && order.deliveryFee > 0
+                  ? order.deliveryFee
+                  : 5000);
 
               return (
                 <article
@@ -166,7 +168,7 @@ export function RiderStatsPage() {
                         +{formatCurrency(earning)}
                       </span>
                       <span className="block text-[11px] text-slate-500">
-                        Pedido: {formatCurrency(order.total)}
+                        Costo de envío
                       </span>
                     </div>
                   </div>

@@ -25,16 +25,18 @@ import { UpdateAvailabilityDto } from './dto/update-availability.dto';
 import { EventsGateway } from '../events/events/events.gateway';
 import { UsersService } from 'src/users/users.service';
 import { Role } from 'src/auth/roles.enum';
+import { DEFAULT_DELIVERY_FEE } from 'src/orders/orders.service';
 
-export const RIDER_COMMISSION_RATE = 0.1;
-export const RIDER_MIN_EARNING_PER_DELIVERY = 5000;
-
-export function calculateRiderEarning(orderTotal: number): number {
-  const safeTotal = Number.isFinite(orderTotal) ? Math.max(0, orderTotal) : 0;
-  return Math.max(
-    RIDER_MIN_EARNING_PER_DELIVERY,
-    Math.round(safeTotal * RIDER_COMMISSION_RATE),
-  );
+export function calculateRiderEarning(deliveryFee?: number | null): number {
+  if (
+    typeof deliveryFee === 'number' &&
+    Number.isFinite(deliveryFee) &&
+    deliveryFee > 0
+  ) {
+    return Math.round(deliveryFee);
+  }
+  // Respaldo retrocompatible solo para pedidos históricos sin deliveryFee guardado
+  return DEFAULT_DELIVERY_FEE;
 }
 
 @Injectable()
@@ -333,7 +335,7 @@ export class DeliveryService implements OnModuleInit {
     return updated;
   }
 
-  // Mis estadísticas completas como repartidor (entregas, hoy, recaudado y ganancias estimadas)
+  // Mis estadísticas completas como repartidor (entregas, hoy y ganancias solo por costo de envío)
   async getMyStats(userId: string) {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
@@ -344,7 +346,7 @@ export class DeliveryService implements OnModuleInit {
           deliveryId: userId,
           status: OrderStatus.DELIVERED,
         })
-        .select('total updatedAt createdAt')
+        .select('deliveryFee updatedAt createdAt')
         .lean(),
       this.orderModel.countDocuments({
         deliveryId: userId,
@@ -355,20 +357,20 @@ export class DeliveryService implements OnModuleInit {
     const list = Array.isArray(deliveredOrders) ? deliveredOrders : [];
     const delivered = list.length;
     let deliveredToday = 0;
-    let totalOrderValue = 0;
     let estimatedEarnings = 0;
+    let todayEarnings = 0;
 
     for (const order of list as Array<{
-      total?: number;
+      deliveryFee?: number;
       updatedAt?: Date;
       createdAt?: Date;
     }>) {
-      const orderTotal = Number(order.total ?? 0);
-      totalOrderValue += orderTotal;
-      estimatedEarnings += calculateRiderEarning(orderTotal);
+      const shippingEarning = calculateRiderEarning(order.deliveryFee);
+      estimatedEarnings += shippingEarning;
       const completedAt = order.updatedAt ?? order.createdAt;
       if (completedAt && new Date(completedAt) >= startOfToday) {
         deliveredToday += 1;
+        todayEarnings += shippingEarning;
       }
     }
 
@@ -376,7 +378,7 @@ export class DeliveryService implements OnModuleInit {
       delivered,
       inProgress,
       deliveredToday,
-      totalOrderValue: Math.round(totalOrderValue),
+      todayEarnings: Math.round(todayEarnings),
       estimatedEarnings: Math.round(estimatedEarnings),
     };
   }
@@ -405,9 +407,11 @@ export class DeliveryService implements OnModuleInit {
     const enriched = orders.map((order: any) => {
       const plain =
         typeof order.toObject === 'function' ? order.toObject() : order;
+      const shippingFee = calculateRiderEarning(plain.deliveryFee);
       return {
         ...plain,
-        riderEarning: calculateRiderEarning(Number(plain.total ?? 0)),
+        deliveryFee: shippingFee,
+        riderEarning: shippingFee,
       };
     });
 

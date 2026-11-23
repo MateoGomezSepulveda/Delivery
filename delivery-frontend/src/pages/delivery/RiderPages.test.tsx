@@ -240,13 +240,13 @@ describe('Rider App — Bloque de Repartidores', () => {
     });
   });
 
-  it('RiderStatsPage renders KPI summary cards and completed delivery history', async () => {
+  it('RiderStatsPage renders KPI summary cards and completed delivery history using only shipping fee earnings', async () => {
     mockGetDeliveryStatsApi.mockResolvedValue({
       delivered: 12,
       inProgress: 1,
       deliveredToday: 3,
-      totalOrderValue: 480000,
-      estimatedEarnings: 65000,
+      todayEarnings: 15000,
+      estimatedEarnings: 60000,
     });
     mockGetDeliveryHistoryApi.mockResolvedValue({
       data: [
@@ -257,9 +257,10 @@ describe('Rider App — Bloque de Repartidores', () => {
             name: 'Camila Historial',
             email: 'camila@correo.com',
           },
-          items: [{ productId: 'p-3', name: 'Sushi Roll', quantity: 1, price: 60000 }],
-          total: 60000,
-          riderEarning: 6000,
+          items: [{ productId: 'p-3', name: 'Sushi Roll', quantity: 1, price: 250000 }],
+          total: 255000,
+          deliveryFee: 5000,
+          riderEarning: 5000,
           status: 'DELIVERED',
           address: 'Av. El Dorado # 68-10',
           updatedAt: '2026-11-20T14:00:00.000Z',
@@ -280,10 +281,14 @@ describe('Rider App — Bloque de Repartidores', () => {
 
     expect(await screen.findByText('12')).toBeInTheDocument();
     expect(screen.getByText('Entregas hoy')).toBeInTheDocument();
-    expect(screen.getByText('Ganancias estimadas')).toBeInTheDocument();
+    expect(screen.getByText('Ganancias por envíos')).toBeInTheDocument();
+    expect(screen.getByText(/Solo tarifa de envío/i)).toBeInTheDocument();
     expect(
       await screen.findByText('Av. El Dorado # 68-10'),
     ).toBeInTheDocument();
     expect(screen.getByText(/Camila Historial/i)).toBeInTheDocument();
+    expect(screen.getByText('Costo de envío')).toBeInTheDocument();
+    expect(screen.queryByText(/255\.000/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Recaudado:/i)).not.toBeInTheDocument();
   });
 });

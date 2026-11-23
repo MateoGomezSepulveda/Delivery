@@ -138,9 +138,19 @@ export function RiderAvailableOrdersPage() {
                     {order.createdAt ? formatDateTime(order.createdAt) : ''}
                   </p>
                 </div>
-                <span className="font-heading text-xl font-extrabold text-slate-900 dark:text-white">
-                  {formatCurrency(order.total)}
-                </span>
+                <div className="text-right">
+                  <span className="block font-heading text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
+                    +
+                    {formatCurrency(
+                      order.deliveryFee && order.deliveryFee > 0
+                        ? order.deliveryFee
+                        : 5000,
+                    )}
+                  </span>
+                  <span className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                    Ganancia envío
+                  </span>
+                </div>
               </div>
 
               {order.paymentMethod === 'CASH_ON_DELIVERY' ? (

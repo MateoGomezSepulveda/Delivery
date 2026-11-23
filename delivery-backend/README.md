@@ -174,10 +174,10 @@ src/
 | `PATCH` | `/delivery/location` | JWT + Delivery | Actualizar coordenadas GPS y emitir `delivery_location_updated` al cliente en tiempo real |
 | `GET` | `/delivery/orders/available` | JWT + Delivery | Listar pedidos en estado `PREPARING` sin repartidor asignado (con `phone` del cliente) |
 | `GET` | `/delivery/orders/active` | JWT + Delivery | Listar pedidos actualmente en camino (`OUT_FOR_DELIVERY`) del repartidor (con `phone` del cliente) |
-| `GET` | `/delivery/orders/history` | JWT + Delivery | Historial paginado (`?page=&limit=`) de entregas completadas y ganancia estimada por entrega |
+| `GET` | `/delivery/orders/history` | JWT + Delivery | Historial paginado (`?page=&limit=`) de entregas completadas con ganancia exacta basada en el costo de envío (`deliveryFee`) |
 | `PATCH` | `/delivery/orders/:id/accept` | JWT + Delivery | Aceptar pedido disponible (exige `isAvailable === true`), pasa a `OUT_FOR_DELIVERY` y emite `order_taken` |
 | `PATCH` | `/delivery/orders/:id/deliver` | JWT + Delivery | Marcar pedido como `DELIVERED` (si es `CASH_ON_DELIVERY`, marca `paymentStatus = PAID` y `paidAt`) |
-| `GET` | `/delivery/stats` | JWT + Delivery | Métricas del repartidor (`delivered`, `inProgress`, `deliveredToday`, `totalOrderValue`, `estimatedEarnings`) |
+| `GET` | `/delivery/stats` | JWT + Delivery | Métricas del repartidor (`delivered`, `inProgress`, `deliveredToday`, `todayEarnings`, `estimatedEarnings` basados exclusivamente en `deliveryFee`) |
 
 ### 📊 Analytics (`/analytics`)
 | Método | Endpoint | Protección | Descripción |

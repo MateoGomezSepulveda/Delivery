@@ -277,14 +277,14 @@ describe('DeliveryService', () => {
   });
 
   describe('getMyStats & getOrderHistory', () => {
-    it('calcula entregas totales, de hoy, valor recaudado y ganancias estimadas', async () => {
+    it('calcula ganancias exclusivamente a partir del costo de envío (deliveryFee) y no del valor de los productos', async () => {
       const now = new Date();
       const oldDate = new Date('2025-01-10T10:00:00Z');
       mockOrderModel.find.mockReturnValueOnce({
         select: jest.fn().mockReturnValue({
           lean: jest.fn().mockResolvedValue([
-            { total: 80000, updatedAt: now },
-            { total: 30000, updatedAt: oldDate },
+            { deliveryFee: 6000, updatedAt: now },
+            { deliveryFee: undefined, updatedAt: oldDate }, // orden histórica -> fallback $5.000
           ]),
         }),
       });
@@ -296,20 +296,22 @@ describe('DeliveryService', () => {
         delivered: 2,
         inProgress: 1,
         deliveredToday: 1,
-        totalOrderValue: 110000,
-        estimatedEarnings: 13000, // max(5000, 8000) + max(5000, 3000)
+        todayEarnings: 6000,
+        estimatedEarnings: 11000, // 6000 + 5000 (solo tarifa de envío)
       });
     });
 
-    it('retorna historial paginado de entregas con teléfono del cliente y ganancia', async () => {
+    it('retorna historial paginado con ganancia igual al deliveryFee (independiente del valor del producto)', async () => {
       const mockOrders = [
         {
           _id: 'ord-1',
-          total: 90000,
+          total: 250000,
+          deliveryFee: 5000,
           address: 'Calle 10 # 5-20',
           toObject: () => ({
             _id: 'ord-1',
-            total: 90000,
+            total: 250000,
+            deliveryFee: 5000,
             address: 'Calle 10 # 5-20',
           }),
         },
@@ -325,7 +327,8 @@ describe('DeliveryService', () => {
       const history = await service.getOrderHistory('rider-1', 1, 10);
 
       expect(history.data).toHaveLength(1);
-      expect(history.data[0].riderEarning).toBe(9000);
+      expect(history.data[0].riderEarning).toBe(5000);
+      expect(history.data[0].deliveryFee).toBe(5000);
       expect(history.meta).toEqual({ total: 1, page: 1, lastPage: 1 });
     });
   });
