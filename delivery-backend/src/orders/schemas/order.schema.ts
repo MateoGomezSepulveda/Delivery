@@ -3,6 +3,7 @@ import { Types, Document } from 'mongoose';
 import { Product } from 'src/products/schemas/product.schema';
 import { User } from 'src/users/schema/users.schema';
 import { OrderStatus } from '../order-status.enum';
+import { PaymentMethod, PaymentStatus } from '../payment-method.enum';
 
 export type OrderDocument = Order & Document;
 
@@ -73,6 +74,29 @@ export class Order {
 
   @Prop()
   paymentUrl?: string;
+
+  @Prop({
+    type: String,
+    enum: PaymentMethod,
+    default: PaymentMethod.MERCADOPAGO,
+  })
+  paymentMethod: PaymentMethod;
+
+  @Prop({
+    type: String,
+    enum: PaymentStatus,
+    default: PaymentStatus.PENDING,
+  })
+  paymentStatus: PaymentStatus;
+
+  @Prop({ type: Number, default: null })
+  cashAmountGiven?: number | null;
+
+  @Prop({ type: Number, default: 0 })
+  changeDue?: number;
+
+  @Prop({ type: Date, default: null })
+  paidAt?: Date | null;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

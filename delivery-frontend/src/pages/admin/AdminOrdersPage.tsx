@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import {
   getAllOrdersAdminApi,
-  ORDER_STATUS_TRANSITIONS,
+  getAllowedOrderTransitions,
   updateOrderStatusAdminApi,
 } from '@/api/endpoints/orders.api';
 import { getAllUsersApi } from '@/api/endpoints/users.api';
@@ -24,7 +24,7 @@ import { formatCurrency, formatDateTime } from '@/utils/formatters';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
-import { OrderStatusBadge } from '@/components/ui/Badge';
+import { OrderStatusBadge, PaymentMethodBadge } from '@/components/ui/Badge';
 
 type ViewMode = 'kanban' | 'table';
 
@@ -67,7 +67,10 @@ function OrderActionButtons({
   disabled: boolean;
   onTransition: (order: Order, status: OrderStatus) => void;
 }) {
-  const nextStatuses = ORDER_STATUS_TRANSITIONS[order.status] ?? [];
+  const nextStatuses = getAllowedOrderTransitions(
+    order.status,
+    order.paymentMethod,
+  );
   if (nextStatuses.length === 0) {
     return <span className="text-[11px] text-slate-400">Sin acciones</span>;
   }
@@ -353,7 +356,25 @@ export function AdminOrdersPage() {
                         )}
                       </div>
 
-                      <OrderStatusBadge status={o.status} />
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <OrderStatusBadge
+                          status={o.status}
+                          paymentMethod={o.paymentMethod}
+                        />
+                        <PaymentMethodBadge
+                          method={o.paymentMethod}
+                          paymentStatus={o.paymentStatus}
+                          compact
+                        />
+                      </div>
+
+                      {o.paymentMethod === 'CASH_ON_DELIVERY' &&
+                        o.changeDue &&
+                        o.changeDue > 0 && (
+                          <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+                            Llevar vueltas: {formatCurrency(o.changeDue)}
+                          </p>
+                        )}
 
                       <div className="pt-1">
                         <OrderActionButtons
@@ -454,7 +475,25 @@ export function AdminOrdersPage() {
                           {formatCurrency(o.total)}
                         </td>
                         <td className="px-4 py-3 align-top whitespace-nowrap">
-                          <OrderStatusBadge status={o.status} />
+                          <div className="flex flex-wrap items-center gap-1.5">
+                        <OrderStatusBadge
+                          status={o.status}
+                          paymentMethod={o.paymentMethod}
+                        />
+                        <PaymentMethodBadge
+                          method={o.paymentMethod}
+                          paymentStatus={o.paymentStatus}
+                          compact
+                        />
+                      </div>
+
+                      {o.paymentMethod === 'CASH_ON_DELIVERY' &&
+                        o.changeDue &&
+                        o.changeDue > 0 && (
+                          <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+                            Llevar vueltas: {formatCurrency(o.changeDue)}
+                          </p>
+                        )}
                         </td>
                         <td className="px-4 py-3 align-top">
                           <OrderActionButtons

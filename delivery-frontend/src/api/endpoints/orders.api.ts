@@ -4,12 +4,14 @@ import type {
   CreateOrderPayload,
   Order,
   OrderQueryParams,
+  PaymentMethod,
   PayOrderResponse,
   RiderDiscountQuota,
+  VerifyOrderPaymentResponse,
 } from '@/types/order.types';
 
 /**
- * Máquina de estados válida del Backend (OrdersService.validTransitions)
+ * Máquina de estados válida del Backend (OrdersService.getAllowedOrderTransitions)
  */
 export const ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING: ['PAID', 'CANCELLED'],
@@ -21,6 +23,16 @@ export const ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   CANCELLED: [],
   FAILED: ['PENDING', 'CANCELLED'],
 };
+
+export function getAllowedOrderTransitions(
+  status: OrderStatus,
+  paymentMethod: PaymentMethod = 'MERCADOPAGO',
+): OrderStatus[] {
+  if (status === 'PENDING' && paymentMethod === 'CASH_ON_DELIVERY') {
+    return ['CONFIRMED', 'CANCELLED'];
+  }
+  return ORDER_STATUS_TRANSITIONS[status] ?? [];
+}
 
 export async function createOrderApi(
   payload: CreateOrderPayload,
@@ -67,6 +79,17 @@ export async function cancelOrderApi(orderId: string): Promise<Order> {
 export async function payOrderApi(orderId: string): Promise<PayOrderResponse> {
   const response = await apiClient.post<PayOrderResponse>(
     `/orders/${orderId}/pay`,
+  );
+  return response.data;
+}
+
+export async function verifyOrderPaymentApi(
+  orderId: string,
+  paymentId: string,
+): Promise<VerifyOrderPaymentResponse> {
+  const response = await apiClient.post<VerifyOrderPaymentResponse>(
+    `/orders/${orderId}/verify-payment`,
+    { paymentId },
   );
   return response.data;
 }

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   ArrowRight,
   MapPin,
+  Minus,
   Plus,
   ShoppingBag,
   Sparkles,
@@ -38,7 +39,12 @@ export function CartDrawer() {
     enabled: isAuthenticated,
   });
 
-  const { addMutation, removeMutation, clearMutation } = useCartMutations();
+  const {
+    addMutation,
+    updateQuantityMutation,
+    removeMutation,
+    clearMutation,
+  } = useCartMutations();
   const { data: riderQuota } = useRiderDiscountQuota();
 
   const items = isAuthenticated ? (cart?.items ?? []) : [];
@@ -197,6 +203,10 @@ export function CartDrawer() {
                 stockState?.stock !== null &&
                 stockState?.stock !== undefined &&
                 item.quantity >= stockState.stock;
+              const isUpdatingCart =
+                addMutation.isPending ||
+                updateQuantityMutation.isPending ||
+                removeMutation.isPending;
 
               return (
                 <div
@@ -229,28 +239,64 @@ export function CartDrawer() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        addMutation.mutate({ productId: prodId, quantity: 1 })
-                      }
-                      disabled={addMutation.isPending || reachedMaxStock}
-                      title={
-                        reachedMaxStock
-                          ? 'Stock máximo disponible alcanzado'
-                          : 'Sumar 1 unidad'
-                      }
-                      className="h-8 w-8 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-orange-50 hover:text-orange-600 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div
+                      className="inline-flex items-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 p-0.5"
+                      role="group"
+                      aria-label={`Cantidad de ${prodName}`}
                     >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateQuantityMutation.mutate({
+                            productId: prodId,
+                            quantity: item.quantity - 1,
+                          })
+                        }
+                        disabled={isUpdatingCart || item.quantity <= 1}
+                        aria-label={`Quitar una unidad de ${prodName}`}
+                        title={
+                          item.quantity <= 1
+                            ? 'Cantidad mínima: 1. Usa la papelera para eliminar el producto'
+                            : 'Quitar 1 unidad'
+                        }
+                        className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 hover:text-orange-600 transition-colors duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 disabled:opacity-35 disabled:cursor-not-allowed"
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+
+                      <span
+                        aria-live="polite"
+                        className="min-w-[1.75rem] px-1 text-center text-xs font-extrabold tabular-nums text-slate-900 dark:text-white select-none"
+                      >
+                        {item.quantity}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          addMutation.mutate({ productId: prodId, quantity: 1 })
+                        }
+                        disabled={isUpdatingCart || reachedMaxStock}
+                        aria-label={`Sumar una unidad de ${prodName}`}
+                        title={
+                          reachedMaxStock
+                            ? 'Stock máximo disponible alcanzado'
+                            : 'Sumar 1 unidad'
+                        }
+                        className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 hover:text-orange-600 transition-colors duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 disabled:opacity-35 disabled:cursor-not-allowed"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
                     <button
                       type="button"
                       onClick={() => removeMutation.mutate(prodId)}
-                      disabled={removeMutation.isPending}
+                      disabled={isUpdatingCart}
+                      aria-label={`Eliminar ${prodName} del carrito`}
                       title="Eliminar producto del carrito"
-                      className="h-8 w-8 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"
+                      className="h-8 w-8 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-red-50 hover:text-red-600 hover:border-red-200 dark:hover:bg-red-950/40 transition-colors duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>

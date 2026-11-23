@@ -26,6 +26,11 @@ describe('AdminDashboardPage (Real Profit & Inventory Analytics)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetDashboardApi.mockResolvedValue({
+      period: {
+        month: '2026-11',
+        from: '2026-11-01T00:00:00.000Z',
+        to: '2026-11-30T23:59:59.999Z',
+      },
       kpis: {
         totalRevenue: 450000,
         totalCost: 270000,
@@ -41,6 +46,16 @@ describe('AdminDashboardPage (Real Profit & Inventory Analytics)', () => {
         outOfStockProducts: 1,
         inventoryCostValue: 1200000,
         inventoryRetailValue: 1950000,
+      },
+      carryOver: {
+        previousDeficitDebt: 30000,
+        adjustedNetBalance: 150000,
+        closingDeficitDebt: 0,
+        pendingReceivablesAmount: 85000,
+        pendingReceivablesCount: 2,
+        inventoryCostValue: 1200000,
+        inventoryRetailValue: 1950000,
+        carriedInventoryUnits: 38,
       },
       ordersByStatus: {
         DELIVERED: 5,
@@ -134,6 +149,35 @@ describe('AdminDashboardPage (Real Profit & Inventory Analytics)', () => {
     expect(screen.getByText('Costo de compra')).toBeInTheDocument();
     expect(screen.getByText('Capital en inventario')).toBeInTheDocument();
     expect(screen.getByText('12 unidades vendidas (COGS)')).toBeInTheDocument();
+
+    // Sin botón Exportar CSV y sin filtros de 7d/30d/Histórico
+    expect(
+      screen.queryByRole('button', { name: /exportar csv/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /histórico/i }),
+    ).not.toBeInTheDocument();
+
+    // Arrastre de deudas, cobros pendientes e inventario
+    expect(screen.getByText('Deuda arrastrada mes ant.')).toBeInTheDocument();
+    expect(screen.getByText('2 pedidos pendientes de cobro')).toBeInTheDocument();
+    expect(screen.getByText('38 uds')).toBeInTheDocument();
+
+    // Inspector fijo del gráfico (sin tooltip recortado) y cambio de día al hacer clic
+    expect(
+      await screen.findByText('Detalle del día 2026-11-19'),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole('button', { name: /ver detalle del 2026-11-18/i }),
+    );
+    expect(screen.getByText('Detalle del día 2026-11-18')).toBeInTheDocument();
+
+    // Navegación mes a mes
+    await user.click(screen.getByRole('button', { name: /mes anterior/i }));
+    expect(
+      screen.getByRole('button', { name: /mes actual/i }),
+    ).toBeInTheDocument();
+    expect(mockGetDashboardApi).toHaveBeenCalledTimes(2);
 
     // Inventory alerts
     expect(screen.getByText('Alertas de inventario')).toBeInTheDocument();

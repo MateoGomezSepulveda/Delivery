@@ -12,6 +12,7 @@ import { ProductsService } from 'src/products/products.service';
 import { EventsGateway } from '../events/events/events.gateway';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { OrderStatus } from './order-status.enum';
+import { PaymentMethod, PaymentStatus } from './payment-method.enum';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -520,6 +521,100 @@ describe('OrdersService', () => {
       expect(order.deliveryId).toBe(riderId);
       expect(order.status).toBe(OrderStatus.OUT_FOR_DELIVERY);
       expect(order.save).toHaveBeenCalled();
+    });
+
+    it('permite confirmar directamente (PENDING -> CONFIRMED) un pedido contraentrega en efectivo', async () => {
+      const order = {
+        ...mockOrder,
+        status: OrderStatus.PENDING,
+        paymentMethod: PaymentMethod.CASH_ON_DELIVERY,
+        paymentStatus: PaymentStatus.PENDING,
+        save: jest.fn().mockImplementation(function (this: any) {
+          return Promise.resolve({ ...this, userId: mockUserId });
+        }),
+      };
+      mockOrderModel.findById.mockResolvedValueOnce(order);
+
+      await service.updateStatus(mockOrderId, OrderStatus.CONFIRMED);
+
+      expect(order.status).toBe(OrderStatus.CONFIRMED);
+      expect(order.paymentStatus).toBe(PaymentStatus.PENDING);
+    });
+
+    it('marca paymentStatus = PAID y paidAt al entregar un pedido contraentrega en efectivo', async () => {
+      const order = {
+        ...mockOrder,
+        status: OrderStatus.OUT_FOR_DELIVERY,
+        paymentMethod: PaymentMethod.CASH_ON_DELIVERY,
+        paymentStatus: PaymentStatus.PENDING,
+        paidAt: null as Date | null,
+        save: jest.fn().mockImplementation(function (this: any) {
+          return Promise.resolve({ ...this, userId: mockUserId });
+        }),
+      };
+      mockOrderModel.findById.mockResolvedValueOnce(order);
+
+      await service.updateStatus(mockOrderId, OrderStatus.DELIVERED);
+
+      expect(order.status).toBe(OrderStatus.DELIVERED);
+      expect(order.paymentStatus).toBe(PaymentStatus.PAID);
+      expect(order.paidAt).toBeInstanceOf(Date);
+    });
+  });
+
+  // ── Pago en Efectivo Contraentrega & PayOrder ─────────────────────────────
+
+  describe('CASH_ON_DELIVERY & payOrder', () => {
+    it('crea pedido en efectivo calculando cashAmountGiven y changeDue', async () => {
+      mockCartService.getActiveCart.mockResolvedValue({ ...mockCart });
+
+      const result: any = await service.createOrder(
+        mockUserId,
+        'Calle 123',
+        undefined,
+        PaymentMethod.CASH_ON_DELIVERY,
+        50000,
+      );
+
+      expect(result.paymentMethod).toBe(PaymentMethod.CASH_ON_DELIVERY);
+      expect(result.paymentStatus).toBe(PaymentStatus.PENDING);
+      expect(result.cashAmountGiven).toBe(50000);
+      expect(result.changeDue).toBe(20000);
+    });
+
+    it('rechaza pedido en efectivo si cashAmountGiven es menor al total y restaura stock', async () => {
+      mockCartService.getActiveCart.mockResolvedValue({ ...mockCart });
+
+      await expect(
+        service.createOrder(
+          mockUserId,
+          'Calle 123',
+          undefined,
+          PaymentMethod.CASH_ON_DELIVERY,
+          10000,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockProductsService.restoreStockForOrder).toHaveBeenCalledWith([
+        { productId: '64a000000000000000000010', quantity: 2 },
+      ]);
+    });
+
+    it('rechaza payOrder con MercadoPago si el pedido es CASH_ON_DELIVERY', async () => {
+      const cashOrder = {
+        ...mockOrder,
+        paymentMethod: PaymentMethod.CASH_ON_DELIVERY,
+        userId: { _id: { toString: () => mockUserId } },
+      };
+      const chain = { populate: jest.fn().mockReturnThis() };
+      chain.populate
+        .mockReturnValueOnce(chain)
+        .mockResolvedValueOnce(cashOrder);
+      mockOrderModel.findById.mockReturnValueOnce(chain);
+
+      await expect(
+        service.payOrder(mockOrderId, mockUserId),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

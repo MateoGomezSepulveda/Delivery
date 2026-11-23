@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   AlertTriangle,
+  Banknote,
+  CreditCard,
   MapPin,
   PackageCheck,
   Phone,
@@ -140,6 +142,28 @@ export function RiderAvailableOrdersPage() {
                   {formatCurrency(order.total)}
                 </span>
               </div>
+
+              {order.paymentMethod === 'CASH_ON_DELIVERY' ? (
+                <div className="rounded-2xl border border-amber-200 dark:border-amber-800/70 bg-amber-50/90 dark:bg-amber-950/35 px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <span className="inline-flex items-center gap-1.5 font-extrabold text-amber-900 dark:text-amber-200">
+                    <Banknote className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                    Cobrar en efectivo: {formatCurrency(order.total)}
+                  </span>
+                  {order.cashAmountGiven && order.cashAmountGiven > 0 ? (
+                    <span className="font-semibold text-amber-800 dark:text-amber-300">
+                      Paga con {formatCurrency(order.cashAmountGiven)}
+                      {order.changeDue && order.changeDue > 0
+                        ? ` · Llevar vueltas: ${formatCurrency(order.changeDue)}`
+                        : ' · Exacto'}
+                    </span>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-emerald-200/80 dark:border-emerald-900/60 bg-emerald-50/70 dark:bg-emerald-950/25 px-3.5 py-2 flex items-center gap-2 text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                  <CreditCard className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Pagado en línea · No cobrar al cliente</span>
+                </div>
+              )}
 
               {customer && (
                 <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600 dark:text-slate-300">

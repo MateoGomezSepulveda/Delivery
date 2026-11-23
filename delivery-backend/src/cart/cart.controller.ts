@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -11,6 +12,7 @@ import { CartService } from './cart.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { AddToCartDto } from './dto/add-to-cart.dto';
 import { RemoveFromCartDto } from './dto/remove-from-cart.dto';
+import { UpdateCartItemDto } from './dto/update-cart-item.dto';
 import {
   ApiTags,
   ApiOperation,
@@ -34,6 +36,18 @@ export class CartController {
   @Post('add')
   addProduct(@Req() req, @Body() body: AddToCartDto) {
     return this.cartService.addProduct(
+      req.user.userId,
+      body.productId,
+      body.quantity,
+    );
+  }
+
+  @ApiOperation({
+    summary: 'Actualizar la cantidad de un producto en el carrito',
+  })
+  @Patch('item')
+  updateItemQuantity(@Req() req, @Body() body: UpdateCartItemDto) {
+    return this.cartService.updateItemQuantity(
       req.user.userId,
       body.productId,
       body.quantity,

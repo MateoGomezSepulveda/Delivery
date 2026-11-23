@@ -34,17 +34,47 @@ import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 import { PaginationBar } from '@/components/catalog/PaginationBar';
 
-const EMPTY: CreateProductPayload = {
+interface ProductFormState {
+  name: string;
+  description: string;
+  price: string;
+  costPrice: string;
+  stock: string;
+  lowStockThreshold: string;
+  available: boolean;
+  image: string;
+  categoryId: string;
+}
+
+const EMPTY: ProductFormState = {
   name: '',
   description: '',
-  price: 0,
-  costPrice: 0,
-  stock: 10,
-  lowStockThreshold: DEFAULT_LOW_STOCK_THRESHOLD,
+  price: '',
+  costPrice: '',
+  stock: '10',
+  lowStockThreshold: String(DEFAULT_LOW_STOCK_THRESHOLD),
   available: true,
   image: '',
   categoryId: '',
 };
+
+function sanitizeNonNegativeIntegerInput(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return '';
+  return digits.replace(/^0+(?=\d)/, '');
+}
+
+function parseNonNegativeNumber(value: string, fallback = 0): number {
+  const trimmed = value.trim();
+  if (!trimmed) return fallback;
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed) || parsed < 0) return fallback;
+  return parsed;
+}
+
+function parseNonNegativeInteger(value: string, fallback = 0): number {
+  return Math.floor(parseNonNegativeNumber(value, fallback));
+}
 
 export function AdminProductsPage() {
   const queryClient = useQueryClient();
@@ -55,7 +85,7 @@ export function AdminProductsPage() {
 
   const [editing, setEditing] = useState<Product | null>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [form, setForm] = useState<CreateProductPayload>(EMPTY);
+  const [form, setForm] = useState<ProductFormState>(EMPTY);
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [uploading, setUploading] = useState(false);
 
@@ -101,23 +131,30 @@ export function AdminProductsPage() {
 
   const saveMutation = useMutation({
     mutationFn: () => {
-      const trimmedImage = form.image?.trim();
-      const stock = Math.max(0, Math.floor(Number(form.stock ?? 0)));
-      const costPrice = Math.max(0, Number(form.costPrice ?? 0));
-      const lowStockThreshold = Math.max(
-        1,
-        Math.floor(Number(form.lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD)),
+      const trimmedImage = form.image.trim();
+      const price = parseNonNegativeNumber(form.price, 0);
+      const stock = parseNonNegativeInteger(form.stock, 0);
+      const costPrice = parseNonNegativeNumber(form.costPrice, 0);
+      const lowStockThreshold = Math.min(
+        100,
+        Math.max(
+          1,
+          parseNonNegativeInteger(
+            form.lowStockThreshold,
+            DEFAULT_LOW_STOCK_THRESHOLD,
+          ),
+        ),
       );
       const payload: CreateProductPayload = {
-        ...form,
         name: form.name.trim(),
-        price: Math.max(0, Number(form.price)),
+        description: form.description.trim(),
+        price,
         costPrice,
         stock,
         lowStockThreshold,
-        available: stock <= 0 ? false : (form.available ?? true),
+        available: stock <= 0 ? false : form.available,
         image: trimmedImage ? trimmedImage : null,
-        description: (form.description ?? '').trim(),
+        categoryId: form.categoryId,
       };
       return editing
         ? updateProductApi(editing._id, payload)
@@ -175,10 +212,12 @@ export function AdminProductsPage() {
     setForm({
       name: p.name,
       description: p.description ?? '',
-      price: p.price,
-      costPrice: p.costPrice ?? 0,
-      stock: p.stock ?? 0,
-      lowStockThreshold: p.lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD,
+      price: String(p.price),
+      costPrice: String(p.costPrice ?? 0),
+      stock: String(p.stock ?? 0),
+      lowStockThreshold: String(
+        p.lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD,
+      ),
       available: p.available,
       image: p.image ?? '',
       categoryId:
@@ -213,6 +252,11 @@ export function AdminProductsPage() {
       setUploading(false);
     }
   };
+
+  const numericPrice = parseNonNegativeNumber(form.price, 0);
+  const numericCostPrice = parseNonNegativeNumber(form.costPrice, 0);
+  const numericStock = parseNonNegativeInteger(form.stock, 0);
+  const isAvailableEffective = numericStock > 0 && form.available;
 
   return (
     <div className="space-y-5">
@@ -464,6 +508,10 @@ export function AdminProductsPage() {
               toast.warning('Nombre y categoría son obligatorios');
               return;
             }
+            if (form.price.trim() === '') {
+              toast.warning('Ingresa un precio de venta válido');
+              return;
+            }
             saveMutation.mutate();
           }}
         >
@@ -580,34 +628,54 @@ export function AdminProductsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input
               label="Precio venta (COP)"
-              type="number"
-              min={0}
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="Ej. 45000"
               value={form.price}
               onChange={(e) =>
-                setForm({ ...form, price: Number(e.target.value) })
+                setForm({
+                  ...form,
+                  price: sanitizeNonNegativeIntegerInput(e.target.value),
+                })
               }
             />
             <Input
               label="Precio compra / Costo (COP)"
-              type="number"
-              min={0}
-              value={form.costPrice ?? 0}
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="Ej. 30000"
+              value={form.costPrice}
               onChange={(e) =>
-                setForm({ ...form, costPrice: Number(e.target.value) })
+                setForm({
+                  ...form,
+                  costPrice: sanitizeNonNegativeIntegerInput(e.target.value),
+                })
               }
             />
             <Input
               label="Stock disponible (uds)"
-              type="number"
-              min={0}
-              step={1}
-              value={form.stock ?? 0}
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="0"
+              value={form.stock}
               onChange={(e) => {
-                const nextStock = Math.max(0, Math.floor(Number(e.target.value)));
+                const sanitized = sanitizeNonNegativeIntegerInput(
+                  e.target.value,
+                );
+                const prevStock = parseNonNegativeInteger(form.stock, 0);
+                const nextStock = parseNonNegativeInteger(sanitized, 0);
+                const shouldAutoReactivate =
+                  Boolean(editing) &&
+                  (editing?.stock ?? 0) <= 0 &&
+                  prevStock <= 0 &&
+                  nextStock > 0;
                 setForm({
                   ...form,
-                  stock: nextStock,
-                  available: nextStock <= 0 ? false : form.available,
+                  stock: sanitized,
+                  available: shouldAutoReactivate ? true : form.available,
                 });
               }}
             />
@@ -616,11 +684,10 @@ export function AdminProductsPage() {
           {/* Previsualización en vivo de Rentabilidad e Inventario */}
           {(() => {
             const { unitProfit, marginPercent } = calculateUnitProfit(
-              Number(form.price || 0),
-              Number(form.costPrice || 0),
+              numericPrice,
+              numericCostPrice,
             );
-            const currentStock = Math.max(0, Math.floor(Number(form.stock ?? 0)));
-            const stockPotentialProfit = unitProfit * currentStock;
+            const stockPotentialProfit = unitProfit * numericStock;
             const isNegative = unitProfit < 0;
 
             return (
@@ -628,13 +695,13 @@ export function AdminProductsPage() {
                 className={`rounded-xl border px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs ${
                   isNegative
                     ? 'border-red-200 dark:border-red-900/60 bg-red-50/70 dark:bg-red-950/30 text-red-800 dark:text-red-200'
-                    : currentStock === 0
+                    : numericStock === 0
                       ? 'border-amber-200 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200'
                       : 'border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/60 dark:bg-emerald-950/25 text-emerald-900 dark:text-emerald-200'
                 }`}
               >
                 <div className="flex items-center gap-2 font-semibold">
-                  {isNegative || currentStock === 0 ? (
+                  {isNegative || numericStock === 0 ? (
                     <AlertTriangle className="w-4 h-4 shrink-0" />
                   ) : (
                     <TrendingUp className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
@@ -642,12 +709,12 @@ export function AdminProductsPage() {
                   <span>
                     {isNegative
                       ? 'El costo de compra supera el precio de venta'
-                      : currentStock === 0
+                      : numericStock === 0
                         ? 'Stock en 0: se marcará automáticamente como Agotado'
                         : `Ganancia real/ud: ${formatCurrency(unitProfit)} (${marginPercent}% margen)`}
                   </span>
                 </div>
-                {!isNegative && currentStock > 0 && (
+                {!isNegative && numericStock > 0 && (
                   <span className="font-bold">
                     Ganancia potencial stock: {formatCurrency(stockPotentialProfit)}
                   </span>
@@ -681,22 +748,20 @@ export function AdminProductsPage() {
                 <button
                   type="button"
                   role="switch"
-                  aria-checked={(form.stock ?? 0) > 0 && (form.available ?? true)}
-                  disabled={(form.stock ?? 0) <= 0}
+                  aria-checked={isAvailableEffective}
+                  disabled={numericStock <= 0}
                   onClick={() =>
-                    setForm({ ...form, available: !(form.available ?? true) })
+                    setForm({ ...form, available: !form.available })
                   }
                   className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${
-                    (form.stock ?? 0) > 0 && (form.available ?? true)
+                    isAvailableEffective
                       ? 'bg-emerald-500'
                       : 'bg-slate-300 dark:bg-slate-700'
                   }`}
                 >
                   <span
                     className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
-                      (form.stock ?? 0) > 0 && (form.available ?? true)
-                        ? 'translate-x-5'
-                        : 'translate-x-0'
+                      isAvailableEffective ? 'translate-x-5' : 'translate-x-0'
                     }`}
                   />
                 </button>
@@ -708,20 +773,37 @@ export function AdminProductsPage() {
               <label className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                 <span>Avisar stock bajo ≤</span>
                 <input
-                  type="number"
-                  min={1}
-                  max={100}
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  placeholder={String(DEFAULT_LOW_STOCK_THRESHOLD)}
                   aria-label="Umbral de alerta por pocas unidades"
-                  value={form.lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD}
+                  value={form.lowStockThreshold}
                   onChange={(e) =>
                     setForm({
                       ...form,
-                      lowStockThreshold: Math.max(
-                        1,
-                        Math.floor(Number(e.target.value) || 1),
+                      lowStockThreshold: sanitizeNonNegativeIntegerInput(
+                        e.target.value,
                       ),
                     })
                   }
+                  onBlur={() => {
+                    if (!form.lowStockThreshold.trim()) return;
+                    const normalized = Math.min(
+                      100,
+                      Math.max(
+                        1,
+                        parseNonNegativeInteger(
+                          form.lowStockThreshold,
+                          DEFAULT_LOW_STOCK_THRESHOLD,
+                        ),
+                      ),
+                    );
+                    setForm((prev) => ({
+                      ...prev,
+                      lowStockThreshold: String(normalized),
+                    }));
+                  }}
                   className="w-14 h-7 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 text-xs font-bold text-center text-slate-900 dark:text-slate-100"
                 />
                 <span>uds</span>

@@ -80,6 +80,60 @@ export class CartService {
     return cart.save();
   }
 
+  async updateItemQuantity(
+    userId: string,
+    productId: string,
+    quantity: number,
+  ) {
+    if (!Number.isInteger(quantity) || quantity < 0) {
+      throw new BadRequestException(
+        'La cantidad debe ser un número entero mayor o igual a cero',
+      );
+    }
+
+    const cart = await this.getActiveCart(userId);
+
+    const itemIndex = cart.items.findIndex((item: any) => {
+      const id = item.productId._id || item.productId;
+      return id.toString() === productId;
+    });
+
+    if (itemIndex === -1) {
+      throw new NotFoundException('El producto no se encuentra en tu carrito');
+    }
+
+    if (quantity === 0) {
+      cart.items.splice(itemIndex, 1);
+    } else {
+      const currentQty = cart.items[itemIndex].quantity;
+
+      if (quantity > currentQty) {
+        const product = await this.productsService.findOne(productId);
+        if (!product) throw new NotFoundException('Product not found');
+        if (!product.available)
+          throw new NotFoundException('Product not available');
+
+        const hasStockTracking = typeof product.stock === 'number';
+        if (hasStockTracking && quantity > product.stock) {
+          throw new BadRequestException(
+            `Stock insuficiente para "${product.name || 'este producto'}". Solo quedan ${product.stock} ${product.stock === 1 ? 'unidad' : 'unidades'} disponibles.`,
+          );
+        }
+
+        cart.items[itemIndex].price = product.price;
+      }
+
+      cart.items[itemIndex].quantity = quantity;
+    }
+
+    cart.total = cart.items.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0,
+    );
+
+    return cart.save();
+  }
+
   async removeProduct(userId: string, productId: string) {
     const cart = await this.getActiveCart(userId);
 

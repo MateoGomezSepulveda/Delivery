@@ -13,6 +13,10 @@ import {
 } from './schemas/delivery-profile.schema';
 import { Order } from 'src/orders/schemas/order.schema';
 import { OrderStatus } from 'src/orders/order-status.enum';
+import {
+  PaymentMethod,
+  PaymentStatus,
+} from 'src/orders/payment-method.enum';
 import { EventsGateway } from 'src/events/events/events.gateway';
 import { UsersService } from 'src/users/users.service';
 import { Role } from 'src/auth/roles.enum';
@@ -291,6 +295,44 @@ describe('DeliveryService', () => {
       expect(history.data).toHaveLength(1);
       expect(history.data[0].riderEarning).toBe(9000);
       expect(history.meta).toEqual({ total: 1, page: 1, lastPage: 1 });
+    });
+  });
+
+  describe('deliverOrder (cobro contraentrega)', () => {
+    it('marca paymentStatus = PAID y paidAt cuando entrega un pedido CASH_ON_DELIVERY', async () => {
+      mockOrderModel.findById.mockResolvedValueOnce({
+        _id: 'ord-cash-1',
+        deliveryId: { toString: () => 'rider-1' },
+        status: OrderStatus.OUT_FOR_DELIVERY,
+        paymentMethod: PaymentMethod.CASH_ON_DELIVERY,
+        paymentStatus: PaymentStatus.PENDING,
+        paidAt: null,
+      });
+      const updatedOrder = {
+        _id: 'ord-cash-1',
+        userId: { toString: () => 'client-1' },
+        status: OrderStatus.DELIVERED,
+        paymentMethod: PaymentMethod.CASH_ON_DELIVERY,
+        paymentStatus: PaymentStatus.PAID,
+      };
+      mockOrderModel.findByIdAndUpdate.mockResolvedValueOnce(updatedOrder);
+
+      const res = await service.deliverOrder('rider-1', 'ord-cash-1');
+
+      expect(mockOrderModel.findByIdAndUpdate).toHaveBeenCalledWith(
+        'ord-cash-1',
+        expect.objectContaining({
+          status: OrderStatus.DELIVERED,
+          paymentStatus: PaymentStatus.PAID,
+          paidAt: expect.any(Date),
+        }),
+        { new: true },
+      );
+      expect(res?.paymentStatus).toBe(PaymentStatus.PAID);
+      expect(mockEventsGateway.emitOrderStatusUpdate).toHaveBeenCalledWith(
+        'client-1',
+        updatedOrder,
+      );
     });
   });
 });

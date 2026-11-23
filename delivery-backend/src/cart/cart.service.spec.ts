@@ -136,6 +136,102 @@ describe('CartService', () => {
     });
   });
 
+  describe('updateItemQuantity', () => {
+    it('should throw BadRequestException if quantity is negative or not integer', async () => {
+      await expect(
+        service.updateItemQuantity('user1', 'prod1', -1),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        service.updateItemQuantity('user1', 'prod1', 1.5),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw NotFoundException if product is not in cart', async () => {
+      const cartWithSave = {
+        userId: 'user1',
+        items: [],
+        total: 0,
+        status: 'ACTIVE',
+        save: jest.fn(),
+      };
+
+      mockCartModel.findOne.mockReturnValue(mockFindOnePopulate(cartWithSave));
+
+      await expect(
+        service.updateItemQuantity('user1', 'prod1', 2),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should decrease item quantity without removing the product and recalculate total', async () => {
+      const cartWithSave = {
+        userId: 'user1',
+        items: [
+          { productId: { toString: () => 'prod1' }, quantity: 4, price: 15000 },
+        ],
+        total: 60000,
+        status: 'ACTIVE',
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      mockCartModel.findOne.mockReturnValue(mockFindOnePopulate(cartWithSave));
+
+      await service.updateItemQuantity('user1', 'prod1', 2);
+
+      expect(cartWithSave.items).toHaveLength(1);
+      expect(cartWithSave.items[0].quantity).toBe(2);
+      expect(cartWithSave.total).toBe(30000);
+      expect(cartWithSave.save).toHaveBeenCalled();
+    });
+
+    it('should remove item when quantity is set to 0', async () => {
+      const cartWithSave = {
+        userId: 'user1',
+        items: [
+          { productId: { toString: () => 'prod1' }, quantity: 2, price: 15000 },
+        ],
+        total: 30000,
+        status: 'ACTIVE',
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      mockCartModel.findOne.mockReturnValue(mockFindOnePopulate(cartWithSave));
+
+      await service.updateItemQuantity('user1', 'prod1', 0);
+
+      expect(cartWithSave.items).toHaveLength(0);
+      expect(cartWithSave.total).toBe(0);
+      expect(cartWithSave.save).toHaveBeenCalled();
+    });
+
+    it('should reject increasing quantity above available stock', async () => {
+      const product = {
+        _id: 'prod1',
+        name: 'Ron Viejo',
+        price: 55000,
+        available: true,
+        stock: 3,
+      };
+      const cartWithSave = {
+        userId: 'user1',
+        items: [
+          { productId: { toString: () => 'prod1' }, quantity: 2, price: 55000 },
+        ],
+        total: 110000,
+        status: 'ACTIVE',
+        save: jest.fn(),
+      };
+
+      mockProductsService.findOne.mockResolvedValue(product);
+      mockCartModel.findOne.mockReturnValue(mockFindOnePopulate(cartWithSave));
+
+      await expect(
+        service.updateItemQuantity('user1', 'prod1', 5),
+      ).rejects.toThrow(BadRequestException);
+      expect(cartWithSave.save).not.toHaveBeenCalled();
+    });
+  });
+
   describe('removeProduct', () => {
     it('should remove the product from cart items and recalculate total', async () => {
       const cartWithSave = {

@@ -4,6 +4,7 @@ import {
   addToCartApi,
   clearCartApi,
   removeFromCartApi,
+  updateCartItemQuantityApi,
 } from '@/api/endpoints/cart.api';
 import { extractErrorMessage } from '@/api/axios.client';
 import type { Product } from '@/types/catalog.types';
@@ -14,6 +15,11 @@ interface AddToCartVariables {
   productId: string;
   quantity: number;
   product?: Product;
+}
+
+interface UpdateCartItemVariables {
+  productId: string;
+  quantity: number;
 }
 
 interface CartMutationContext {
@@ -108,6 +114,63 @@ export function useCartMutations(options?: {
     },
   });
 
+  const updateQuantityMutation = useMutation<
+    Cart,
+    unknown,
+    UpdateCartItemVariables,
+    CartMutationContext
+  >({
+    mutationFn: ({ productId, quantity }) =>
+      updateCartItemQuantityApi(productId, quantity),
+    onMutate: async ({ productId, quantity }) => {
+      await queryClient.cancelQueries({ queryKey: ['cart'] });
+      const previousCart = queryClient.getQueryData<Cart>(['cart']);
+
+      queryClient.setQueryData<Cart | undefined>(['cart'], (current) => {
+        if (!current) return current;
+
+        const nextItems =
+          quantity <= 0
+            ? current.items.filter(
+                (item) => getItemProductId(item) !== productId,
+              )
+            : current.items.map((item) =>
+                getItemProductId(item) === productId
+                  ? { ...item, quantity }
+                  : item,
+              );
+
+        return {
+          ...current,
+          items: nextItems,
+          total: calculateCartTotal(nextItems),
+        };
+      });
+
+      return { previousCart };
+    },
+    onError: (err, _vars, context) => {
+      if (context && 'previousCart' in context) {
+        queryClient.setQueryData(['cart'], context.previousCart);
+      }
+      toast.error('No se pudo actualizar la cantidad', {
+        description: extractErrorMessage(err),
+      });
+    },
+    onSuccess: (updatedCart, variables) => {
+      queryClient.setQueryData(['cart'], updatedCart);
+      if (!updatedCart.items?.length) {
+        setAppliedCoupon(null);
+      }
+      if (variables.quantity === 0) {
+        toast.success('Producto eliminado del carrito');
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
+    },
+  });
+
   const removeMutation = useMutation<Cart, unknown, string, CartMutationContext>(
     {
       mutationFn: (productId) => removeFromCartApi(productId),
@@ -188,6 +251,7 @@ export function useCartMutations(options?: {
 
   return {
     addMutation,
+    updateQuantityMutation,
     removeMutation,
     clearMutation,
   };

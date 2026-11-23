@@ -179,4 +179,39 @@ describe('AdminOrdersPage', () => {
     expect(await screen.findByText('Cliente eliminado')).toBeInTheDocument();
     expect(screen.getByText('Laura Gómez')).toBeInTheDocument();
   });
+
+  it('allows confirming a PENDING cash-on-delivery order directly without marking it paid first', async () => {
+    const user = userEvent.setup();
+    const cashOrder: Order = {
+      ...sampleOrders[0],
+      _id: '673a10000000000000000009',
+      paymentMethod: 'CASH_ON_DELIVERY',
+      paymentStatus: 'PENDING',
+      cashAmountGiven: 50000,
+      changeDue: 18000,
+    };
+    mockGetAllOrdersAdminApi.mockResolvedValue({
+      data: [cashOrder],
+      meta: { total: 1, page: 1, lastPage: 1 },
+    });
+    mockUpdateOrderStatusAdminApi.mockResolvedValue({
+      ...cashOrder,
+      status: 'CONFIRMED',
+    });
+
+    renderAdminOrdersPage();
+
+    await screen.findByText('Laura Gómez');
+    expect(screen.getByText('Efectivo')).toBeInTheDocument();
+    expect(screen.getByText(/Llevar vueltas/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Confirmar' }));
+
+    await waitFor(() => {
+      expect(mockUpdateOrderStatusAdminApi).toHaveBeenCalledWith(
+        '673a10000000000000000009',
+        'CONFIRMED',
+      );
+    });
+  });
 });

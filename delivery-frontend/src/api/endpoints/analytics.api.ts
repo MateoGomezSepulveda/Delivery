@@ -10,7 +10,25 @@ export interface InventoryAlertItem {
   available: boolean;
 }
 
+export interface CarryOverSummary {
+  previousDeficitDebt: number;
+  adjustedNetBalance: number;
+  closingDeficitDebt: number;
+  pendingReceivablesAmount: number;
+  pendingReceivablesCount: number;
+  inventoryCostValue: number;
+  inventoryRetailValue: number;
+  carriedInventoryUnits: number;
+}
+
+export interface AnalyticsPeriod {
+  month: string | null;
+  from: string | null;
+  to: string | null;
+}
+
 export interface DashboardSummary {
+  period?: AnalyticsPeriod;
   kpis: {
     totalRevenue: number;
     totalCost: number;
@@ -27,6 +45,7 @@ export interface DashboardSummary {
     inventoryCostValue: number;
     inventoryRetailValue: number;
   };
+  carryOver?: CarryOverSummary;
   ordersByStatus: Record<string, number>;
   inventoryAlerts?: InventoryAlertItem[];
 }
@@ -55,26 +74,28 @@ export interface TopProduct {
   ordersCount: number;
 }
 
-export async function getDashboardApi(days?: number): Promise<DashboardSummary> {
+export async function getDashboardApi(
+  month?: string,
+): Promise<DashboardSummary> {
   const res = await apiClient.get<DashboardSummary>('/analytics/dashboard', {
-    params: days ? { days } : undefined,
+    params: month ? { month } : undefined,
   });
   return res.data;
 }
 
-export async function getSalesApi(days = 30): Promise<SalesPoint[]> {
+export async function getSalesApi(month?: string): Promise<SalesPoint[]> {
   const res = await apiClient.get<SalesPoint[]>('/analytics/sales', {
-    params: { days },
+    params: month ? { month } : undefined,
   });
   return Array.isArray(res.data) ? res.data : [];
 }
 
 export async function getTopProductsApi(
-  limit = 8,
-  days?: number,
+  limit = 10,
+  month?: string,
 ): Promise<TopProduct[]> {
   const res = await apiClient.get<TopProduct[]>('/analytics/top-products', {
-    params: days ? { limit, days } : { limit },
+    params: month ? { limit, month } : { limit },
   });
   return Array.isArray(res.data) ? res.data : [];
 }

@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import {
   AlertTriangle,
+  ArrowRightLeft,
   ArrowUpRight,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
   CircleDollarSign,
-  Download,
+  Clock,
   Package,
   PiggyBank,
   Receipt,
@@ -24,32 +26,32 @@ import {
   type SalesPoint,
 } from '@/api/endpoints/analytics.api';
 import { formatCurrency } from '@/utils/formatters';
-import { Button } from '@/components/ui/Button';
 import { Badge, OrderStatusBadge } from '@/components/ui/Badge';
 import type { OrderStatus } from '@/types/api.types';
 import { cn } from '@/utils/cn';
 
-type DateRangeOption = '7d' | '30d' | 'month' | '90d' | 'all';
 type ChartViewMode = 'both' | 'profit';
 type ProductSortMode = 'profit' | 'quantity';
 
-const RANGE_OPTIONS: { key: DateRangeOption; label: string }[] = [
-  { key: '7d', label: '7 días' },
-  { key: '30d', label: '30 días' },
-  { key: 'month', label: 'Este mes' },
-  { key: '90d', label: '90 días' },
-  { key: 'all', label: 'Histórico' },
-];
+function getCurrentMonthKey(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
 
-function getDaysForRange(range: DateRangeOption): number | undefined {
-  if (range === '7d') return 7;
-  if (range === '30d') return 30;
-  if (range === '90d') return 90;
-  if (range === 'month') {
-    const now = new Date();
-    return Math.max(1, now.getDate());
-  }
-  return undefined;
+function shiftMonth(monthKey: string, delta: number): string {
+  const [y, m] = monthKey.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function formatMonthLabel(monthKey: string): string {
+  const [y, m] = monthKey.split('-').map(Number);
+  const date = new Date(y, m - 1, 1);
+  const label = new Intl.DateTimeFormat('es-CO', {
+    month: 'long',
+    year: 'numeric',
+  }).format(date);
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 function RevenueProfitBars({
@@ -59,6 +61,17 @@ function RevenueProfitBars({
   points: SalesPoint[];
   mode: ChartViewMode;
 }) {
+  const [activeDate, setActiveDate] = useState<string | null>(null);
+
+  const selectedPoint = useMemo(() => {
+    if (points.length === 0) return null;
+    if (activeDate) {
+      const found = points.find((p) => p.date === activeDate);
+      if (found) return found;
+    }
+    return points[points.length - 1];
+  }, [points, activeDate]);
+
   const maxVal = Math.max(
     ...points.map((p) =>
       mode === 'profit'
@@ -68,88 +81,174 @@ function RevenueProfitBars({
     1,
   );
 
+  const selectedCost = selectedPoint?.dailyCost ?? 0;
+  const selectedProfit = selectedPoint
+    ? (selectedPoint.dailyProfit ?? selectedPoint.dailyRevenue - selectedCost)
+    : 0;
+  const selectedMargin =
+    selectedPoint && selectedPoint.dailyRevenue > 0
+      ? ((selectedProfit / selectedPoint.dailyRevenue) * 100).toFixed(1)
+      : '0.0';
+
   return (
-    <div className="flex items-end gap-2 sm:gap-3 h-56 pt-6 overflow-x-auto pb-1">
-      {points.map((p) => {
-        const cost = p.dailyCost ?? 0;
-        const profit = p.dailyProfit ?? p.dailyRevenue - cost;
-        const margin =
-          p.dailyRevenue > 0 ? ((profit / p.dailyRevenue) * 100).toFixed(1) : '0.0';
-        const revHeight = Math.max((p.dailyRevenue / maxVal) * 100, 4);
-        const profitHeight = Math.max((Math.abs(profit) / maxVal) * 100, 4);
-
-        return (
-          <div
-            key={p.date}
-            className="flex-1 min-w-[26px] group relative flex flex-col items-center justify-end h-full gap-1.5"
-          >
-            <div className="w-full flex-1 flex items-end justify-center gap-1">
-              {mode === 'both' && (
-                <div
-                  className="w-full max-w-[20px] rounded-t-md bg-orange-500 group-hover:bg-orange-600 transition-colors duration-200"
-                  style={{ height: `${revHeight}%` }}
-                />
-              )}
-              <div
-                className={cn(
-                  'w-full rounded-t-md transition-colors duration-200',
-                  mode === 'profit' ? 'max-w-[36px]' : 'max-w-[20px]',
-                  profit < 0
-                    ? 'bg-red-500 group-hover:bg-red-600'
-                    : 'bg-emerald-500 group-hover:bg-emerald-600',
-                )}
-                style={{ height: `${profitHeight}%` }}
-              />
-            </div>
-
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-full">
-              {p.date.slice(5)}
-            </span>
-
-            <div className="hidden group-hover:block absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 z-20 whitespace-nowrap rounded-xl bg-slate-900 text-white text-[11px] px-3 py-2 shadow-xl border border-slate-700/80 space-y-0.5 pointer-events-none">
-              <p className="font-bold text-slate-200 border-b border-slate-700 pb-1 mb-1">
-                {p.date} · {p.ordersCount}{' '}
-                {p.ordersCount === 1 ? 'pedido' : 'pedidos'}
+    <div className="space-y-4">
+      {/* Inspector fijo superior: siempre legible y sin recortes por overflow */}
+      {selectedPoint && (
+        <div
+          aria-live="polite"
+          className="rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/90 dark:bg-slate-800/60 px-4 py-3 flex flex-wrap items-center justify-between gap-3"
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="inline-flex h-2.5 w-2.5 rounded-full bg-orange-500 shrink-0" />
+            <div>
+              <p className="text-xs font-extrabold text-slate-900 dark:text-white">
+                Detalle del día {selectedPoint.date}
               </p>
-              <p className="text-orange-300">
-                Ventas: <strong>{formatCurrency(p.dailyRevenue)}</strong>
-              </p>
-              <p className="text-slate-300">
-                Costo compra: <strong>{formatCurrency(cost)}</strong>
-              </p>
-              <p className={profit < 0 ? 'text-red-300' : 'text-emerald-300'}>
-                Ganancia real: <strong>{formatCurrency(profit)}</strong> ({margin}%)
+              <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                {selectedPoint.ordersCount}{' '}
+                {selectedPoint.ordersCount === 1 ? 'pedido' : 'pedidos'}
+                {selectedPoint.unitsSold !== undefined
+                  ? ` · ${selectedPoint.unitsSold} uds`
+                  : ''}
               </p>
             </div>
           </div>
-        );
-      })}
+
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs">
+            <div>
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Ventas
+              </span>
+              <span className="font-heading font-extrabold text-orange-600 dark:text-orange-400">
+                {formatCurrency(selectedPoint.dailyRevenue)}
+              </span>
+            </div>
+            <div>
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Costo compra
+              </span>
+              <span className="font-heading font-extrabold text-slate-800 dark:text-slate-200">
+                {formatCurrency(selectedCost)}
+              </span>
+            </div>
+            <div>
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Ganancia real
+              </span>
+              <span
+                className={cn(
+                  'font-heading font-extrabold',
+                  selectedProfit < 0
+                    ? 'text-red-600 dark:text-red-400'
+                    : 'text-emerald-600 dark:text-emerald-400',
+                )}
+              >
+                {formatCurrency(selectedProfit)} ({selectedMargin}%)
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Barras interactivas con soporte hover, foco y clic/táctil */}
+      <div className="flex items-end gap-2 sm:gap-3 h-52 pt-3 pb-1 overflow-x-auto">
+        {points.map((p) => {
+          const cost = p.dailyCost ?? 0;
+          const profit = p.dailyProfit ?? p.dailyRevenue - cost;
+          const revHeight = Math.max((p.dailyRevenue / maxVal) * 100, 6);
+          const profitHeight = Math.max((Math.abs(profit) / maxVal) * 100, 6);
+          const isActive = selectedPoint?.date === p.date;
+
+          return (
+            <button
+              key={p.date}
+              type="button"
+              onMouseEnter={() => setActiveDate(p.date)}
+              onFocus={() => setActiveDate(p.date)}
+              onClick={() => setActiveDate(p.date)}
+              aria-label={`Ver detalle del ${p.date}: ventas ${formatCurrency(p.dailyRevenue)}, ganancia ${formatCurrency(profit)}`}
+              className={cn(
+                'flex-1 min-w-[34px] h-full flex flex-col items-center justify-end gap-1.5 rounded-xl px-1 pt-2 pb-1 transition-colors duration-200 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500',
+                isActive
+                  ? 'bg-orange-50/90 dark:bg-slate-800/90 ring-1 ring-orange-200 dark:ring-slate-700'
+                  : 'hover:bg-slate-100/70 dark:hover:bg-slate-800/50',
+              )}
+            >
+              <div className="w-full flex-1 flex items-end justify-center gap-1">
+                {mode === 'both' && (
+                  <div
+                    className={cn(
+                      'w-full max-w-[20px] rounded-t-md transition-colors duration-200',
+                      isActive ? 'bg-orange-600' : 'bg-orange-500/85',
+                    )}
+                    style={{ height: `${revHeight}%` }}
+                  />
+                )}
+                <div
+                  className={cn(
+                    'w-full rounded-t-md transition-colors duration-200',
+                    mode === 'profit' ? 'max-w-[34px]' : 'max-w-[20px]',
+                    profit < 0
+                      ? isActive
+                        ? 'bg-red-600'
+                        : 'bg-red-500/85'
+                      : isActive
+                        ? 'bg-emerald-600'
+                        : 'bg-emerald-500/85',
+                  )}
+                  style={{ height: `${profitHeight}%` }}
+                />
+              </div>
+
+              <span
+                className={cn(
+                  'text-[10px] truncate max-w-full',
+                  isActive
+                    ? 'font-bold text-orange-700 dark:text-orange-300'
+                    : 'font-medium text-slate-600 dark:text-slate-400',
+                )}
+              >
+                {p.date.slice(8)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <p className="text-[11px] text-slate-500 dark:text-slate-400 text-right">
+        Pasa el cursor o toca cualquier barra para ver el desglose completo de ese día
+      </p>
     </div>
   );
 }
 
 export function AdminDashboardPage() {
-  const [range, setRange] = useState<DateRangeOption>('30d');
+  const currentMonth = useMemo(() => getCurrentMonthKey(), []);
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonth);
   const [chartMode, setChartMode] = useState<ChartViewMode>('both');
   const [productSort, setProductSort] = useState<ProductSortMode>('profit');
 
-  const queryDays = useMemo(() => getDaysForRange(range), [range]);
-  const salesDays = queryDays ?? 90;
+  const isCurrentMonth = selectedMonth >= currentMonth;
+  const selectedMonthLabel = useMemo(
+    () => formatMonthLabel(selectedMonth),
+    [selectedMonth],
+  );
 
   const dashboard = useQuery({
-    queryKey: ['admin-dashboard', queryDays ?? 'all'],
-    queryFn: () => getDashboardApi(queryDays),
+    queryKey: ['admin-dashboard', selectedMonth],
+    queryFn: () => getDashboardApi(selectedMonth),
   });
   const sales = useQuery({
-    queryKey: ['admin-sales', salesDays],
-    queryFn: () => getSalesApi(salesDays),
+    queryKey: ['admin-sales', selectedMonth],
+    queryFn: () => getSalesApi(selectedMonth),
   });
   const top = useQuery({
-    queryKey: ['admin-top-products', queryDays ?? 'all'],
-    queryFn: () => getTopProductsApi(10, queryDays),
+    queryKey: ['admin-top-products', selectedMonth],
+    queryFn: () => getTopProductsApi(10, selectedMonth),
   });
 
   const k = dashboard.data?.kpis;
+  const carryOver = dashboard.data?.carryOver;
   const inventoryAlerts = dashboard.data?.inventoryAlerts ?? [];
 
   const periodTotals = useMemo(() => {
@@ -193,107 +292,74 @@ export function AdminDashboardPage() {
   const profitMargin = k?.profitMargin ?? 0;
   const isNegativeProfit = netProfit < 0;
 
-  const handleExportCsv = () => {
-    const lines: string[] = [];
-    lines.push(
-      'Seccion,Metrica_Fecha_Producto,Cantidad_Unidades,Ventas_Ingresos,Costo_Compra,Ganancia_Neta_Real,Margen_Porcentaje,Stock_Actual',
-    );
-    lines.push(
-      `KPI,Resumen Financiero (${range}),${k?.totalUnitsSold ?? 0},${k?.totalRevenue ?? 0},${k?.totalCost ?? 0},${k?.netProfit ?? 0},${k?.profitMargin ?? 0}%,0`,
-    );
-    lines.push(
-      `KPI,Ticket Promedio,${k?.paidOrdersCount ?? 0},${k?.averageOrderValue ?? 0},0,0,0%,0`,
-    );
-    lines.push(
-      `KPI,Inventario Actual,${k?.activeProducts ?? 0},${k?.inventoryRetailValue ?? 0},${k?.inventoryCostValue ?? 0},${(k?.inventoryRetailValue ?? 0) - (k?.inventoryCostValue ?? 0)},0%,${k?.lowStockProducts ?? 0} bajos / ${k?.outOfStockProducts ?? 0} agotados`,
-    );
-    lines.push(`KPI,Usuarios Registrados,${k?.totalUsers ?? 0},0,0,0,0%,0`);
-
-    (sales.data ?? []).forEach((s) => {
-      const cost = s.dailyCost ?? 0;
-      const profit = s.dailyProfit ?? s.dailyRevenue - cost;
-      const margin =
-        s.dailyRevenue > 0 ? ((profit / s.dailyRevenue) * 100).toFixed(1) : '0';
-      lines.push(
-        `Ventas Diarias,${s.date},${s.unitsSold ?? s.ordersCount},${s.dailyRevenue},${cost},${profit},${margin}%,`,
-      );
-    });
-
-    sortedProducts.forEach((p) => {
-      const safeName = `"${p.name.replace(/"/g, '""')}"`;
-      const cost = p.totalCost ?? 0;
-      const profit = p.totalProfit ?? p.totalRevenue - cost;
-      const margin =
-        p.profitMargin ??
-        (p.totalRevenue > 0
-          ? Number(((profit / p.totalRevenue) * 100).toFixed(1))
-          : 0);
-      lines.push(
-        `Rentabilidad Producto,${safeName},${p.totalQuantitySold},${p.totalRevenue},${cost},${profit},${margin}%,${p.currentStock ?? ''}`,
-      );
-    });
-
-    const csvContent = `\uFEFF${lines.join('\n')}`;
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    const dateStamp = new Date().toISOString().slice(0, 10);
-    link.href = url;
-    link.download = `reporte-ganancias-analytics-${range}-${dateStamp}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    toast.success('Reporte financiero CSV exportado correctamente');
-  };
+  const previousDeficitDebt = carryOver?.previousDeficitDebt ?? 0;
+  const adjustedNetBalance = carryOver?.adjustedNetBalance ?? netProfit;
+  const closingDeficitDebt = carryOver?.closingDeficitDebt ?? 0;
+  const pendingReceivablesAmount = carryOver?.pendingReceivablesAmount ?? 0;
+  const pendingReceivablesCount = carryOver?.pendingReceivablesCount ?? 0;
+  const carriedInventoryUnits = carryOver?.carriedInventoryUnits ?? 0;
 
   return (
     <div className="space-y-6">
-      {/* Encabezado y Controles de Período */}
+      {/* Encabezado y Selector Mes a Mes */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="font-heading text-2xl font-extrabold text-slate-900 dark:text-white">
             Dashboard Financiero &amp; Analytics
           </h2>
           <p className="text-xs text-slate-600 dark:text-slate-400">
-            Ingresos reales, costos de compra, ganancia neta por producto y salud
-            del inventario
+            Balance mensual de ingresos, costos y ganancia real · Arrastre continuo de deudas e inventario
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div
-            role="group"
-            aria-label="Seleccionar período de análisis"
-            className="inline-flex items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-1"
+        <div
+          role="group"
+          aria-label="Seleccionar mes de análisis"
+          className="inline-flex items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-1 shadow-sm self-start sm:self-auto"
+        >
+          <button
+            type="button"
+            onClick={() => setSelectedMonth((m) => shiftMonth(m, -1))}
+            aria-label="Mes anterior"
+            className="rounded-lg p-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
-            <Calendar className="w-3.5 h-3.5 text-slate-400 ml-2 mr-1" />
-            {RANGE_OPTIONS.map((opt) => (
-              <button
-                key={opt.key}
-                type="button"
-                onClick={() => setRange(opt.key)}
-                className={cn(
-                  'rounded-lg px-2.5 py-1 text-xs font-bold transition-colors duration-200 cursor-pointer',
-                  range === opt.key
-                    ? 'bg-orange-600 text-white'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800',
-                )}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+            <ChevronLeft className="w-4 h-4" />
+          </button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportCsv}
-            leftIcon={<Download className="w-4 h-4" />}
+          <label className="relative inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-slate-800 dark:text-slate-100 cursor-pointer">
+            <Calendar className="w-3.5 h-3.5 text-orange-600 shrink-0" />
+            <span>{selectedMonthLabel}</span>
+            <input
+              type="month"
+              aria-label="Elegir mes"
+              value={selectedMonth}
+              max={currentMonth}
+              onChange={(e) => {
+                if (e.target.value) setSelectedMonth(e.target.value);
+              }}
+              className="absolute inset-0 opacity-0 cursor-pointer"
+            />
+          </label>
+
+          <button
+            type="button"
+            disabled={isCurrentMonth}
+            onClick={() => setSelectedMonth((m) => shiftMonth(m, 1))}
+            aria-label="Mes siguiente"
+            className="rounded-lg p-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
           >
-            Exportar CSV
-          </Button>
+            <ChevronRight className="w-4 h-4" />
+          </button>
+
+          {!isCurrentMonth && (
+            <button
+              type="button"
+              onClick={() => setSelectedMonth(currentMonth)}
+              className="ml-1 rounded-lg bg-orange-50 dark:bg-orange-950/50 px-2.5 py-1 text-[11px] font-bold text-orange-700 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors cursor-pointer"
+            >
+              Mes actual
+            </button>
+          )}
         </div>
       </div>
 
@@ -460,16 +526,122 @@ export function AdminDashboardPage() {
         </div>
       </div>
 
+      {/* Bloque 2.5: Arrastre de Saldos, Deudas e Inventario entre Meses */}
+      <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-card space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <ArrowRightLeft className="w-4 h-4 text-orange-600 shrink-0" />
+            <h3 className="font-heading font-extrabold text-slate-900 dark:text-white">
+              Arrastre de saldos e inventario ({selectedMonthLabel})
+            </h3>
+          </div>
+          <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">
+            Ventas y pedidos se quedan en su mes · Deudas e inventario continúan al siguiente
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+          <div
+            className={cn(
+              'rounded-xl border p-3.5 space-y-1',
+              previousDeficitDebt > 0
+                ? 'border-red-200 dark:border-red-900/60 bg-red-50/50 dark:bg-red-950/20'
+                : 'border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40',
+            )}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                Deuda arrastrada mes ant.
+              </span>
+              <Badge variant={previousDeficitDebt > 0 ? 'danger' : 'success'}>
+                {previousDeficitDebt > 0 ? 'Pendiente' : 'Al día'}
+              </Badge>
+            </div>
+            <p
+              className={cn(
+                'font-heading text-lg font-extrabold',
+                previousDeficitDebt > 0
+                  ? 'text-red-700 dark:text-red-300'
+                  : 'text-slate-900 dark:text-white',
+              )}
+            >
+              {previousDeficitDebt > 0
+                ? `-${formatCurrency(previousDeficitDebt)}`
+                : formatCurrency(0)}
+            </p>
+            <p className="text-[11px] text-slate-600 dark:text-slate-400">
+              Balance ajustado del mes:{' '}
+              <strong
+                className={
+                  adjustedNetBalance < 0
+                    ? 'text-red-600 dark:text-red-400'
+                    : 'text-emerald-600 dark:text-emerald-400'
+                }
+              >
+                {formatCurrency(adjustedNetBalance)}
+              </strong>
+              {closingDeficitDebt > 0 && (
+                <> · Pasa al prox. mes: -{formatCurrency(closingDeficitDebt)}</>
+              )}
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5 space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                Por cobrar (meses ant.)
+              </span>
+              <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+            </div>
+            <p className="font-heading text-lg font-extrabold text-slate-900 dark:text-white">
+              {formatCurrency(pendingReceivablesAmount)}
+            </p>
+            <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400">
+              <span>
+                {pendingReceivablesCount}{' '}
+                {pendingReceivablesCount === 1
+                  ? 'pedido pendiente de cobro'
+                  : 'pedidos pendientes de cobro'}
+              </span>
+              {pendingReceivablesCount > 0 && (
+                <Link
+                  to="/admin/orders"
+                  className="font-bold text-orange-600 hover:text-orange-700 dark:text-orange-400 cursor-pointer"
+                >
+                  Revisar
+                </Link>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5 space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                Inventario que continúa
+              </span>
+              <Badge variant="neutral">{carriedInventoryUnits} uds</Badge>
+            </div>
+            <p className="font-heading text-lg font-extrabold text-slate-900 dark:text-white">
+              {formatCurrency(
+                carryOver?.inventoryCostValue ?? k?.inventoryCostValue ?? 0,
+              )}
+            </p>
+            <p className="text-[11px] text-slate-600 dark:text-slate-400">
+              Productos y capital en bodega vigentes mes a mes
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Bloque 3: Gráfica Comparativa Ventas vs. Ganancia Neta Real */}
       <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-card space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <h3 className="font-heading font-extrabold text-slate-900 dark:text-white">
-              Ventas vs. Ganancia Neta Real (
-              {RANGE_OPTIONS.find((r) => r.key === range)?.label})
+              Ventas vs. Ganancia Neta Real ({selectedMonthLabel})
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Período de {salesDays} {salesDays === 1 ? 'día' : 'días'}: Ventas{' '}
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+              Resumen del mes: Ventas{' '}
               <strong className="text-slate-800 dark:text-slate-200">
                 {formatCurrency(periodTotals.revenue)}
               </strong>{' '}

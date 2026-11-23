@@ -3,7 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useOutletContext } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
+  Banknote,
   CheckCircle2,
+  CreditCard,
   Crosshair,
   ExternalLink,
   MapPin,
@@ -64,6 +66,7 @@ export function RiderActiveRoutePage() {
   const [orderToConfirm, setOrderToConfirm] = useState<DeliveryOrder | null>(
     null,
   );
+  const [cashCollectedConfirmed, setCashCollectedConfirmed] = useState(false);
   const lastSentRef = useRef(0);
   const simRef = useRef<number | null>(null);
 
@@ -140,6 +143,7 @@ export function RiderActiveRoutePage() {
       queryClient.invalidateQueries({ queryKey: ['delivery-stats'] });
       queryClient.invalidateQueries({ queryKey: ['delivery-history'] });
       setOrderToConfirm(null);
+      setCashCollectedConfirmed(false);
       toast.success('¡Entrega confirmada con éxito!');
     },
     onError: (err) =>
@@ -269,6 +273,28 @@ export function RiderActiveRoutePage() {
                 </span>
               </div>
 
+              {order.paymentMethod === 'CASH_ON_DELIVERY' ? (
+                <div className="rounded-2xl border border-amber-200 dark:border-amber-800/70 bg-amber-50/90 dark:bg-amber-950/35 px-3.5 py-2.5 space-y-1 text-xs">
+                  <p className="inline-flex items-center gap-1.5 font-extrabold text-amber-900 dark:text-amber-200">
+                    <Banknote className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                    Cobrar en efectivo al entregar: {formatCurrency(order.total)}
+                  </p>
+                  {order.cashAmountGiven && order.cashAmountGiven > 0 ? (
+                    <p className="font-semibold text-amber-800 dark:text-amber-300">
+                      El cliente paga con {formatCurrency(order.cashAmountGiven)}
+                      {order.changeDue && order.changeDue > 0
+                        ? ` · Llevar vueltas: ${formatCurrency(order.changeDue)}`
+                        : ' · Pago exacto'}
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-emerald-200/80 dark:border-emerald-900/60 bg-emerald-50/70 dark:bg-emerald-950/25 px-3.5 py-2 flex items-center gap-2 text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                  <CreditCard className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Pagado en línea · No cobrar al cliente</span>
+                </div>
+              )}
+
               {/* Dirección de entrega */}
               <div className="flex items-start gap-2 text-sm bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-3">
                 <MapPin className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
@@ -331,7 +357,10 @@ export function RiderActiveRoutePage() {
                   deliverMutation.isPending &&
                   deliverMutation.variables === order._id
                 }
-                onClick={() => setOrderToConfirm(order)}
+                onClick={() => {
+                  setCashCollectedConfirmed(false);
+                  setOrderToConfirm(order);
+                }}
                 leftIcon={<CheckCircle2 className="w-5 h-5" />}
               >
                 Marcar como Entregado
@@ -344,7 +373,10 @@ export function RiderActiveRoutePage() {
       {/* Modal de confirmación antes de cerrar una entrega */}
       <Modal
         isOpen={Boolean(orderToConfirm)}
-        onClose={() => setOrderToConfirm(null)}
+        onClose={() => {
+          setOrderToConfirm(null);
+          setCashCollectedConfirmed(false);
+        }}
         title="Confirmar entrega completada"
         description="Verifica que entregaste todos los productos al cliente antes de finalizar esta ruta."
         size="sm"
@@ -354,7 +386,10 @@ export function RiderActiveRoutePage() {
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => setOrderToConfirm(null)}
+              onClick={() => {
+                setOrderToConfirm(null);
+                setCashCollectedConfirmed(false);
+              }}
             >
               Cancelar
             </Button>
@@ -362,6 +397,10 @@ export function RiderActiveRoutePage() {
               type="button"
               variant="primary"
               size="sm"
+              disabled={
+                orderToConfirm?.paymentMethod === 'CASH_ON_DELIVERY' &&
+                !cashCollectedConfirmed
+              }
               isLoading={deliverMutation.isPending}
               onClick={() => {
                 if (orderToConfirm) {
@@ -395,6 +434,33 @@ export function RiderActiveRoutePage() {
                 Dirección: {orderToConfirm.address}
               </p>
             </div>
+
+            {orderToConfirm.paymentMethod === 'CASH_ON_DELIVERY' && (
+              <label
+                htmlFor="confirm-cash-collected"
+                className="flex items-start gap-2.5 rounded-2xl border border-amber-300 dark:border-amber-800 bg-amber-50/90 dark:bg-amber-950/40 p-3.5 text-xs text-amber-900 dark:text-amber-200 cursor-pointer"
+              >
+                <input
+                  id="confirm-cash-collected"
+                  type="checkbox"
+                  checked={cashCollectedConfirmed}
+                  onChange={(e) => setCashCollectedConfirmed(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-amber-400 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                />
+                <span>
+                  <strong>
+                    Confirmo que recibí {formatCurrency(orderToConfirm.total)} en
+                    efectivo
+                  </strong>{' '}
+                  del cliente
+                  {orderToConfirm.changeDue && orderToConfirm.changeDue > 0
+                    ? ` (vueltas entregadas: ${formatCurrency(orderToConfirm.changeDue)})`
+                    : ''}
+                  .
+                </span>
+              </label>
+            )}
+
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Al confirmar, el pedido pasará a estado <strong>DELIVERED</strong>{' '}
               y se notificará automáticamente al cliente.

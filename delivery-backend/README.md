@@ -120,20 +120,31 @@ src/
 | Método | Endpoint | Protección | Descripción |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/cart` | JWT | Obtener el carrito del usuario autenticado |
-| `POST` | `/cart/add` | JWT | Agregar/actualizar producto en el carrito |
+| `POST` | `/cart/add` | JWT | Agregar producto al carrito (valida stock disponible) |
+| `PATCH` | `/cart/item` | JWT | Actualizar cantidad exacta de un producto en el carrito (`0` lo elimina; valida stock al incrementar) |
 | `DELETE` | `/cart/remove` | JWT | Eliminar producto específico del carrito |
 | `DELETE` | `/cart/clear` | JWT | Vaciar el carrito completo |
 
 ### 📦 Pedidos (`/orders`)
 | Método | Endpoint | Protección | Descripción |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/orders` | JWT | Crear pedido a partir del carrito actual (exige celular registrado `PHONE_REQUIRED`, soporta `couponCode` opcional y aplica beneficio `-10%` Rider máx. 4/mes) |
+| `POST` | `/orders` | JWT | Crear pedido a partir del carrito actual (exige celular `PHONE_REQUIRED`, soporta `couponCode`, `paymentMethod: 'MERCADOPAGO' \| 'CASH_ON_DELIVERY'`, `cashAmountGiven` con cálculo de `changeDue` y beneficio `-10%` Rider máx. 4/mes) |
 | `GET` | `/orders/rider-discount-quota` | JWT | Consultar el cupo mensual restante del beneficio `-10%` para repartidores |
 | `GET` | `/orders/me` | JWT | Historial de pedidos del cliente (paginado, con filtros) |
 | `GET` | `/orders/:id` | JWT | Ver detalle de un pedido (dueño o Admin) |
-| `PATCH` | `/orders/:id/cancel` | JWT | Cancelar un pedido propio (solo en estado `PENDING`) |
+| `POST` | `/orders/:id/pay` | JWT | Generar URL de MercadoPago Checkout Pro (bloqueado para órdenes `CASH_ON_DELIVERY`) |
+| `POST` | `/orders/:id/verify-payment` | JWT | Verificar el estado real de un pago de MercadoPago (`paymentId`) con validación anti-fraude de `external_reference` e idempotencia |
+| `PATCH` | `/orders/:id/cancel` | JWT | Cancelar un pedido propio (solo en estado `PENDING`, restaurando stock y cupón) |
 | `GET` | `/orders` | JWT + Admin | Ver todos los pedidos (paginado, con filtros) |
-| `PATCH` | `/orders/:id/status` | JWT + Admin | Cambiar estado del pedido (`PENDING` → `CONFIRMED` → `PREPARING` → `OUT_FOR_DELIVERY` → `DELIVERED` / `CANCELLED`, validando y asignando `deliveryId` con rol `DELIVERY` al despachar) |
+| `PATCH` | `/orders/:id/status` | JWT + Admin | Cambiar estado del pedido (permite `PENDING → CONFIRMED` directo para `CASH_ON_DELIVERY`, marca `paymentStatus = PAID` al entregar en efectivo y exige `deliveryId` con rol `DELIVERY` al despachar) |
+
+### 💳 Pagos (`/payments`)
+| Método | Endpoint | Protección | Descripción |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/payments/webhook` | Pública | Webhook de MercadoPago (soporta Webhooks v2 `body.data.id` e IPN `query`), verifica contra API real, aplica idempotencia y emite actualización por WebSocket |
+| `GET` | `/payments/success` | Pública | Sincroniza el pago si llega `payment_id`/`collection_id` y redirige (`302`) a `FRONTEND_URL/payments/success` |
+| `GET` | `/payments/failure` | Pública | Sincroniza el pago si llega `payment_id`/`collection_id` y redirige (`302`) a `FRONTEND_URL/payments/failure` |
+| `GET` | `/payments/pending` | Pública | Sincroniza el pago si llega `payment_id`/`collection_id` y redirige (`302`) a `FRONTEND_URL/payments/pending` |
 
 ### ⭐ Reseñas (`/reviews`)
 | Método | Endpoint | Protección | Descripción |
@@ -152,12 +163,28 @@ src/
 | `DELETE` | `/coupons/:id` | JWT + Admin | Eliminar un cupón |
 | `POST` | `/coupons/apply` | JWT | Previsualizar y validar un cupón promocional sobre el total del pedido (se redime al crear la orden en `POST /orders`) |
 
+### 🛵 Repartidores (`/delivery`)
+| Método | Endpoint | Protección | Descripción |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/delivery/profile` | JWT (`CLIENT`/`DELIVERY`) | Enviar solicitud de perfil de repartidor (inicia en `PENDING` hasta aprobación de Admin; permite re-postular si fue `REJECTED`) |
+| `GET` | `/delivery/profile` | JWT (`CLIENT`/`DELIVERY`) | Consultar mi perfil o estado de solicitud de repartidor |
+| `GET` | `/delivery/profiles` | JWT + Admin | Listar solicitudes y perfiles de repartidores (filtro opcional `?status=PENDING\|APPROVED\|REJECTED`) |
+| `PATCH` | `/delivery/profiles/:id/status` | JWT + Admin | Aprobar o rechazar solicitud de repartidor (promueve `CLIENT → DELIVERY` al aprobar) |
+| `PATCH` | `/delivery/availability` | JWT + Delivery | Cambiar estado de disponibilidad Online/Offline (requiere perfil `APPROVED`) |
+| `PATCH` | `/delivery/location` | JWT + Delivery | Actualizar coordenadas GPS y emitir `delivery_location_updated` al cliente en tiempo real |
+| `GET` | `/delivery/orders/available` | JWT + Delivery | Listar pedidos en estado `PREPARING` sin repartidor asignado (con `phone` del cliente) |
+| `GET` | `/delivery/orders/active` | JWT + Delivery | Listar pedidos actualmente en camino (`OUT_FOR_DELIVERY`) del repartidor (con `phone` del cliente) |
+| `GET` | `/delivery/orders/history` | JWT + Delivery | Historial paginado (`?page=&limit=`) de entregas completadas y ganancia estimada por entrega |
+| `PATCH` | `/delivery/orders/:id/accept` | JWT + Delivery | Aceptar pedido disponible (exige `isAvailable === true`), pasa a `OUT_FOR_DELIVERY` y emite `order_taken` |
+| `PATCH` | `/delivery/orders/:id/deliver` | JWT + Delivery | Marcar pedido como `DELIVERED` (si es `CASH_ON_DELIVERY`, marca `paymentStatus = PAID` y `paidAt`) |
+| `GET` | `/delivery/stats` | JWT + Delivery | Métricas del repartidor (`delivered`, `inProgress`, `deliveredToday`, `totalOrderValue`, `estimatedEarnings`) |
+
 ### 📊 Analytics (`/analytics`)
 | Método | Endpoint | Protección | Descripción |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/analytics/dashboard` | JWT + Admin | KPIs financieros reales (ingresos, costo de compra COGS, ganancia neta real, margen %, valoración de inventario), `inventoryAlerts` y órdenes por estado (acepta `?days=` o `?from=&to=`) |
-| `GET` | `/analytics/top-products` | JWT + Admin | Ranking de productos con unidades vendidas, ingresos, costo de compra, ganancia real, margen % y stock actual (acepta `?limit=&days=&from=&to=`) |
-| `GET` | `/analytics/sales` | JWT + Admin | Serie histórica diaria de pedidos, unidades, ventas, costo de compra y ganancia neta real (acepta `?days=` o `?from=&to=`) |
+| `GET` | `/analytics/dashboard` | JWT + Admin | KPIs financieros reales del período (ingresos, costo de compra COGS, ganancia neta real, margen %, valoración de inventario), bloque `carryOver` (arrastre de déficit mensual previo, pedidos pendientes de cobro previos e inventario vigente), `inventoryAlerts` y órdenes por estado (acepta `?month=YYYY-MM`, `?days=` o `?from=&to=`) |
+| `GET` | `/analytics/top-products` | JWT + Admin | Ranking de productos con unidades vendidas, ingresos, costo de compra, ganancia real, margen % y stock actual (acepta `?limit=&month=YYYY-MM&days=&from=&to=`) |
+| `GET` | `/analytics/sales` | JWT + Admin | Serie histórica diaria de pedidos, unidades, ventas, costo de compra y ganancia neta real (acepta `?month=YYYY-MM`, `?days=` o `?from=&to=`) |
 
 ---
 
@@ -233,13 +260,13 @@ docker compose up -d --build api
 - ✅ **Fase 5 (Nuevos Módulos Core)**:
   - ✅ **Addresses**: Direcciones de envío.
   - ✅ **Uploads**: Subida de imágenes a AWS S3 con validación de firma binaria (*magic bytes*), borrado automático de archivos previos (`deleteFile`) y soporte `AWS_CLOUDFRONT_DOMAIN`.
-  - ✅ **Payments (MercadoPago)**: Servicio `PaymentsService` y webhook para procesar el éxito del pago.
+  - ✅ **Payments (MercadoPago + Efectivo Contraentrega)**: `PaymentsService` y `PaymentsController` con fix para `localhost`, soporte de Webhooks v2/IPN, validación anti-fraude de `external_reference`, idempotencia, emisión WebSocket, redirecciones `302` a `FRONTEND_URL`, verificación explícita (`POST /orders/:id/verify-payment`) y flujo completo de pago en efectivo contraentrega (`CASH_ON_DELIVERY`) con vueltas y cobro automático al entregar.
   - ✅ **Notifications & Mail**: Sistema asíncrono para enviar push notifications (FCM) y correos (Nodemailer) en cada actualización de estado del pedido.
-  - ✅ **Delivery**: Módulo completo para repartidores (auto-activación de perfil desde cuenta `CLIENT` → `DELIVERY`, disponibilidad, geolocalización de entrega, estadísticas y descuento mensual del 10% en sus primeros 4 pedidos como cliente).
-  - ✅ **Events**: Integración de WebSockets (`socket.io`) para emitir cambios de estado de órdenes en tiempo real a los clientes.
+  - ✅ **Delivery**: Módulo completo para repartidores con aprobación Admin (`PENDING`/`APPROVED`/`REJECTED`), validación de disponibilidad al aceptar pedidos, geolocalización en vivo, teléfono del cliente en ruta, cobro contraentrega al entregar, métricas ampliadas + historial paginado (`GET /delivery/orders/history`) y descuento mensual del 10% en sus primeros 4 pedidos como cliente.
+  - ✅ **Events**: Integración de WebSockets (`socket.io`) para emitir cambios de estado (`order_status_updated`), ubicación del repartidor (`delivery_location_updated`) y alertas en vivo de pedidos disponibles (`new_available_order` / `order_taken` en sala `riders_available`).
   - ✅ **Reviews**: Reseñas con validación de pedido `DELIVERED`, verificación de que el producto pertenece a la orden, índice único `{ user, product, order }` y moderación por Admin.
   - ✅ **Coupons**: CRUD de cupones (Admin) y endpoint `apply` con validación de expiración, límite de usos, uso único por usuario, monto mínimo y tope de descuento.
-  - ✅ **CI**: Specs de todos los módulos con mocks completos; **18 suites / 158 tests unitarios** + E2E pasando y `nest build` verificado.
+  - ✅ **CI**: Specs de todos los módulos con mocks completos; **19 suites / 183 tests unitarios** (incluyendo `payments.service.spec.ts`) + E2E pasando y `nest build` verificado.
 
 - ✅ **Fase 6 (Rendimiento y Escala)**:
   - ✅ **Cache con Redis**: `@nestjs/cache-manager` + `@keyv/redis` en Categorías (TTL 1h) y Productos (TTL 10min).

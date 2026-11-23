@@ -15,6 +15,10 @@ import {
 } from './schemas/delivery-profile.schema';
 import { Order, OrderDocument } from 'src/orders/schemas/order.schema';
 import { OrderStatus } from 'src/orders/order-status.enum';
+import {
+  PaymentMethod,
+  PaymentStatus,
+} from 'src/orders/payment-method.enum';
 import { CreateDeliveryProfileDto } from './dto/create-delivery-profile.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
 import { UpdateAvailabilityDto } from './dto/update-availability.dto';
@@ -297,9 +301,17 @@ export class DeliveryService implements OnModuleInit {
     if (order.status !== OrderStatus.OUT_FOR_DELIVERY)
       throw new BadRequestException('Este pedido no está en camino.');
 
+    const updateFields: Record<string, any> = {
+      status: OrderStatus.DELIVERED,
+    };
+    if (order.paymentMethod === PaymentMethod.CASH_ON_DELIVERY) {
+      updateFields.paymentStatus = PaymentStatus.PAID;
+      updateFields.paidAt = order.paidAt ?? new Date();
+    }
+
     const updated = await this.orderModel.findByIdAndUpdate(
       orderId,
-      { status: OrderStatus.DELIVERED },
+      updateFields,
       { new: true },
     );
     if (updated) {

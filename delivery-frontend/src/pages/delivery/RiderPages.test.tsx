@@ -179,6 +179,67 @@ describe('Rider App — Bloque de Repartidores', () => {
     });
   });
 
+  it('RiderActiveRoutePage displays cash collection alert and requires cash-received checkbox before completing CASH_ON_DELIVERY', async () => {
+    const user = userEvent.setup();
+
+    mockGetActiveOrdersApi.mockResolvedValue([
+      {
+        _id: '660000000000000000007777',
+        userId: {
+          _id: 'client-cash',
+          name: 'Mateo Efectivo',
+          email: 'mateo@correo.com',
+          phone: '+573105556677',
+        },
+        items: [{ productId: 'p-9', name: 'Aguardiente 750ml', quantity: 1, price: 42000 }],
+        total: 42000,
+        status: 'OUT_FOR_DELIVERY',
+        paymentMethod: 'CASH_ON_DELIVERY',
+        paymentStatus: 'PENDING',
+        cashAmountGiven: 50000,
+        changeDue: 8000,
+        address: 'Calle 90 # 11-20, Bogotá',
+        createdAt: '2026-11-20T13:00:00.000Z',
+      },
+    ]);
+    mockDeliverOrderApi.mockResolvedValue({
+      status: 'DELIVERED',
+      paymentStatus: 'PAID',
+    });
+
+    renderWithOutletContext(<RiderActiveRoutePage />, {
+      profile: { ...baseProfile, isAvailable: true },
+      onToggleAvailability: vi.fn(),
+      isTogglingAvailability: false,
+    });
+
+    expect(await screen.findByText('Mateo Efectivo')).toBeInTheDocument();
+    expect(
+      screen.getByText(/cobrar en efectivo al entregar/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/llevar vueltas/i)).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: /marcar como entregado/i }),
+    );
+
+    const confirmDeliveryBtn = await screen.findByRole('button', {
+      name: /sí, confirmar entrega/i,
+    });
+    expect(confirmDeliveryBtn).toBeDisabled();
+
+    await user.click(screen.getByRole('checkbox'));
+    expect(confirmDeliveryBtn).toBeEnabled();
+
+    await user.click(confirmDeliveryBtn);
+
+    await waitFor(() => {
+      expect(mockDeliverOrderApi).toHaveBeenCalledWith(
+        '660000000000000000007777',
+      );
+    });
+  });
+
   it('RiderStatsPage renders KPI summary cards and completed delivery history', async () => {
     mockGetDeliveryStatsApi.mockResolvedValue({
       delivered: 12,

@@ -93,6 +93,9 @@ export interface OrderUserPopulated {
   role?: string;
 }
 
+export type PaymentMethod = 'MERCADOPAGO' | 'CASH_ON_DELIVERY';
+export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED';
+
 export interface Order {
   _id: string;
   // null cuando el usuario referenciado fue eliminado (populate devuelve null)
@@ -108,6 +111,11 @@ export interface Order {
   status: OrderStatus;
   paymentId?: string;
   paymentUrl?: string;
+  paymentMethod?: PaymentMethod;
+  paymentStatus?: PaymentStatus;
+  cashAmountGiven?: number | null;
+  changeDue?: number;
+  paidAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -115,6 +123,16 @@ export interface Order {
 export interface CreateOrderPayload {
   address: string;
   couponCode?: string;
+  paymentMethod?: PaymentMethod;
+  cashAmountGiven?: number;
+}
+
+export interface VerifyOrderPaymentResponse {
+  orderId: string;
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
+  mpStatus: string;
+  order: Order;
 }
 
 export interface RiderDiscountQuota {

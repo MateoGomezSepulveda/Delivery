@@ -3,12 +3,12 @@ import {
   Post,
   Get,
   Body,
-  Req,
   Query,
   Res,
   Logger,
   HttpCode,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PaymentsService } from './payments.service';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Public } from '../auth/public.decorator';
@@ -18,64 +18,102 @@ import { Public } from '../auth/public.decorator';
 export class PaymentsController {
   private readonly logger = new Logger(PaymentsController.name);
 
-  constructor(private readonly paymentsService: PaymentsService) {}
+  constructor(
+    private readonly paymentsService: PaymentsService,
+    private readonly configService: ConfigService,
+  ) {}
+
+  private buildFrontendRedirectUrl(
+    outcome: 'success' | 'failure' | 'pending',
+    query: Record<string, any>,
+  ): string {
+    const frontendUrl = (
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173'
+    ).replace(/\/+$/, '');
+
+    const params = new URLSearchParams();
+    const externalRef = query.external_reference || query.orderId;
+    const paymentId = query.payment_id || query.collection_id;
+    const status = query.status || query.collection_status;
+
+    if (externalRef) params.set('external_reference', String(externalRef));
+    if (paymentId) params.set('payment_id', String(paymentId));
+    if (status) params.set('status', String(status));
+
+    const qs = params.toString();
+    return `${frontendUrl}/payments/${outcome}${qs ? `?${qs}` : ''}`;
+  }
+
+  private async trySyncReturnedPayment(query: Record<string, any>) {
+    const paymentId = query.payment_id || query.collection_id;
+    const externalRef = query.external_reference || query.orderId;
+    if (!paymentId || String(paymentId) === 'null') return;
+
+    try {
+      await this.paymentsService.verifyPayment(
+        String(paymentId),
+        externalRef ? String(externalRef) : undefined,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `No se pudo sincronizar el pago ${paymentId} en la redirección: ${(error as Error).message}`,
+      );
+    }
+  }
 
   @Public()
   @Post('webhook')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Recibir notificaciones de MercadoPago' })
-  async webhook(@Body() body: any, @Query() query: any, @Req() req: any) {
+  @ApiOperation({ summary: 'Recibir notificaciones Webhook de MercadoPago' })
+  async webhook(@Body() body: any, @Query() query: any) {
     this.logger.log(
-      `Webhook recibido de MercadoPago: ${JSON.stringify(query)}`,
+      `Webhook recibido de MercadoPago: query=${JSON.stringify(query)} body=${JSON.stringify(body)}`,
     );
 
     try {
-      // MercadoPago sends 'data.id' or 'id' in the query depending on the topic
-      const paymentId = query['data.id'] || query.id;
-      const type = query.type || query.topic;
+      // Soporta Webhooks v2 (body.data.id / body.type) e IPN v1 (query['data.id'] / query.topic)
+      const paymentId =
+        body?.data?.id || query?.['data.id'] || query?.id || body?.id;
+      const type = body?.type || query?.type || query?.topic || body?.topic;
 
       if (type === 'payment' && paymentId) {
-        // En lugar de actualizar directamente desde el payload (inseguro),
-        // consultamos a la API de MP para verificar el estado real del pago.
-        // NOTA: Para no depender circularmente de OrdersService aquí, podemos
-        // emitir un evento o la actualización se hará en el webhook.
-        // Como este es el controlador, delegamos a un servicio que actualice.
-        const result = await this.paymentsService.verifyPayment(paymentId);
-
-        // TODO: Update Order status in Database using `result.orderId` and `result.status`
-        // Esto se hará conectando OrdersService o mediante EventEmitter.
+        const result = await this.paymentsService.verifyPayment(
+          String(paymentId),
+        );
         this.logger.log(
-          `Pago verificado: Order ${result.orderId}, Status: ${result.status}`,
+          `Pago verificado vía webhook: Order ${result.orderId}, Status: ${result.status}, MP: ${result.mpStatus}`,
         );
       }
 
-      // MercadoPago requires a 200 OK fast response
-      return 'OK';
+      // MercadoPago exige responder 200 OK rápidamente para no reintentar indefinidamente
+      return { received: true };
     } catch (error) {
-      this.logger.error('Error procesando webhook', error);
-      return 'OK'; // MP sigue requiriendo 200 o reintenta infinitamente
+      this.logger.error('Error procesando webhook de MercadoPago', error);
+      return { received: true };
     }
   }
 
   @Public()
   @Get('success')
-  @ApiOperation({ summary: 'Redirección de pago exitoso' })
-  paymentSuccess(@Res() res: any) {
-    // Redirigir al frontend
-    res.send('<h1>¡Pago Exitoso! Tu pedido está en camino.</h1>');
+  @ApiOperation({ summary: 'Redirección de pago exitoso hacia el Frontend' })
+  async paymentSuccess(@Query() query: Record<string, any>, @Res() res: any) {
+    await this.trySyncReturnedPayment(query);
+    return res.redirect(302, this.buildFrontendRedirectUrl('success', query));
   }
 
   @Public()
   @Get('failure')
-  @ApiOperation({ summary: 'Redirección de pago fallido' })
-  paymentFailure(@Res() res: any) {
-    res.send('<h1>Hubo un error con el pago. Intenta de nuevo.</h1>');
+  @ApiOperation({ summary: 'Redirección de pago fallido hacia el Frontend' })
+  async paymentFailure(@Query() query: Record<string, any>, @Res() res: any) {
+    await this.trySyncReturnedPayment(query);
+    return res.redirect(302, this.buildFrontendRedirectUrl('failure', query));
   }
 
   @Public()
   @Get('pending')
-  @ApiOperation({ summary: 'Redirección de pago pendiente' })
-  paymentPending(@Res() res: any) {
-    res.send('<h1>Tu pago está siendo procesado...</h1>');
+  @ApiOperation({ summary: 'Redirección de pago pendiente hacia el Frontend' })
+  async paymentPending(@Query() query: Record<string, any>, @Res() res: any) {
+    await this.trySyncReturnedPayment(query);
+    return res.redirect(302, this.buildFrontendRedirectUrl('pending', query));
   }
 }

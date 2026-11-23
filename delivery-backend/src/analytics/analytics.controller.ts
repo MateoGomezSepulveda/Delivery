@@ -22,7 +22,13 @@ export class AnalyticsController {
   @Get('dashboard')
   @ApiOperation({
     summary:
-      'Obtener KPIs financieros reales (ingresos, costos, ganancia neta, margen), alertas de inventario y órdenes por estado (Admin)',
+      'Obtener KPIs financieros del mes, arrastre de deudas/inventario y órdenes por estado (Admin)',
+  })
+  @ApiQuery({
+    name: 'month',
+    required: false,
+    description:
+      'Opcional: mes exacto en formato YYYY-MM (ej. 2026-11) para balance mensual con arrastre de saldos',
   })
   @ApiQuery({
     name: 'days',
@@ -44,12 +50,14 @@ export class AnalyticsController {
     @Query('days') days?: number,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('month') month?: string,
   ) {
     const parsedDays = days ? Number(days) : undefined;
     return this.analyticsService.getDashboardSummary(
       parsedDays && parsedDays > 0 ? parsedDays : undefined,
       from,
       to,
+      month,
     );
   }
 
@@ -62,6 +70,11 @@ export class AnalyticsController {
     name: 'limit',
     required: false,
     description: 'Cantidad de productos en el ranking (por defecto 5)',
+  })
+  @ApiQuery({
+    name: 'month',
+    required: false,
+    description: 'Opcional: mes exacto en formato YYYY-MM (ej. 2026-11)',
   })
   @ApiQuery({
     name: 'days',
@@ -83,6 +96,7 @@ export class AnalyticsController {
     @Query('days') days?: number,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('month') month?: string,
   ) {
     const parsedDays = days ? Number(days) : undefined;
     return this.analyticsService.getTopProducts(
@@ -90,6 +104,7 @@ export class AnalyticsController {
       parsedDays && parsedDays > 0 ? parsedDays : undefined,
       from,
       to,
+      month,
     );
   }
 
@@ -97,6 +112,11 @@ export class AnalyticsController {
   @ApiOperation({
     summary:
       'Obtener evolución diaria de ventas, costos de compra y ganancia neta real (Admin)',
+  })
+  @ApiQuery({
+    name: 'month',
+    required: false,
+    description: 'Opcional: mes exacto en formato YYYY-MM (ej. 2026-11)',
   })
   @ApiQuery({
     name: 'days',
@@ -117,11 +137,13 @@ export class AnalyticsController {
     @Query('days') days?: number,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('month') month?: string,
   ) {
     return this.analyticsService.getSalesByDay(
       days ? Number(days) : 30,
       from,
       to,
+      month,
     );
   }
 }

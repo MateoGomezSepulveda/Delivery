@@ -17,6 +17,17 @@ export async function addToCartApi(
   return response.data;
 }
 
+export async function updateCartItemQuantityApi(
+  productId: string,
+  quantity: number,
+): Promise<Cart> {
+  const response = await apiClient.patch<Cart>('/cart/item', {
+    productId,
+    quantity,
+  });
+  return response.data;
+}
+
 export async function removeFromCartApi(productId: string): Promise<Cart> {
   const response = await apiClient.delete<Cart>('/cart/remove', {
     data: { productId },

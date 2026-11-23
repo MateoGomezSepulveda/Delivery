@@ -15,7 +15,7 @@ import { getMyOrdersApi } from '@/api/endpoints/orders.api';
 import type { OrderStatus } from '@/types/api.types';
 import { formatCurrency, formatDateTime } from '@/utils/formatters';
 import { Button } from '@/components/ui/Button';
-import { OrderStatusBadge } from '@/components/ui/Badge';
+import { OrderStatusBadge, PaymentMethodBadge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PaginationBar } from '@/components/catalog/PaginationBar';
 import { cn } from '@/utils/cn';
@@ -230,7 +230,17 @@ export function MyOrdersPage() {
                         : 'Reciente'}
                     </p>
                   </div>
-                  <OrderStatusBadge status={order.status} />
+                  <div className="flex flex-wrap items-center justify-end gap-1.5">
+                    <PaymentMethodBadge
+                      method={order.paymentMethod}
+                      paymentStatus={order.paymentStatus}
+                      compact
+                    />
+                    <OrderStatusBadge
+                      status={order.status}
+                      paymentMethod={order.paymentMethod}
+                    />
+                  </div>
                 </div>
 
                 {/* Delivery Address */}

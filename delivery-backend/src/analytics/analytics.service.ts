@@ -5,6 +5,7 @@ import { Order, OrderDocument } from '../orders/schemas/order.schema';
 import { Product, ProductDocument } from '../products/schemas/product.schema';
 import { User, UserDocument } from '../users/schema/users.schema';
 import { OrderStatus } from '../orders/order-status.enum';
+import { PaymentStatus } from '../orders/payment-method.enum';
 
 const PAID_ORDER_STATUSES = [
   OrderStatus.PAID,
@@ -23,11 +24,33 @@ export class AnalyticsService {
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {}
 
+  private resolveMonthBounds(
+    month?: string,
+  ): { month: string; start: Date; end: Date } | null {
+    if (!month) return null;
+    const trimmed = month.trim();
+    const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(trimmed);
+    if (!match) return null;
+
+    const year = Number(match[1]);
+    const monthIndex = Number(match[2]) - 1;
+    const start = new Date(Date.UTC(year, monthIndex, 1, 0, 0, 0, 0));
+    const end = new Date(Date.UTC(year, monthIndex + 1, 0, 23, 59, 59, 999));
+
+    return { month: trimmed, start, end };
+  }
+
   private buildDateRangeFilter(
     days?: number,
     from?: string,
     to?: string,
+    month?: string,
   ): Record<string, any> {
+    const monthBounds = this.resolveMonthBounds(month);
+    if (monthBounds) {
+      return { createdAt: { $gte: monthBounds.start, $lte: monthBounds.end } };
+    }
+
     const range: Record<string, Date> = {};
 
     if (from) {
@@ -40,9 +63,9 @@ export class AnalyticsService {
     if (to) {
       const parsedTo = new Date(to);
       if (!Number.isNaN(parsedTo.getTime())) {
-        // Si solo se envió YYYY-MM-DD (sin hora), incluimos todo ese día hasta 23:59:59.999
+        // Si solo se envió YYYY-MM-DD (sin hora), incluimos todo ese día hasta 23:59:59.999 UTC
         if (/^\d{4}-\d{2}-\d{2}$/.test(to.trim())) {
-          parsedTo.setHours(23, 59, 59, 999);
+          parsedTo.setUTCHours(23, 59, 59, 999);
         }
         range.$lte = parsedTo;
       }
@@ -163,12 +186,21 @@ export class AnalyticsService {
   }
 
   /**
-   * KPIs financieros reales (ingresos, costos de compra, ganancia neta, margen),
-   * salud de inventario y resumen de órdenes por estado usando Aggregation Pipelines
+   * KPIs financieros reales del período (ingresos, costos de compra, ganancia neta, margen),
+   * arrastre de deudas / cuentas por cobrar de meses anteriores, salud de inventario
+   * y resumen de órdenes por estado usando Aggregation Pipelines
    */
-  async getDashboardSummary(days?: number, from?: string, to?: string) {
-    const dateFilter = this.buildDateRangeFilter(days, from, to);
+  async getDashboardSummary(
+    days?: number,
+    from?: string,
+    to?: string,
+    month?: string,
+  ) {
+    const monthBounds = this.resolveMonthBounds(month);
+    const dateFilter = this.buildDateRangeFilter(days, from, to, month);
     const hasDateFilter = Object.keys(dateFilter).length > 0;
+    const periodStart: Date | null = dateFilter.createdAt?.$gte ?? null;
+    const periodEnd: Date | null = dateFilter.createdAt?.$lte ?? null;
 
     const [
       revenueAggregation,
@@ -177,6 +209,8 @@ export class AnalyticsService {
       activeProductsCount,
       inventoryAgg,
       inventoryAlertsRaw,
+      priorMonthlyProfits,
+      priorPendingOrders,
     ] = await Promise.all([
       this.orderModel.aggregate([
         {
@@ -262,6 +296,9 @@ export class AnalyticsService {
                     $multiply: [{ $max: ['$stock', 0] }, '$price'],
                   },
                 },
+                carriedInventoryUnits: {
+                  $sum: { $max: ['$stock', 0] },
+                },
               },
             },
           ])
@@ -304,6 +341,53 @@ export class AnalyticsService {
             },
           ])
         : Promise.resolve([]),
+      periodStart
+        ? this.orderModel.aggregate([
+            {
+              $match: {
+                createdAt: { $lt: periodStart },
+                status: { $in: PAID_ORDER_STATUSES },
+              },
+            },
+            ...this.buildOrderCostResolutionStages(),
+            {
+              $group: {
+                _id: {
+                  $dateToString: { format: '%Y-%m', date: '$createdAt' },
+                },
+                monthlyProfit: { $sum: '$_resolvedProfit' },
+              },
+            },
+            { $sort: { _id: 1 } },
+          ])
+        : Promise.resolve([]),
+      periodStart
+        ? this.orderModel.aggregate([
+            {
+              $match: {
+                createdAt: { $lt: periodStart },
+                status: {
+                  $nin: [
+                    OrderStatus.DELIVERED,
+                    OrderStatus.CANCELLED,
+                    OrderStatus.FAILED,
+                  ],
+                },
+                $or: [
+                  { status: OrderStatus.PENDING },
+                  { paymentStatus: PaymentStatus.PENDING },
+                ],
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                pendingReceivablesAmount: { $sum: '$total' },
+                pendingReceivablesCount: { $sum: 1 },
+              },
+            },
+          ])
+        : Promise.resolve([]),
     ]);
 
     const revenueSummary = revenueAggregation[0] || {
@@ -320,6 +404,7 @@ export class AnalyticsService {
       outOfStockProducts: 0,
       inventoryCostValue: 0,
       inventoryRetailValue: 0,
+      carriedInventoryUnits: 0,
     };
 
     const totalRevenue = Number((revenueSummary.totalRevenue || 0).toFixed(2));
@@ -335,6 +420,39 @@ export class AnalyticsService {
         ? Number(((netProfit / totalRevenue) * 100).toFixed(1))
         : 0;
 
+    // Arrastre de pérdidas mes a mes: solo los meses cerrados en negativo transfieren deuda al mes siguiente
+    let previousDeficitDebt = 0;
+    for (const row of priorMonthlyProfits as Array<{ monthlyProfit: number }>) {
+      const monthBalance = (row.monthlyProfit || 0) - previousDeficitDebt;
+      previousDeficitDebt = monthBalance < 0 ? Math.abs(monthBalance) : 0;
+    }
+    previousDeficitDebt = Number(previousDeficitDebt.toFixed(2));
+
+    const adjustedNetBalance = Number(
+      (netProfit - previousDeficitDebt).toFixed(2),
+    );
+    const closingDeficitDebt =
+      adjustedNetBalance < 0
+        ? Number(Math.abs(adjustedNetBalance).toFixed(2))
+        : 0;
+
+    const pendingSummary = (
+      priorPendingOrders as Array<{
+        pendingReceivablesAmount: number;
+        pendingReceivablesCount: number;
+      }>
+    )[0] || {
+      pendingReceivablesAmount: 0,
+      pendingReceivablesCount: 0,
+    };
+
+    const inventoryCostValue = Number(
+      (inventorySummary.inventoryCostValue || 0).toFixed(2),
+    );
+    const inventoryRetailValue = Number(
+      (inventorySummary.inventoryRetailValue || 0).toFixed(2),
+    );
+
     const statusBreakdown = ordersByStatus.reduce<Record<string, number>>(
       (acc, item: { _id: string; count: number }) => {
         acc[item._id] = item.count;
@@ -349,6 +467,11 @@ export class AnalyticsService {
     );
 
     return {
+      period: {
+        month: monthBounds?.month ?? null,
+        from: periodStart ? periodStart.toISOString() : null,
+        to: periodEnd ? periodEnd.toISOString() : null,
+      },
       kpis: {
         totalRevenue,
         totalCost,
@@ -364,12 +487,20 @@ export class AnalyticsService {
         activeProducts: activeProductsCount,
         lowStockProducts: inventorySummary.lowStockProducts || 0,
         outOfStockProducts: inventorySummary.outOfStockProducts || 0,
-        inventoryCostValue: Number(
-          (inventorySummary.inventoryCostValue || 0).toFixed(2),
+        inventoryCostValue,
+        inventoryRetailValue,
+      },
+      carryOver: {
+        previousDeficitDebt,
+        adjustedNetBalance,
+        closingDeficitDebt,
+        pendingReceivablesAmount: Number(
+          (pendingSummary.pendingReceivablesAmount || 0).toFixed(2),
         ),
-        inventoryRetailValue: Number(
-          (inventorySummary.inventoryRetailValue || 0).toFixed(2),
-        ),
+        pendingReceivablesCount: pendingSummary.pendingReceivablesCount || 0,
+        inventoryCostValue,
+        inventoryRetailValue,
+        carriedInventoryUnits: inventorySummary.carriedInventoryUnits || 0,
       },
       ordersByStatus: statusBreakdown,
       inventoryAlerts: inventoryAlertsRaw || [],
@@ -379,8 +510,14 @@ export class AnalyticsService {
   /**
    * Ranking de productos con ingresos, costos reales de compra, ganancia neta y margen %
    */
-  async getTopProducts(limit = 5, days?: number, from?: string, to?: string) {
-    const dateFilter = this.buildDateRangeFilter(days, from, to);
+  async getTopProducts(
+    limit = 5,
+    days?: number,
+    from?: string,
+    to?: string,
+    month?: string,
+  ) {
+    const dateFilter = this.buildDateRangeFilter(days, from, to, month);
 
     return this.orderModel.aggregate([
       {
@@ -514,11 +651,12 @@ export class AnalyticsService {
   /**
    * Ventas, costos y ganancia real agrupados por día para gráficas comparativas
    */
-  async getSalesByDay(days = 30, from?: string, to?: string) {
+  async getSalesByDay(days = 30, from?: string, to?: string, month?: string) {
     const dateFilter = this.buildDateRangeFilter(
-      from || to ? undefined : Number(days) || 30,
+      month || from || to ? undefined : Number(days) || 30,
       from,
       to,
+      month,
     );
 
     return this.orderModel.aggregate([

@@ -16,6 +16,7 @@ import { Roles } from 'src/auth/roles.decorator';
 import { Role } from 'src/auth/roles.enum';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { VerifyOrderPaymentDto } from './dto/verify-order-payment.dto';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { OrderPaginationDto } from './dto/order-pagination.dto';
 import { ParseMongoIdPipe } from 'src/common/pipes/parse-mongo-id.pipe';
@@ -34,6 +35,8 @@ export class OrdersController {
       req.user.userId,
       body.address,
       body.couponCode,
+      body.paymentMethod,
+      body.cashAmountGiven,
     );
   }
 
@@ -87,5 +90,18 @@ export class OrdersController {
   @ApiOperation({ summary: 'Generar URL de pago para una orden' })
   payOrder(@Param('id', ParseMongoIdPipe) id: string, @Req() req) {
     return this.ordersService.payOrder(id, req.user.userId);
+  }
+
+  @Post(':id/verify-payment')
+  @ApiOperation({
+    summary:
+      'Verificar el estado real de un pago de MercadoPago para una orden',
+  })
+  verifyPayment(
+    @Param('id', ParseMongoIdPipe) id: string,
+    @Req() req,
+    @Body() body: VerifyOrderPaymentDto,
+  ) {
+    return this.ordersService.verifyOrderPayment(id, req.user, body.paymentId);
   }
 }

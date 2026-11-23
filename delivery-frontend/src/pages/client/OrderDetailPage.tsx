@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   AlertTriangle,
   ArrowLeft,
+  Banknote,
   CheckCircle2,
   ChefHat,
   Clock,
@@ -20,8 +21,8 @@ import {
 } from 'lucide-react';
 import {
   cancelOrderApi,
+  getAllowedOrderTransitions,
   getOrderByIdApi,
-  ORDER_STATUS_TRANSITIONS,
   payOrderApi,
   updateOrderStatusAdminApi,
 } from '@/api/endpoints/orders.api';
@@ -32,7 +33,7 @@ import type { Product } from '@/types/catalog.types';
 import { useAuthStore } from '@/store/useAuthStore';
 import { formatCurrency, formatDateTime } from '@/utils/formatters';
 import { Button } from '@/components/ui/Button';
-import { OrderStatusBadge } from '@/components/ui/Badge';
+import { OrderStatusBadge, PaymentMethodBadge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ReviewFormModal } from '@/components/orders/ReviewFormModal';
@@ -83,14 +84,54 @@ const TIMELINE_STEPS: {
   },
 ];
 
-function getStepIndex(status: OrderStatus): number {
-  const idx = TIMELINE_STEPS.findIndex((s) => s.key === status);
+const CASH_TIMELINE_STEPS: {
+  key: OrderStatus;
+  label: string;
+  desc: string;
+  icon: React.ReactNode;
+}[] = [
+  {
+    key: 'PENDING',
+    label: 'Recibido',
+    desc: 'Orden registrada',
+    icon: <Clock className="w-4 h-4" />,
+  },
+  {
+    key: 'CONFIRMED',
+    label: 'Confirmado',
+    desc: 'Aceptado por local',
+    icon: <ShieldCheck className="w-4 h-4" />,
+  },
+  {
+    key: 'PREPARING',
+    label: 'Alistando',
+    desc: 'Preparando pedido',
+    icon: <ChefHat className="w-4 h-4" />,
+  },
+  {
+    key: 'OUT_FOR_DELIVERY',
+    label: 'En Camino',
+    desc: 'Pago al recibir',
+    icon: <Truck className="w-4 h-4" />,
+  },
+  {
+    key: 'DELIVERED',
+    label: 'Entregado',
+    desc: 'Pagado en efectivo',
+    icon: <CheckCircle2 className="w-4 h-4" />,
+  },
+];
+
+function getStepIndex(
+  steps: { key: OrderStatus }[],
+  status: OrderStatus,
+): number {
+  const idx = steps.findIndex((s) => s.key === status);
   return idx >= 0 ? idx : 0;
 }
 
 export function OrderDetailPage() {
   const { id = '' } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
 
@@ -122,7 +163,7 @@ export function OrderDetailPage() {
     },
     onError: (err) => {
       toast.error('Error al generar preferencia de MercadoPago', {
-        description: `${extractErrorMessage(err)}. Puedes usar el botón "Simular Retorno MercadoPago" para probar la vista de confirmación.`,
+        description: extractErrorMessage(err),
       });
     },
   });
@@ -200,14 +241,23 @@ export function OrderDetailPage() {
     );
   }
 
-  const currentStepIndex = getStepIndex(order.status);
+  const isCashOnDelivery = order.paymentMethod === 'CASH_ON_DELIVERY';
+  const activeTimelineSteps = isCashOnDelivery
+    ? CASH_TIMELINE_STEPS
+    : TIMELINE_STEPS;
+  const currentStepIndex = getStepIndex(activeTimelineSteps, order.status);
   const isTerminalNegative =
     order.status === 'CANCELLED' || order.status === 'FAILED';
-  const canPay = order.status === 'PENDING' || order.status === 'FAILED';
+  const canPay =
+    !isCashOnDelivery &&
+    (order.status === 'PENDING' || order.status === 'FAILED');
   const canCancel = order.status === 'PENDING';
   const canReview = order.status === 'DELIVERED';
   const isAdmin = user?.role === 'ADMIN';
-  const allowedNextStatuses = ORDER_STATUS_TRANSITIONS[order.status] ?? [];
+  const allowedNextStatuses = getAllowedOrderTransitions(
+    order.status,
+    order.paymentMethod,
+  );
 
   return (
     <div className="space-y-8">
@@ -225,7 +275,14 @@ export function OrderDetailPage() {
             <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
               Orden #{order._id.slice(-8).toUpperCase()}
             </h1>
-            <OrderStatusBadge status={order.status} />
+            <OrderStatusBadge
+              status={order.status}
+              paymentMethod={order.paymentMethod}
+            />
+            <PaymentMethodBadge
+              method={order.paymentMethod}
+              paymentStatus={order.paymentStatus}
+            />
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Creada el{' '}
@@ -282,8 +339,13 @@ export function OrderDetailPage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {TIMELINE_STEPS.map((step, index) => {
+          <div
+            className={cn(
+              'grid grid-cols-2 sm:grid-cols-3 gap-3',
+              isCashOnDelivery ? 'lg:grid-cols-5' : 'lg:grid-cols-6',
+            )}
+          >
+            {activeTimelineSteps.map((step, index) => {
               const isCompleted = index < currentStepIndex;
               const isCurrent = index === currentStepIndex;
 
@@ -471,6 +533,33 @@ export function OrderDetailPage() {
               </p>
             </div>
 
+            <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/50 p-4 space-y-2">
+              <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                {isCashOnDelivery ? (
+                  <Banknote className="w-3.5 h-3.5 text-emerald-600" />
+                ) : (
+                  <CreditCard className="w-3.5 h-3.5 text-orange-600" />
+                )}
+                Método de Pago
+              </span>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <PaymentMethodBadge
+                  method={order.paymentMethod}
+                  paymentStatus={order.paymentStatus}
+                />
+                {isCashOnDelivery &&
+                  order.cashAmountGiven &&
+                  order.cashAmountGiven > 0 && (
+                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                      Pagas con {formatCurrency(order.cashAmountGiven)}
+                      {order.changeDue && order.changeDue > 0
+                        ? ` · Vueltas: ${formatCurrency(order.changeDue)}`
+                        : ' · Pago exacto'}
+                    </span>
+                  )}
+              </div>
+            </div>
+
             <div className="space-y-2 border-t border-b border-slate-200 dark:border-slate-800 py-4 text-sm">
               <div className="flex items-center justify-between text-slate-500">
                 <span>Subtotal Productos ({order.items.length})</span>
@@ -507,31 +596,15 @@ export function OrderDetailPage() {
             {/* Payment & Cancellation Actions */}
             <div className="space-y-3">
               {canPay && (
-                <>
-                  <Button
-                    variant="primary"
-                    className="w-full"
-                    isLoading={payMutation.isPending}
-                    onClick={() => payMutation.mutate()}
-                    leftIcon={<CreditCard className="w-4 h-4" />}
-                  >
-                    Pagar Ahora con MercadoPago
-                  </Button>
-
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="w-full"
-                    onClick={() =>
-                      navigate(
-                        `/payments/success?external_reference=${order._id}&payment_id=MP-SANDBOX-${Date.now()}`,
-                      )
-                    }
-                    leftIcon={<Sparkles className="w-3.5 h-3.5" />}
-                  >
-                    Simular Pago Aprobado (Sandbox Local)
-                  </Button>
-                </>
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  isLoading={payMutation.isPending}
+                  onClick={() => payMutation.mutate()}
+                  leftIcon={<CreditCard className="w-4 h-4" />}
+                >
+                  Pagar Ahora con MercadoPago
+                </Button>
               )}
 
               {canCancel && (

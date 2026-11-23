@@ -161,7 +161,7 @@ describe('CheckoutPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders cart breakdown with applied coupon discount and creates order without MP redirect', async () => {
+  it('renders cart breakdown with applied coupon discount and creates CASH_ON_DELIVERY order with change calculation without MP redirect', async () => {
     const user = userEvent.setup();
     useCartDrawerStore.setState({
       appliedCoupon: {
@@ -188,9 +188,13 @@ describe('CheckoutPage', () => {
           price: 30000,
         },
       ],
-      total: 60000,
+      total: 50000,
       address: 'Calle 123 #45-67, Bogotá',
       status: 'PENDING',
+      paymentMethod: 'CASH_ON_DELIVERY',
+      paymentStatus: 'PENDING',
+      cashAmountGiven: 100000,
+      changeDue: 50000,
     };
     mockCreateOrderApi.mockResolvedValue(createdOrder);
 
@@ -202,8 +206,19 @@ describe('CheckoutPage', () => {
     expect(screen.getByText('Pizza Margarita')).toBeInTheDocument();
     expect(screen.getByText(/Cupón \(DESCUENTO10\)/i)).toBeInTheDocument();
 
+    await user.click(
+      screen.getByRole('radio', { name: /efectivo contraentrega/i }),
+    );
+    await user.type(
+      screen.getByLabelText(/¿con cuánto vas a pagar\?/i),
+      '100000',
+    );
+    expect(
+      screen.getByText(/vueltas que llevará el repartidor/i),
+    ).toBeInTheDocument();
+
     const submitButton = screen.getByRole('button', {
-      name: /confirmar pedido y ver seguimiento/i,
+      name: /confirmar pedido contraentrega/i,
     });
     await user.click(submitButton);
 
@@ -211,6 +226,8 @@ describe('CheckoutPage', () => {
       expect(mockCreateOrderApi).toHaveBeenCalledWith({
         address: expect.stringContaining('Calle 123 #45-67'),
         couponCode: 'DESCUENTO10',
+        paymentMethod: 'CASH_ON_DELIVERY',
+        cashAmountGiven: 100000,
       });
     });
 
@@ -279,7 +296,7 @@ describe('CheckoutPage', () => {
     renderCheckoutPage();
 
     const confirmBtn = await screen.findByRole('button', {
-      name: /confirmar pedido y ver seguimiento/i,
+      name: /confirmar y pagar con mercadopago/i,
     });
     expect(confirmBtn).toBeDisabled();
     expect(

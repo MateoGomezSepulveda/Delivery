@@ -1,14 +1,17 @@
 import React from 'react';
 import {
+  Banknote,
   CheckCircle2,
   ChefHat,
   Clock,
+  CreditCard,
   ShieldCheck,
   Truck,
   XCircle,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import type { OrderStatus, UserRole } from '@/types/api.types';
+import type { PaymentMethod, PaymentStatus } from '@/types/order.types';
 
 export type BadgeVariant =
   | 'primary'
@@ -106,11 +109,65 @@ const orderStatusConfig: Record<
   },
 };
 
-export function OrderStatusBadge({ status }: { status: OrderStatus }) {
+export function OrderStatusBadge({
+  status,
+  paymentMethod,
+}: {
+  status: OrderStatus;
+  paymentMethod?: PaymentMethod;
+}) {
   const cfg = orderStatusConfig[status] ?? orderStatusConfig.PENDING;
+  const label =
+    status === 'PENDING' && paymentMethod === 'CASH_ON_DELIVERY'
+      ? 'Pendiente de Confirmación'
+      : cfg.label;
   return (
     <Badge variant={cfg.variant} icon={cfg.icon}>
-      {cfg.label}
+      {label}
+    </Badge>
+  );
+}
+
+export function PaymentMethodBadge({
+  method = 'MERCADOPAGO',
+  paymentStatus,
+  compact = false,
+}: {
+  method?: PaymentMethod;
+  paymentStatus?: PaymentStatus;
+  compact?: boolean;
+}) {
+  if (method === 'CASH_ON_DELIVERY') {
+    const paid = paymentStatus === 'PAID';
+    return (
+      <Badge
+        variant={paid ? 'success' : 'warning'}
+        icon={<Banknote className="w-3.5 h-3.5" />}
+      >
+        {compact
+          ? paid
+            ? 'Efectivo · Cobrado'
+            : 'Efectivo'
+          : paid
+            ? 'Efectivo Contraentrega · Cobrado'
+            : 'Efectivo Contraentrega'}
+      </Badge>
+    );
+  }
+
+  const paid = paymentStatus === 'PAID';
+  return (
+    <Badge
+      variant={paid ? 'success' : 'secondary'}
+      icon={<CreditCard className="w-3.5 h-3.5" />}
+    >
+      {compact
+        ? paid
+          ? 'Online · Pagado'
+          : 'MercadoPago'
+        : paid
+          ? 'Pago en Línea · Pagado'
+          : 'Pago en Línea (MercadoPago)'}
     </Badge>
   );
 }

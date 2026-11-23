@@ -8,6 +8,7 @@ import type { Product } from '@/types/catalog.types';
 import type { Cart } from '@/types/order.types';
 
 const mockAddToCartApi = vi.fn();
+const mockUpdateCartItemQuantityApi = vi.fn();
 const mockRemoveFromCartApi = vi.fn();
 const mockClearCartApi = vi.fn();
 const mockToastSuccess = vi.fn();
@@ -15,6 +16,8 @@ const mockToastError = vi.fn();
 
 vi.mock('@/api/endpoints/cart.api', () => ({
   addToCartApi: (...args: unknown[]) => mockAddToCartApi(...args),
+  updateCartItemQuantityApi: (...args: unknown[]) =>
+    mockUpdateCartItemQuantityApi(...args),
   removeFromCartApi: (...args: unknown[]) => mockRemoveFromCartApi(...args),
   clearCartApi: (...args: unknown[]) => mockClearCartApi(...args),
 }));
@@ -146,6 +149,79 @@ describe('useCartMutations', () => {
     expect(rolledBack?.total).toBe(25000);
     expect(mockToastError).toHaveBeenCalledWith(
       'No se pudo actualizar el carrito',
+      expect.any(Object),
+    );
+  });
+
+  it('optimistically decreases quantity on updateQuantityMutation and commits server result', async () => {
+    const multiQtyCart: Cart = {
+      ...initialCart,
+      items: [{ productId: sampleProduct, quantity: 3, price: 25000 }],
+      total: 75000,
+    };
+    const deferred = createDeferred<Cart>();
+    mockUpdateCartItemQuantityApi.mockReturnValue(deferred.promise);
+
+    const { queryClient, result } = setupHook(multiQtyCart);
+
+    act(() => {
+      result.current.updateQuantityMutation.mutate({
+        productId: 'prod-1',
+        quantity: 2,
+      });
+    });
+
+    await waitFor(() => {
+      const optimistic = queryClient.getQueryData<Cart>(['cart']);
+      expect(optimistic?.items[0]?.quantity).toBe(2);
+      expect(optimistic?.total).toBe(50000);
+    });
+
+    const serverCart: Cart = {
+      ...multiQtyCart,
+      items: [{ productId: sampleProduct, quantity: 2, price: 25000 }],
+      total: 50000,
+    };
+
+    await act(async () => {
+      deferred.resolve(serverCart);
+    });
+
+    await waitFor(() => {
+      expect(result.current.updateQuantityMutation.isSuccess).toBe(true);
+    });
+    expect(mockUpdateCartItemQuantityApi).toHaveBeenCalledWith('prod-1', 2);
+    expect(queryClient.getQueryData<Cart>(['cart'])?.items[0]?.quantity).toBe(2);
+  });
+
+  it('rolls back optimistic updateQuantityMutation state on API error', async () => {
+    const multiQtyCart: Cart = {
+      ...initialCart,
+      items: [{ productId: sampleProduct, quantity: 3, price: 25000 }],
+      total: 75000,
+    };
+    mockUpdateCartItemQuantityApi.mockRejectedValue(
+      new Error('Error de red'),
+    );
+
+    const { queryClient, result } = setupHook(multiQtyCart);
+
+    act(() => {
+      result.current.updateQuantityMutation.mutate({
+        productId: 'prod-1',
+        quantity: 2,
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.updateQuantityMutation.isError).toBe(true);
+    });
+
+    const rolledBack = queryClient.getQueryData<Cart>(['cart']);
+    expect(rolledBack?.items[0]?.quantity).toBe(3);
+    expect(rolledBack?.total).toBe(75000);
+    expect(mockToastError).toHaveBeenCalledWith(
+      'No se pudo actualizar la cantidad',
       expect.any(Object),
     );
   });

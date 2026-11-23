@@ -12,6 +12,7 @@ import { Model } from 'mongoose';
 import { CartService } from 'src/cart/cart.service';
 import { PaymentsService } from 'src/payments/payments.service';
 import { OrderStatus } from './order-status.enum';
+import { PaymentMethod, PaymentStatus } from './payment-method.enum';
 import { OrderPaginationDto } from './dto/order-pagination.dto';
 
 import { MailService } from 'src/mail/mail.service';
@@ -26,16 +27,31 @@ import { QueuesService } from '../queues/queues.service';
 export const RIDER_MONTHLY_DISCOUNT_LIMIT = 4;
 export const RIDER_DISCOUNT_PERCENT = 10;
 
-const validTransitions: Record<OrderStatus, OrderStatus[]> = {
-  [OrderStatus.PENDING]: [OrderStatus.PAID, OrderStatus.CANCELLED],
-  [OrderStatus.PAID]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
-  [OrderStatus.CONFIRMED]: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
-  [OrderStatus.PREPARING]: [OrderStatus.OUT_FOR_DELIVERY],
-  [OrderStatus.OUT_FOR_DELIVERY]: [OrderStatus.DELIVERED],
-  [OrderStatus.DELIVERED]: [],
-  [OrderStatus.CANCELLED]: [],
-  [OrderStatus.FAILED]: [OrderStatus.PENDING, OrderStatus.CANCELLED],
-};
+export function getAllowedOrderTransitions(
+  status: OrderStatus,
+  paymentMethod: PaymentMethod = PaymentMethod.MERCADOPAGO,
+): OrderStatus[] {
+  if (
+    status === OrderStatus.PENDING &&
+    paymentMethod === PaymentMethod.CASH_ON_DELIVERY
+  ) {
+    // En contraentrega el local confirma y prepara primero; el cobro ocurre al entregar
+    return [OrderStatus.CONFIRMED, OrderStatus.CANCELLED];
+  }
+
+  const validTransitions: Record<OrderStatus, OrderStatus[]> = {
+    [OrderStatus.PENDING]: [OrderStatus.PAID, OrderStatus.CANCELLED],
+    [OrderStatus.PAID]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
+    [OrderStatus.CONFIRMED]: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
+    [OrderStatus.PREPARING]: [OrderStatus.OUT_FOR_DELIVERY],
+    [OrderStatus.OUT_FOR_DELIVERY]: [OrderStatus.DELIVERED],
+    [OrderStatus.DELIVERED]: [],
+    [OrderStatus.CANCELLED]: [],
+    [OrderStatus.FAILED]: [OrderStatus.PENDING, OrderStatus.CANCELLED],
+  };
+
+  return validTransitions[status] ?? [];
+}
 
 @Injectable()
 export class OrdersService {
@@ -97,7 +113,13 @@ export class OrdersService {
     }
   }
 
-  async createOrder(userId: string, address: string, couponCode?: string) {
+  async createOrder(
+    userId: string,
+    address: string,
+    couponCode?: string,
+    paymentMethod: PaymentMethod = PaymentMethod.MERCADOPAGO,
+    cashAmountGiven?: number,
+  ) {
     const user = await this.usersService.findOne(userId);
     if (!user?.phone || !normalizePhoneNumber(user.phone)) {
       throw new BadRequestException({
@@ -174,6 +196,24 @@ export class OrdersService {
         0,
         Math.round(subtotal - riderDiscount - couponDiscount),
       );
+
+      let normalizedCashGiven: number | null = null;
+      let changeDue = 0;
+
+      if (
+        paymentMethod === PaymentMethod.CASH_ON_DELIVERY &&
+        cashAmountGiven !== undefined &&
+        cashAmountGiven !== null
+      ) {
+        if (cashAmountGiven < finalTotal) {
+          throw new BadRequestException(
+            'El monto en efectivo con el que vas a pagar no puede ser menor al total del pedido.',
+          );
+        }
+        normalizedCashGiven = Math.round(cashAmountGiven);
+        changeDue = Math.round(normalizedCashGiven - finalTotal);
+      }
+
       const totalCost = Math.round(
         orderItems.reduce(
           (sum, item) => sum + (item.costPrice ?? 0) * item.quantity,
@@ -193,6 +233,10 @@ export class OrdersService {
         totalCost,
         netProfit,
         address,
+        paymentMethod,
+        paymentStatus: PaymentStatus.PENDING,
+        cashAmountGiven: normalizedCashGiven,
+        changeDue,
       });
 
       cart.status = 'CHECKED_OUT';
@@ -202,6 +246,11 @@ export class OrdersService {
 
       return await order.save();
     } catch (error) {
+      if (appliedCouponCode && this.couponsService) {
+        await this.couponsService
+          .releaseCoupon(userId, appliedCouponCode)
+          .catch(() => undefined);
+      }
       if (reservedSnapshots && this.productsService) {
         await this.productsService
           .restoreStockForOrder(
@@ -351,7 +400,10 @@ export class OrdersService {
 
     const currentStatus = order.status;
 
-    const allowedTransitions = validTransitions[currentStatus] || [];
+    const allowedTransitions = getAllowedOrderTransitions(
+      currentStatus,
+      order.paymentMethod ?? PaymentMethod.MERCADOPAGO,
+    );
 
     if (!allowedTransitions.includes(status)) {
       throw new BadRequestException(
@@ -376,6 +428,20 @@ export class OrdersService {
     }
 
     order.status = status;
+
+    if (status === OrderStatus.PAID) {
+      order.paymentStatus = PaymentStatus.PAID;
+      order.paidAt = order.paidAt ?? new Date();
+    }
+
+    if (
+      status === OrderStatus.DELIVERED &&
+      order.paymentMethod === PaymentMethod.CASH_ON_DELIVERY
+    ) {
+      order.paymentStatus = PaymentStatus.PAID;
+      order.paidAt = order.paidAt ?? new Date();
+    }
+
     const savedOrder = await order.save();
 
     if (
@@ -447,6 +513,12 @@ export class OrdersService {
   async payOrder(orderId: string, userId: string) {
     const order = await this.findOne(orderId, { userId, role: 'USER' });
 
+    if (order.paymentMethod === PaymentMethod.CASH_ON_DELIVERY) {
+      throw new BadRequestException(
+        'Este pedido es contraentrega en efectivo y se paga al repartidor al recibirlo.',
+      );
+    }
+
     if (
       order.status !== OrderStatus.PENDING &&
       order.status !== OrderStatus.FAILED
@@ -465,5 +537,17 @@ export class OrdersService {
     await order.save();
 
     return { paymentUrl };
+  }
+
+  async verifyOrderPayment(orderId: string, user: any, paymentId: string) {
+    const order = await this.findOne(orderId, user);
+
+    if (order.paymentMethod === PaymentMethod.CASH_ON_DELIVERY) {
+      throw new BadRequestException(
+        'Los pedidos contraentrega en efectivo no se verifican con MercadoPago.',
+      );
+    }
+
+    return this.paymentsService.verifyPayment(paymentId, orderId);
   }
 }

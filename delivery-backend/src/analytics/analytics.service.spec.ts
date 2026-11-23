@@ -125,6 +125,71 @@ describe('AnalyticsService', () => {
       expect(result.kpis.averageOrderValue).toBe(0);
       expect(result.inventoryAlerts).toEqual([]);
     });
+
+    it('debe filtrar por mes exacto (YYYY-MM) y arrastrar deudas de déficit, cobros pendientes e inventario del mes anterior', async () => {
+      mockOrderModel.aggregate
+        .mockResolvedValueOnce([
+          {
+            totalRevenue: 200000,
+            totalCost: 120000,
+            netProfit: 80000,
+            totalUnitsSold: 8,
+            paidOrdersCount: 5,
+            averageOrderValue: 40000,
+          },
+        ])
+        .mockResolvedValueOnce([{ _id: OrderStatus.DELIVERED, count: 5 }])
+        // priorMonthlyProfits: sept ganó +100k (no deja deuda), oct perdió -35k (arrastra 35k a nov)
+        .mockResolvedValueOnce([
+          { _id: '2026-09', monthlyProfit: 100000 },
+          { _id: '2026-10', monthlyProfit: -35000 },
+        ])
+        // priorPendingOrders: 2 pedidos sin pagar de meses anteriores
+        .mockResolvedValueOnce([
+          { pendingReceivablesAmount: 95000, pendingReceivablesCount: 2 },
+        ]);
+      mockUserModel.countDocuments.mockResolvedValueOnce(20);
+      mockProductModel.countDocuments.mockResolvedValueOnce(10);
+      mockProductModel.aggregate
+        .mockResolvedValueOnce([
+          {
+            lowStockProducts: 1,
+            outOfStockProducts: 0,
+            inventoryCostValue: 640000,
+            inventoryRetailValue: 980000,
+            carriedInventoryUnits: 42,
+          },
+        ])
+        .mockResolvedValueOnce([]);
+
+      const result = await service.getDashboardSummary(
+        undefined,
+        undefined,
+        undefined,
+        '2026-11',
+      );
+
+      expect(result.period.month).toBe('2026-11');
+      expect(result.kpis.netProfit).toBe(80000);
+      expect(result.carryOver).toEqual({
+        previousDeficitDebt: 35000,
+        adjustedNetBalance: 45000,
+        closingDeficitDebt: 0,
+        pendingReceivablesAmount: 95000,
+        pendingReceivablesCount: 2,
+        inventoryCostValue: 640000,
+        inventoryRetailValue: 980000,
+        carriedInventoryUnits: 42,
+      });
+
+      const firstPipeline = mockOrderModel.aggregate.mock.calls[0][0];
+      expect(firstPipeline[0].$match.createdAt.$gte.toISOString()).toBe(
+        '2026-11-01T00:00:00.000Z',
+      );
+      expect(firstPipeline[0].$match.createdAt.$lte.toISOString()).toBe(
+        '2026-11-30T23:59:59.999Z',
+      );
+    });
   });
 
   describe('getTopProducts', () => {
@@ -182,6 +247,20 @@ describe('AnalyticsService', () => {
       const pipeline = mockOrderModel.aggregate.mock.calls[0][0];
       expect(pipeline[0].$match.createdAt.$gte).toBeInstanceOf(Date);
       expect(pipeline[0].$match.createdAt.$lte).toBeInstanceOf(Date);
+    });
+
+    it('debe filtrar exactamente por mes YYYY-MM en getSalesByDay', async () => {
+      mockOrderModel.aggregate.mockResolvedValueOnce([]);
+
+      await service.getSalesByDay(30, undefined, undefined, '2026-10');
+
+      const pipeline = mockOrderModel.aggregate.mock.calls[0][0];
+      expect(pipeline[0].$match.createdAt.$gte.toISOString()).toBe(
+        '2026-10-01T00:00:00.000Z',
+      );
+      expect(pipeline[0].$match.createdAt.$lte.toISOString()).toBe(
+        '2026-10-31T23:59:59.999Z',
+      );
     });
   });
 });

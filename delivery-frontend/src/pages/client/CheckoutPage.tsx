@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
+  Banknote,
   CheckCircle2,
   CreditCard,
   Lock,
@@ -23,7 +24,7 @@ import { updateUserApi } from '@/api/endpoints/users.api';
 import { useRiderDiscountQuota } from '@/hooks/useRiderDiscountQuota';
 import { extractErrorMessage } from '@/api/axios.client';
 import type { Product } from '@/types/catalog.types';
-import type { Address } from '@/types/order.types';
+import type { Address, PaymentMethod } from '@/types/order.types';
 import { useCartDrawerStore } from '@/store/useCartDrawerStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { formatCurrency } from '@/utils/formatters';
@@ -44,6 +45,23 @@ function formatAddressString(addr: Address): string {
   return parts.join(', ');
 }
 
+function getQuickCashDenominations(total: number): number[] {
+  if (total <= 0) return [];
+  const candidates = [
+    total,
+    Math.ceil(total / 10000) * 10000,
+    Math.ceil(total / 20000) * 20000,
+    Math.ceil(total / 50000) * 50000,
+    50000,
+    100000,
+    200000,
+  ].filter((v) => v >= total);
+
+  return Array.from(new Set(candidates))
+    .sort((a, b) => a - b)
+    .slice(0, 4);
+}
+
 export function CheckoutPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -60,9 +78,14 @@ export function CheckoutPage() {
     null,
   );
   const [customAddress, setCustomAddress] = useState<string>('');
-  const [isProcessingMp, setIsProcessingMp] = useState(false);
+  const [paymentMethod, setPaymentMethod] =
+    useState<PaymentMethod>('MERCADOPAGO');
+  const [cashAmountInput, setCashAmountInput] = useState<string>('');
+  const [isRedirectingMp, setIsRedirectingMp] = useState(false);
   const [inlinePhone, setInlinePhone] = useState(user?.phone || '');
-  const [inlinePhoneError, setInlinePhoneError] = useState<string | undefined>();
+  const [inlinePhoneError, setInlinePhoneError] = useState<
+    string | undefined
+  >();
   const [isSavingPhone, setIsSavingPhone] = useState(false);
 
   const hasValidPhone = Boolean(user?.phone?.trim());
@@ -93,7 +116,13 @@ export function CheckoutPage() {
     ) {
       setCustomAddress(activeAddressLabel);
     }
-  }, [addresses, selectedAddressId, customAddress, activeAddressLabel, setSelectedAddress]);
+  }, [
+    addresses,
+    selectedAddressId,
+    customAddress,
+    activeAddressLabel,
+    setSelectedAddress,
+  ]);
 
   const handleSelectAddress = (addr: Address) => {
     setSelectedAddressId(addr._id);
@@ -110,21 +139,57 @@ export function CheckoutPage() {
   const riderDiscount =
     isRider && riderQuota?.eligible ? Math.round(subtotal * 0.1) : 0;
   const discount = appliedCoupon
-    ? Math.min(appliedCoupon.discountAmount, Math.max(0, subtotal - riderDiscount))
+    ? Math.min(
+        appliedCoupon.discountAmount,
+        Math.max(0, subtotal - riderDiscount),
+      )
     : 0;
   const finalTotal = Math.max(0, subtotal - riderDiscount - discount);
+
+  const parsedCashAmount = useMemo(() => {
+    if (!cashAmountInput.trim()) return undefined;
+    const numeric = Number(cashAmountInput.replace(/[^\d]/g, ''));
+    return Number.isFinite(numeric) ? numeric : undefined;
+  }, [cashAmountInput]);
+
+  const cashInputError =
+    paymentMethod === 'CASH_ON_DELIVERY' &&
+    parsedCashAmount !== undefined &&
+    parsedCashAmount < finalTotal
+      ? `El monto debe ser igual o mayor a ${formatCurrency(finalTotal)}.`
+      : undefined;
+
+  const estimatedChange =
+    paymentMethod === 'CASH_ON_DELIVERY' &&
+    parsedCashAmount !== undefined &&
+    parsedCashAmount >= finalTotal
+      ? parsedCashAmount - finalTotal
+      : 0;
+
+  const quickCashOptions = useMemo(
+    () => getQuickCashDenominations(finalTotal),
+    [finalTotal],
+  );
 
   const createOrderMutation = useMutation({
     mutationFn: ({
       addressToUse,
       couponCode,
+      method,
+      cashAmountGiven,
     }: {
       addressToUse: string;
       couponCode?: string;
+      method: PaymentMethod;
+      cashAmountGiven?: number;
     }) =>
       createOrderApi({
         address: addressToUse,
         ...(couponCode ? { couponCode } : {}),
+        paymentMethod: method,
+        ...(method === 'CASH_ON_DELIVERY' && cashAmountGiven !== undefined
+          ? { cashAmountGiven }
+          : {}),
       }),
     onSuccess: () => {
       clearRecentProductMutations();
@@ -169,7 +234,7 @@ export function CheckoutPage() {
     }
   };
 
-  const handleConfirmOrder = async (payWithMercadoPago: boolean) => {
+  const handleConfirmOrder = async () => {
     if (!hasValidPhone) {
       toast.warning('Número de celular obligatorio', {
         description:
@@ -187,18 +252,31 @@ export function CheckoutPage() {
       return;
     }
 
+    if (cashInputError) {
+      toast.warning('Revisa el monto en efectivo', {
+        description: cashInputError,
+      });
+      return;
+    }
+
+    const payOnline = paymentMethod === 'MERCADOPAGO';
+
     try {
-      setIsProcessingMp(payWithMercadoPago);
+      setIsRedirectingMp(payOnline);
       const createdOrder = await createOrderMutation.mutateAsync({
         addressToUse: trimmedAddress,
         couponCode: appliedCoupon?.code,
+        method: paymentMethod,
+        cashAmountGiven: parsedCashAmount,
       });
 
       toast.success('¡Pedido creado con éxito!', {
-        description: `Orden #${createdOrder._id.slice(-6).toUpperCase()} recibida correctamente.`,
+        description: payOnline
+          ? `Orden #${createdOrder._id.slice(-6).toUpperCase()} registrada. Conectando con MercadoPago...`
+          : `Orden #${createdOrder._id.slice(-6).toUpperCase()} confirmada para pago en efectivo contraentrega.`,
       });
 
-      if (payWithMercadoPago) {
+      if (payOnline) {
         try {
           const { paymentUrl } = await payOrderApi(createdOrder._id);
           if (paymentUrl) {
@@ -208,9 +286,9 @@ export function CheckoutPage() {
           }
         } catch (mpError) {
           toast.warning(
-            'Orden creada, pero MercadoPago Sandbox no pudo iniciarse',
+            'Pedido guardado, pero no se pudo abrir MercadoPago',
             {
-              description: `${extractErrorMessage(mpError)}. Te llevamos al detalle del pedido para probar el pago o seguimiento.`,
+              description: `${extractErrorMessage(mpError)}. Te llevamos al detalle del pedido para reintentar el pago.`,
             },
           );
           navigate(`/orders/${createdOrder._id}`);
@@ -224,7 +302,7 @@ export function CheckoutPage() {
         description: extractErrorMessage(err),
       });
     } finally {
-      setIsProcessingMp(false);
+      setIsRedirectingMp(false);
     }
   };
 
@@ -249,7 +327,10 @@ export function CheckoutPage() {
           action={
             <div className="flex items-center gap-3">
               <Link to="/">
-                <Button variant="primary" leftIcon={<Sparkles className="w-4 h-4" />}>
+                <Button
+                  variant="primary"
+                  leftIcon={<Sparkles className="w-4 h-4" />}
+                >
                   Explorar Catálogo
                 </Button>
               </Link>
@@ -279,13 +360,14 @@ export function CheckoutPage() {
             Confirmación y Checkout Seguro
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Verifica tu dirección de entrega, revisa tus productos y completa tu pago con MercadoPago.
+            Verifica tu dirección, elige si pagas en línea o en efectivo
+            contraentrega y confirma tu pedido.
           </p>
         </div>
 
         <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/80 dark:bg-emerald-950/30 px-4 py-2.5 text-xs font-bold text-emerald-800 dark:text-emerald-300">
           <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>Pago 100% Seguro · MercadoPago</span>
+          <span>Pago Online o Contraentrega</span>
         </div>
       </div>
 
@@ -335,7 +417,7 @@ export function CheckoutPage() {
                       type="button"
                       onClick={() => handleSelectAddress(addr)}
                       className={cn(
-                        'rounded-2xl border p-4 text-left transition-all cursor-pointer flex flex-col justify-between gap-2',
+                        'rounded-2xl border p-4 text-left transition-all duration-200 cursor-pointer flex flex-col justify-between gap-2',
                         isSelected
                           ? 'border-orange-500 bg-orange-50/60 dark:bg-orange-950/30 ring-2 ring-orange-500/20'
                           : 'border-slate-200 dark:border-slate-800 hover:border-orange-300',
@@ -463,7 +545,7 @@ export function CheckoutPage() {
           </section>
         </div>
 
-        {/* Right Column: Step 3 Summary & Payment */}
+        {/* Right Column: Step 3 Summary & Payment Method */}
         <div className="lg:col-span-5">
           <div className="sticky top-24 rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-card space-y-6">
             <div className="flex items-center gap-3">
@@ -472,12 +554,158 @@ export function CheckoutPage() {
               </span>
               <div>
                 <h2 className="font-heading text-lg font-extrabold text-slate-900 dark:text-white">
-                  Resumen y Pasarela de Pago
+                  Resumen y Método de Pago
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Aplica tu cupón promocional antes de confirmar
+                  Elige cómo prefieres pagar y aplica tu cupón promocional
                 </p>
               </div>
+            </div>
+
+            {/* Payment Method Selector */}
+            <div className="space-y-3">
+              <span className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                ¿Cómo deseas pagar?
+              </span>
+
+              <div
+                role="radiogroup"
+                aria-label="Método de pago"
+                className="grid grid-cols-1 gap-2.5"
+              >
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={paymentMethod === 'MERCADOPAGO'}
+                  onClick={() => setPaymentMethod('MERCADOPAGO')}
+                  className={cn(
+                    'rounded-2xl border p-4 text-left transition-colors duration-200 cursor-pointer flex items-start justify-between gap-3 focus:outline-none focus:ring-2 focus:ring-orange-500/40',
+                    paymentMethod === 'MERCADOPAGO'
+                      ? 'border-orange-500 bg-orange-50/70 dark:bg-orange-950/30 ring-2 ring-orange-500/20'
+                      : 'border-slate-200 dark:border-slate-800 hover:border-orange-300 dark:hover:border-slate-700',
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={cn(
+                        'h-10 w-10 rounded-xl flex items-center justify-center shrink-0',
+                        paymentMethod === 'MERCADOPAGO'
+                          ? 'bg-orange-600 text-white'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500',
+                      )}
+                    >
+                      <CreditCard className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-extrabold text-slate-900 dark:text-white">
+                        Pago en Línea (MercadoPago)
+                      </p>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                        Tarjeta crédito/débito, PSE o Nequi · Pago anticipado
+                        seguro
+                      </p>
+                    </div>
+                  </div>
+                  {paymentMethod === 'MERCADOPAGO' && (
+                    <CheckCircle2 className="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={paymentMethod === 'CASH_ON_DELIVERY'}
+                  onClick={() => setPaymentMethod('CASH_ON_DELIVERY')}
+                  className={cn(
+                    'rounded-2xl border p-4 text-left transition-colors duration-200 cursor-pointer flex items-start justify-between gap-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40',
+                    paymentMethod === 'CASH_ON_DELIVERY'
+                      ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/30 ring-2 ring-emerald-500/20'
+                      : 'border-slate-200 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-slate-700',
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={cn(
+                        'h-10 w-10 rounded-xl flex items-center justify-center shrink-0',
+                        paymentMethod === 'CASH_ON_DELIVERY'
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500',
+                      )}
+                    >
+                      <Banknote className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-extrabold text-slate-900 dark:text-white">
+                        Efectivo Contraentrega
+                      </p>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                        Pagas en efectivo al repartidor al recibir tu pedido en
+                        la puerta
+                      </p>
+                    </div>
+                  </div>
+                  {paymentMethod === 'CASH_ON_DELIVERY' && (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                  )}
+                </button>
+              </div>
+
+              {/* Cash Change Calculator */}
+              {paymentMethod === 'CASH_ON_DELIVERY' && (
+                <div className="rounded-2xl border border-emerald-200/80 dark:border-emerald-900/60 bg-emerald-50/50 dark:bg-emerald-950/20 p-4 space-y-3">
+                  <Input
+                    id="cash-amount-input"
+                    label="¿Con cuánto vas a pagar? (Opcional, para llevar cambio)"
+                    type="number"
+                    min={finalTotal}
+                    step={1000}
+                    placeholder={`Ej. ${Math.ceil(finalTotal / 10000) * 10000 || 50000}`}
+                    value={cashAmountInput}
+                    onChange={(e) => setCashAmountInput(e.target.value)}
+                    leftIcon={<Banknote className="w-4 h-4" />}
+                    error={cashInputError}
+                  />
+
+                  {quickCashOptions.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {quickCashOptions.map((amount) => {
+                        const isExact = amount === finalTotal;
+                        const isSelected = parsedCashAmount === amount;
+                        return (
+                          <button
+                            key={amount}
+                            type="button"
+                            onClick={() => setCashAmountInput(String(amount))}
+                            className={cn(
+                              'rounded-xl px-2.5 py-1.5 text-xs font-bold border transition-colors duration-200 cursor-pointer',
+                              isSelected
+                                ? 'bg-emerald-600 text-white border-emerald-600'
+                                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-emerald-400',
+                            )}
+                          >
+                            {isExact ? 'Pago exacto' : formatCurrency(amount)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {parsedCashAmount !== undefined && !cashInputError && (
+                    <div className="flex items-center justify-between text-xs font-bold text-emerald-800 dark:text-emerald-300 pt-1 border-t border-emerald-200/70 dark:border-emerald-900/60">
+                      <span>
+                        {estimatedChange === 0
+                          ? 'Pago exacto · Sin devueltas'
+                          : 'Vueltas que llevará el repartidor:'}
+                      </span>
+                      {estimatedChange > 0 && (
+                        <span className="font-heading text-sm font-extrabold">
+                          {formatCurrency(estimatedChange)}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Coupon Input Box */}
@@ -487,7 +715,9 @@ export function CheckoutPage() {
             <div className="space-y-2.5 border-t border-b border-slate-200 dark:border-slate-800 py-4 text-sm">
               <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
                 <span>Subtotal productos</span>
-                <span className="font-semibold">{formatCurrency(subtotal)}</span>
+                <span className="font-semibold">
+                  {formatCurrency(subtotal)}
+                </span>
               </div>
 
               <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
@@ -581,42 +811,51 @@ export function CheckoutPage() {
               </div>
             )}
 
-            {/* Action Buttons */}
+            {/* Primary Smart Action Button */}
             <div className="space-y-3">
               <Button
                 type="button"
                 variant="primary"
                 size="lg"
                 className="w-full"
-                isLoading={createOrderMutation.isPending && isProcessingMp}
-                disabled={createOrderMutation.isPending || !hasValidPhone}
-                onClick={() => handleConfirmOrder(true)}
-                leftIcon={<CreditCard className="w-5 h-5" />}
+                isLoading={createOrderMutation.isPending || isRedirectingMp}
+                disabled={
+                  createOrderMutation.isPending ||
+                  isRedirectingMp ||
+                  !hasValidPhone ||
+                  Boolean(cashInputError)
+                }
+                onClick={handleConfirmOrder}
+                leftIcon={
+                  paymentMethod === 'MERCADOPAGO' ? (
+                    <CreditCard className="w-5 h-5" />
+                  ) : (
+                    <Banknote className="w-5 h-5" />
+                  )
+                }
               >
-                Confirmar y Pagar con MercadoPago
-              </Button>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="md"
-                className="w-full"
-                isLoading={createOrderMutation.isPending && !isProcessingMp}
-                disabled={createOrderMutation.isPending || !hasValidPhone}
-                onClick={() => handleConfirmOrder(false)}
-                leftIcon={<Truck className="w-4 h-4" />}
-              >
-                Confirmar Pedido y Ver Seguimiento
+                {paymentMethod === 'MERCADOPAGO'
+                  ? 'Confirmar y Pagar con MercadoPago'
+                  : 'Confirmar Pedido Contraentrega'}
               </Button>
             </div>
 
-            <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/50 p-3.5 flex items-start gap-2.5 text-[11px] text-slate-500 dark:text-slate-400">
+            <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/50 p-3.5 flex items-start gap-2.5 text-[11px] text-slate-600 dark:text-slate-400">
               <Lock className="w-4 h-4 text-orange-600 shrink-0 mt-0.5" />
-              <p>
-                Al confirmar, registraremos tu pedido y podrás completar tu pago
-                de forma rápida y segura a través de{' '}
-                <strong>MercadoPago Checkout Pro</strong>.
-              </p>
+              {paymentMethod === 'MERCADOPAGO' ? (
+                <p>
+                  Al confirmar, registraremos tu pedido y te llevaremos a{' '}
+                  <strong>MercadoPago Checkout Pro</strong> para pagar con
+                  tarjeta, PSE o Nequi de forma protegida.
+                </p>
+              ) : (
+                <p>
+                  Tu pedido se enviará directo a confirmación del local. Ten
+                  listo el efectivo por{' '}
+                  <strong>{formatCurrency(finalTotal)}</strong> al momento de la
+                  entrega.
+                </p>
+              )}
             </div>
           </div>
         </div>
