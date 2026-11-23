@@ -21,6 +21,7 @@ import { getMyAddressesApi } from '@/api/endpoints/addresses.api';
 import { createOrderApi, payOrderApi } from '@/api/endpoints/orders.api';
 import { clearRecentProductMutations } from '@/api/endpoints/products.api';
 import { updateUserApi } from '@/api/endpoints/users.api';
+import { useDeliveryFee } from '@/hooks/useDeliveryFee';
 import { useRiderDiscountQuota } from '@/hooks/useRiderDiscountQuota';
 import { extractErrorMessage } from '@/api/axios.client';
 import type { Product } from '@/types/catalog.types';
@@ -135,6 +136,11 @@ export function CheckoutPage() {
 
   const items = cart?.items ?? [];
   const subtotal = cart?.total ?? 0;
+  const { deliveryFee } = useDeliveryFee({
+    address: customAddress || activeAddressLabel,
+    subtotal,
+    enabled: items.length > 0,
+  });
   const isRider = user?.role === 'DELIVERY';
   const riderDiscount =
     isRider && riderQuota?.eligible ? Math.round(subtotal * 0.1) : 0;
@@ -144,7 +150,9 @@ export function CheckoutPage() {
         Math.max(0, subtotal - riderDiscount),
       )
     : 0;
-  const finalTotal = Math.max(0, subtotal - riderDiscount - discount);
+  const appliedDeliveryFee = items.length > 0 ? deliveryFee : 0;
+  const finalTotal =
+    Math.max(0, subtotal - riderDiscount - discount) + appliedDeliveryFee;
 
   const parsedCashAmount = useMemo(() => {
     if (!cashAmountInput.trim()) return undefined;
@@ -721,10 +729,19 @@ export function CheckoutPage() {
               </div>
 
               <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
-                <span>Costo de domicilio</span>
-                <span className="text-xs font-bold uppercase text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full">
-                  Gratis Promo
+                <span className="inline-flex items-center gap-1.5">
+                  <Truck className="w-3.5 h-3.5 text-orange-500" />
+                  Costo de domicilio
                 </span>
+                {appliedDeliveryFee > 0 ? (
+                  <span className="font-semibold tabular-nums text-slate-800 dark:text-slate-200">
+                    {formatCurrency(appliedDeliveryFee)}
+                  </span>
+                ) : (
+                  <span className="text-xs font-bold uppercase text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full">
+                    Gratis
+                  </span>
+                )}
               </div>
 
               {riderDiscount > 0 && riderQuota && (

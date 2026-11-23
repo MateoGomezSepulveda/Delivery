@@ -106,6 +106,7 @@ export interface Order {
   riderDiscount?: number;
   couponCode?: string | null;
   couponDiscount?: number;
+  deliveryFee?: number;
   total: number;
   address: string;
   status: OrderStatus;
@@ -142,6 +143,12 @@ export interface RiderDiscountQuota {
   usedThisMonth: number;
   remaining: number;
   discountPercent: number;
+}
+
+export interface DeliveryFeeEstimate {
+  deliveryFee: number;
+  currency: 'COP';
+  pricingMode: 'FLAT' | 'DYNAMIC';
 }
 
 export interface OrderQueryParams {

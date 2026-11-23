@@ -64,8 +64,8 @@ export function RiderAvailableOrdersPage() {
             Pedidos disponibles
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Pedidos listos para recoger (PREPARING) con alertas instantáneas en
-            tiempo real.
+            Pedidos confirmados y listos para recoger con alertas instantáneas
+            en tiempo real.
           </p>
         </div>
 
@@ -115,7 +115,7 @@ export function RiderAvailableOrdersPage() {
         <EmptyState
           icon={<PackageCheck className="w-7 h-7" />}
           title="No hay pedidos por recoger"
-          description="Cuando un pedido pase a PREPARING recibirás una alerta con sonido aquí al instante."
+          description="Cuando un pedido sea confirmado por la tienda recibirás una alerta con sonido aquí al instante."
         />
       ) : (
         orders.map((order) => {

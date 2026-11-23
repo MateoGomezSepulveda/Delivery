@@ -46,6 +46,7 @@ import * as Joi from 'joi';
         MONGO_URI: Joi.string().required(),
         JWT_SECRET: Joi.string().required(),
         REDIS_URL: Joi.string().default('redis://localhost:6379'),
+        DELIVERY_FEE: Joi.number().min(0).default(5000),
       }),
     }),
     CacheModule.registerAsync({

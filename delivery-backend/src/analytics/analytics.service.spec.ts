@@ -189,6 +189,11 @@ describe('AnalyticsService', () => {
       expect(firstPipeline[0].$match.createdAt.$lte.toISOString()).toBe(
         '2026-11-30T23:59:59.999Z',
       );
+
+      // Verifica que el pipeline descuenta deliveryFee para aislar ventas/ganancia de productos
+      const pipelineJson = JSON.stringify(firstPipeline);
+      expect(pipelineJson).toContain('$deliveryFee');
+      expect(pipelineJson).toContain('_productRevenue');
     });
   });
 

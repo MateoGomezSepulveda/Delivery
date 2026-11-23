@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { getCartApi } from '@/api/endpoints/cart.api';
 import { useCartMutations } from '@/hooks/useCartMutations';
+import { useDeliveryFee } from '@/hooks/useDeliveryFee';
 import { useRiderDiscountQuota } from '@/hooks/useRiderDiscountQuota';
 import type { Product } from '@/types/catalog.types';
 import { useCartDrawerStore } from '@/store/useCartDrawerStore';
@@ -49,13 +50,20 @@ export function CartDrawer() {
 
   const items = isAuthenticated ? (cart?.items ?? []) : [];
   const subtotal = isAuthenticated ? (cart?.total ?? 0) : 0;
+  const { deliveryFee } = useDeliveryFee({
+    address: activeAddressLabel,
+    subtotal,
+    enabled: isAuthenticated && items.length > 0,
+  });
   const isRider = isAuthenticated && user?.role === 'DELIVERY';
   const riderDiscount =
     isRider && riderQuota?.eligible ? Math.round(subtotal * 0.1) : 0;
   const discount = appliedCoupon
     ? Math.min(appliedCoupon.discountAmount, Math.max(0, subtotal - riderDiscount))
     : 0;
-  const finalTotal = Math.max(0, subtotal - riderDiscount - discount);
+  const appliedDeliveryFee = items.length > 0 ? deliveryFee : 0;
+  const finalTotal =
+    Math.max(0, subtotal - riderDiscount - discount) + appliedDeliveryFee;
 
   return (
     <Drawer
@@ -71,7 +79,19 @@ export function CartDrawer() {
             <div className="space-y-1.5 text-sm border-t border-slate-200 dark:border-slate-800 pt-3">
               <div className="flex items-center justify-between text-slate-500">
                 <span>Subtotal ({items.length} productos)</span>
-                <span>{formatCurrency(subtotal)}</span>
+                <span className="tabular-nums">{formatCurrency(subtotal)}</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-500">
+                <span>Costo de domicilio</span>
+                {appliedDeliveryFee > 0 ? (
+                  <span className="font-semibold tabular-nums text-slate-700 dark:text-slate-300">
+                    {formatCurrency(appliedDeliveryFee)}
+                  </span>
+                ) : (
+                  <span className="text-xs font-bold uppercase text-emerald-600">
+                    Gratis
+                  </span>
+                )}
               </div>
               {riderDiscount > 0 && riderQuota && (
                 <div className="flex items-center justify-between text-blue-600 font-semibold">

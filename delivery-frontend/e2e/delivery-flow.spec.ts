@@ -98,6 +98,8 @@ test.describe('Flujo E2E Multirrol DeliveryPro', () => {
       _id: string;
       userId: { _id: string; name: string; email: string; role: string };
       deliveryId?: string;
+      paymentMethod: string;
+      paymentStatus: string;
       items: Array<{ productId: (typeof products)[0]; name: string; quantity: number; price: number }>;
       total: number;
       status: string;
@@ -111,6 +113,7 @@ test.describe('Flujo E2E Multirrol DeliveryPro', () => {
       userId: 'u-rider',
       vehicleType: 'MOTO',
       plate: 'DEL-900',
+      status: 'APPROVED',
       isAvailable: true,
       totalDeliveries: 12,
     };
@@ -204,7 +207,10 @@ test.describe('Flujo E2E Multirrol DeliveryPro', () => {
       }
 
       if (method === 'POST' && path === '/orders') {
-        const body = request.postDataJSON() as { address: string };
+        const body = request.postDataJSON() as {
+          address: string;
+          paymentMethod?: string;
+        };
         const orderTotal = cartItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
         const createdOrder = {
           _id: 'order100001',
@@ -217,6 +223,8 @@ test.describe('Flujo E2E Multirrol DeliveryPro', () => {
           })),
           total: orderTotal,
           status: 'PENDING',
+          paymentMethod: body.paymentMethod ?? 'MERCADOPAGO',
+          paymentStatus: 'PENDING',
           address: body.address,
           createdAt: new Date().toISOString(),
         };
@@ -290,7 +298,7 @@ test.describe('Flujo E2E Multirrol DeliveryPro', () => {
       }
 
       if (method === 'GET' && path === '/delivery/orders/available') {
-        return json(orders.filter((o) => o.status === 'PREPARING'));
+        return json(orders.filter((o) => o.status === 'CONFIRMED' && !o.deliveryId));
       }
 
       if (method === 'PATCH' && path.endsWith('/accept')) {
@@ -312,6 +320,7 @@ test.describe('Flujo E2E Multirrol DeliveryPro', () => {
         const found = orders.find((o) => o._id === id);
         if (found) {
           found.status = 'DELIVERED';
+          found.paymentStatus = 'PAID';
         }
         return json(found);
       }
@@ -342,22 +351,22 @@ test.describe('Flujo E2E Multirrol DeliveryPro', () => {
 
     await expect(page).toHaveURL(/\/checkout$/);
     await expect(page.getByText('Casa', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: /confirmar pedido y ver seguimiento/i }).click();
+    // Pago en efectivo contraentrega: queda PENDING hasta que el local lo confirme
+    await page.getByRole('radio', { name: /efectivo contraentrega/i }).click();
+    await page.getByRole('button', { name: /confirmar pedido contraentrega/i }).click();
 
     await expect(page).toHaveURL(/\/orders\/order100001$/);
     await expect(page.getByText('Recibido').first()).toBeVisible();
 
-    // 2. Admin entra a despacho y avanza pedido hasta PREPARING ("En cocina")
+    // 2. Admin entra a despacho y confirma el pedido para que quede disponible a repartidores
     await loginAs(page, 'admin@delivery.com', 'Admin123456');
 
     await expect(page).toHaveURL(/\/admin$/);
     await page.getByRole('link', { name: /despacho de pedidos/i }).click();
     await expect(page).toHaveURL(/\/admin\/orders$/);
 
-    await page.getByRole('button', { name: 'Marcar pagado' }).click();
-    await page.getByRole('button', { name: 'Confirmar' }).click();
-    await page.getByRole('button', { name: 'A cocina' }).click();
-    await expect(page.getByText('En Cocina', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Despachar' }).first()).toBeVisible();
 
     // 3. Repartidor acepta pedido disponible y lo marca como entregado
     await loginAs(page, 'rider@delivery.com', 'Rider123456');
@@ -368,7 +377,8 @@ test.describe('Flujo E2E Multirrol DeliveryPro', () => {
 
     await expect(page).toHaveURL(/\/delivery\/active$/);
     await page.getByRole('button', { name: /marcar como entregado/i }).click();
-    // Modal de confirmación antes de cerrar la entrega
+    // Modal de confirmación: en contraentrega el repartidor confirma el cobro en efectivo
+    await page.getByRole('checkbox').check();
     await page.getByRole('button', { name: /sí, confirmar entrega/i }).click();
     await expect(page.getByText('No tienes entregas en curso')).toBeVisible();
 

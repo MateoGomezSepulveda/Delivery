@@ -50,6 +50,9 @@ export class Order {
   @Prop({ default: 0 })
   couponDiscount?: number;
 
+  @Prop({ type: Number, default: 0 })
+  deliveryFee?: number;
+
   @Prop({ required: true })
   total: number;
 

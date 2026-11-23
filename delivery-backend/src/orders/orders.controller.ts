@@ -14,6 +14,7 @@ import { RolesGuard } from 'src/auth/roles.guard';
 import { OrdersService } from './orders.service';
 import { Roles } from 'src/auth/roles.decorator';
 import { Role } from 'src/auth/roles.enum';
+import { Public } from 'src/auth/public.decorator';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { VerifyOrderPaymentDto } from './dto/verify-order-payment.dto';
@@ -37,6 +38,24 @@ export class OrdersController {
       body.couponCode,
       body.paymentMethod,
       body.cashAmountGiven,
+    );
+  }
+
+  @Public()
+  @Get('delivery-fee')
+  @ApiOperation({
+    summary:
+      'Consultar el valor actual del domicilio (tarifa base configurable)',
+  })
+  getDeliveryFee(
+    @Query('address') address?: string,
+    @Query('subtotal') subtotal?: string,
+  ) {
+    const parsedSubtotal =
+      subtotal !== undefined && subtotal !== '' ? Number(subtotal) : undefined;
+    return this.ordersService.getDeliveryFeeEstimate(
+      address,
+      Number.isFinite(parsedSubtotal) ? parsedSubtotal : undefined,
     );
   }
 

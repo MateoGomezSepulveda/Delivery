@@ -27,6 +27,10 @@ vi.mock('@/hooks/useRiderDiscountQuota', () => ({
   useRiderDiscountQuota: () => ({ data: undefined }),
 }));
 
+vi.mock('@/hooks/useDeliveryFee', () => ({
+  useDeliveryFee: () => ({ deliveryFee: 5000, pricingMode: 'FLAT' }),
+}));
+
 vi.mock('sonner', () => ({
   toast: {
     success: vi.fn(),
@@ -139,5 +143,8 @@ describe('CartDrawer', () => {
 
     expect(minusButton).toBeDisabled();
     expect(deleteButton).not.toBeDisabled();
+    expect(screen.getByText('Costo de domicilio')).toBeInTheDocument();
+    expect(screen.getByText(/\$\s*5\.000/)).toBeInTheDocument();
+    expect(screen.getByText(/\$\s*60\.000/)).toBeInTheDocument();
   });
 });

@@ -2,6 +2,7 @@ import { apiClient } from '@/api/axios.client';
 import type { OrderStatus, PaginatedResponse } from '@/types/api.types';
 import type {
   CreateOrderPayload,
+  DeliveryFeeEstimate,
   Order,
   OrderQueryParams,
   PaymentMethod,
@@ -10,14 +11,17 @@ import type {
   VerifyOrderPaymentResponse,
 } from '@/types/order.types';
 
+export const DEFAULT_DELIVERY_FEE = 5000;
+
 /**
  * Máquina de estados válida del Backend (OrdersService.getAllowedOrderTransitions)
  */
 export const ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING: ['PAID', 'CANCELLED'],
   PAID: ['CONFIRMED', 'CANCELLED'],
-  CONFIRMED: ['PREPARING', 'CANCELLED'],
-  PREPARING: ['OUT_FOR_DELIVERY'],
+  CONFIRMED: ['OUT_FOR_DELIVERY', 'CANCELLED'],
+  // Compatibilidad retroactiva para pedidos históricos en PREPARING
+  PREPARING: ['OUT_FOR_DELIVERY', 'CANCELLED'],
   OUT_FOR_DELIVERY: ['DELIVERED'],
   DELIVERED: [],
   CANCELLED: [],
@@ -38,6 +42,17 @@ export async function createOrderApi(
   payload: CreateOrderPayload,
 ): Promise<Order> {
   const response = await apiClient.post<Order>('/orders', payload);
+  return response.data;
+}
+
+export async function getDeliveryFeeApi(params?: {
+  address?: string;
+  subtotal?: number;
+}): Promise<DeliveryFeeEstimate> {
+  const response = await apiClient.get<DeliveryFeeEstimate>(
+    '/orders/delivery-fee',
+    { params },
+  );
   return response.data;
 }
 

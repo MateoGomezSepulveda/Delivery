@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   Banknote,
   CheckCircle2,
-  ChefHat,
   Clock,
   CreditCard,
   MapPin,
@@ -61,14 +60,8 @@ const TIMELINE_STEPS: {
   {
     key: 'CONFIRMED',
     label: 'Confirmado',
-    desc: 'Aceptado por local',
+    desc: 'Listo para despacho',
     icon: <ShieldCheck className="w-4 h-4" />,
-  },
-  {
-    key: 'PREPARING',
-    label: 'Alistando',
-    desc: 'Preparando pedido',
-    icon: <ChefHat className="w-4 h-4" />,
   },
   {
     key: 'OUT_FOR_DELIVERY',
@@ -99,14 +92,8 @@ const CASH_TIMELINE_STEPS: {
   {
     key: 'CONFIRMED',
     label: 'Confirmado',
-    desc: 'Aceptado por local',
+    desc: 'Listo para despacho',
     icon: <ShieldCheck className="w-4 h-4" />,
-  },
-  {
-    key: 'PREPARING',
-    label: 'Alistando',
-    desc: 'Preparando pedido',
-    icon: <ChefHat className="w-4 h-4" />,
   },
   {
     key: 'OUT_FOR_DELIVERY',
@@ -126,7 +113,9 @@ function getStepIndex(
   steps: { key: OrderStatus }[],
   status: OrderStatus,
 ): number {
-  const idx = steps.findIndex((s) => s.key === status);
+  const normalizedStatus: OrderStatus =
+    status === 'PREPARING' ? 'CONFIRMED' : status;
+  const idx = steps.findIndex((s) => s.key === normalizedStatus);
   return idx >= 0 ? idx : 0;
 }
 
@@ -342,7 +331,7 @@ export function OrderDetailPage() {
           <div
             className={cn(
               'grid grid-cols-2 sm:grid-cols-3 gap-3',
-              isCashOnDelivery ? 'lg:grid-cols-5' : 'lg:grid-cols-6',
+              isCashOnDelivery ? 'lg:grid-cols-4' : 'lg:grid-cols-5',
             )}
           >
             {activeTimelineSteps.map((step, index) => {
@@ -563,25 +552,40 @@ export function OrderDetailPage() {
             <div className="space-y-2 border-t border-b border-slate-200 dark:border-slate-800 py-4 text-sm">
               <div className="flex items-center justify-between text-slate-500">
                 <span>Subtotal Productos ({order.items.length})</span>
-                <span>{formatCurrency(order.subtotal ?? order.total)}</span>
+                <span className="tabular-nums">
+                  {formatCurrency(
+                    order.subtotal ??
+                      Math.max(0, order.total - (order.deliveryFee ?? 0)),
+                  )}
+                </span>
               </div>
               {Boolean(order.riderDiscount && order.riderDiscount > 0) && (
                 <div className="flex items-center justify-between text-blue-600 font-bold">
                   <span>Beneficio Socio Mensajero (-10%)</span>
-                  <span>-{formatCurrency(order.riderDiscount ?? 0)}</span>
+                  <span className="tabular-nums">
+                    -{formatCurrency(order.riderDiscount ?? 0)}
+                  </span>
                 </div>
               )}
               {Boolean(order.couponDiscount && order.couponDiscount > 0) && (
                 <div className="flex items-center justify-between text-emerald-600 font-bold">
                   <span>Cupón ({order.couponCode || 'PROMO'})</span>
-                  <span>-{formatCurrency(order.couponDiscount ?? 0)}</span>
+                  <span className="tabular-nums">
+                    -{formatCurrency(order.couponDiscount ?? 0)}
+                  </span>
                 </div>
               )}
               <div className="flex items-center justify-between text-slate-500">
-                <span>Costo de envío</span>
-                <span className="text-xs font-bold text-emerald-600">
-                  GRATIS
-                </span>
+                <span>Costo de domicilio</span>
+                {order.deliveryFee && order.deliveryFee > 0 ? (
+                  <span className="font-semibold tabular-nums text-slate-800 dark:text-slate-200">
+                    {formatCurrency(order.deliveryFee)}
+                  </span>
+                ) : (
+                  <span className="text-xs font-bold text-emerald-600">
+                    GRATIS
+                  </span>
+                )}
               </div>
               <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
                 <span className="font-extrabold text-slate-900 dark:text-white">

@@ -225,10 +225,13 @@ export class DeliveryService implements OnModuleInit {
     return profile;
   }
 
-  // Ver pedidos disponibles para recoger (estado PREPARING) incluyendo teléfono del cliente
+  // Ver pedidos disponibles para recoger (confirmados o legado PREPARING) incluyendo teléfono del cliente
   async getAvailableOrders() {
     return this.orderModel
-      .find({ status: OrderStatus.PREPARING, deliveryId: null })
+      .find({
+        status: { $in: [OrderStatus.CONFIRMED, OrderStatus.PREPARING] },
+        deliveryId: null,
+      })
       .populate('userId', 'name email phone')
       .sort({ createdAt: 1 }); // El más antiguo primero
   }
@@ -262,7 +265,10 @@ export class DeliveryService implements OnModuleInit {
 
     const order = await this.orderModel.findById(orderId);
     if (!order) throw new NotFoundException('Pedido no encontrado.');
-    if (order.status !== OrderStatus.PREPARING)
+    if (
+      order.status !== OrderStatus.CONFIRMED &&
+      order.status !== OrderStatus.PREPARING
+    )
       throw new BadRequestException(
         'Este pedido no está disponible para recoger.',
       );
@@ -272,7 +278,11 @@ export class DeliveryService implements OnModuleInit {
       );
 
     const updated = await this.orderModel.findOneAndUpdate(
-      { _id: orderId, status: OrderStatus.PREPARING, deliveryId: null },
+      {
+        _id: orderId,
+        status: { $in: [OrderStatus.CONFIRMED, OrderStatus.PREPARING] },
+        deliveryId: null,
+      },
       { deliveryId: userId, status: OrderStatus.OUT_FOR_DELIVERY },
       { new: true },
     );

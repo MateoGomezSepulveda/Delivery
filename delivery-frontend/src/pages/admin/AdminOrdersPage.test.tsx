@@ -108,7 +108,11 @@ describe('AdminOrdersPage', () => {
 
     expect(await screen.findByText('Laura Gómez')).toBeInTheDocument();
     expect(screen.getByText('Carlos Ruiz')).toBeInTheDocument();
-    expect(screen.getByText('Por pagar')).toBeInTheDocument();
+    expect(screen.getByText(/1\. Pendientes/i)).toBeInTheDocument();
+    expect(screen.getByText(/3\. Confirmados/i)).toBeInTheDocument();
+    expect(screen.queryByText(/En cocina/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /A cocina/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Despachar' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /tabla/i }));
 
@@ -116,7 +120,7 @@ describe('AdminOrdersPage', () => {
       screen.getByRole('columnheader', { name: 'Pedido' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('columnheader', { name: 'Cliente' }),
+      screen.getByRole('columnheader', { name: /Cliente y Dirección/i }),
     ).toBeInTheDocument();
 
     const searchInput = screen.getByPlaceholderText(
@@ -125,7 +129,7 @@ describe('AdminOrdersPage', () => {
     await user.type(searchInput, 'Carlos');
 
     expect(screen.queryByText('Laura Gómez')).not.toBeInTheDocument();
-    expect(screen.getByText('Carlos Ruiz')).toBeInTheDocument();
+    expect(screen.getAllByText('Carlos Ruiz').length).toBeGreaterThan(0);
 
     await user.clear(searchInput);
     await user.selectOptions(
@@ -133,7 +137,7 @@ describe('AdminOrdersPage', () => {
       'PENDING',
     );
 
-    expect(screen.getByText('Laura Gómez')).toBeInTheDocument();
+    expect(screen.getAllByText('Laura Gómez').length).toBeGreaterThan(0);
     expect(screen.queryByText('Carlos Ruiz')).not.toBeInTheDocument();
   });
 

@@ -116,6 +116,55 @@ describe('PaymentsService', () => {
       );
     });
 
+    it('incluye un ítem de Costo de domicilio cuando la orden tiene deliveryFee sin descuentos', async () => {
+      mockPreferenceCreate.mockResolvedValueOnce({
+        sandbox_init_point:
+          'https://sandbox.mercadopago.com.co/checkout/v1/redirect?id=3',
+      });
+
+      const orderWithFee: any = {
+        ...sampleOrder,
+        deliveryFee: 5000,
+        total: 125000,
+      };
+
+      await service.createPreference(orderWithFee, 'order-fee-1');
+
+      const sentBody = mockPreferenceCreate.mock.calls[0][0].body;
+      expect(sentBody.items).toHaveLength(2);
+      expect(sentBody.items[1]).toEqual(
+        expect.objectContaining({
+          id: 'delivery-fee',
+          title: 'Costo de domicilio',
+          quantity: 1,
+          unit_price: 5000,
+          currency_id: 'COP',
+        }),
+      );
+    });
+
+    it('cobra el total exacto (productos - descuento + domicilio) cuando hay cupón aplicado', async () => {
+      mockPreferenceCreate.mockResolvedValueOnce({
+        sandbox_init_point:
+          'https://sandbox.mercadopago.com.co/checkout/v1/redirect?id=4',
+      });
+
+      const discountedOrderWithFee: any = {
+        ...sampleOrder,
+        couponCode: 'PROMO10',
+        couponDiscount: 12000,
+        deliveryFee: 5000,
+        total: 113000,
+      };
+
+      await service.createPreference(discountedOrderWithFee, 'order-fee-2');
+
+      const sentBody = mockPreferenceCreate.mock.calls[0][0].body;
+      expect(sentBody.items).toHaveLength(1);
+      expect(sentBody.items[0].unit_price).toBe(113000);
+      expect(sentBody.items[0].title).toContain('Cupón PROMO10');
+    });
+
     it('lanza InternalServerErrorException si MercadoPago no está configurado', async () => {
       service = await buildModule({});
       await expect(

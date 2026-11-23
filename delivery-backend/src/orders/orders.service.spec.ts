@@ -164,6 +164,8 @@ describe('OrdersService', () => {
         },
       ]);
       expect(result).toBeDefined();
+      expect((result as any).deliveryFee).toBe(5000);
+      expect((result as any).total).toBe(35000);
       expect((result as any).totalCost).toBe(18000);
       expect((result as any).netProfit).toBe(12000);
       expect((result as any).items[0].costPrice).toBe(9000);
@@ -229,7 +231,17 @@ describe('OrdersService', () => {
       );
       expect(result.couponCode).toBe('BIENVENIDA20');
       expect(result.couponDiscount).toBe(6000);
-      expect(result.total).toBe(24000);
+      expect(result.deliveryFee).toBe(5000);
+      expect(result.total).toBe(29000);
+      expect(result.netProfit).toBe(6000);
+    });
+
+    it('debe retornar la tarifa de domicilio base por defecto ($5.000 COP)', () => {
+      expect(service.getDeliveryFeeEstimate()).toEqual({
+        deliveryFee: 5000,
+        currency: 'COP',
+        pricingMode: 'FLAT',
+      });
     });
 
     it('debe consultar el cupo mensual de descuento del repartidor respetando el tope de 4 pedidos', async () => {
@@ -523,6 +535,39 @@ describe('OrdersService', () => {
       expect(order.save).toHaveBeenCalled();
     });
 
+    it('permite pasar directamente de CONFIRMED a OUT_FOR_DELIVERY sin etapa de cocina', async () => {
+      const riderId = '64a000000000000000000077';
+      const order = {
+        ...mockOrder,
+        status: OrderStatus.CONFIRMED,
+        deliveryId: undefined as string | undefined,
+        save: jest.fn().mockImplementation(function (this: any) {
+          return Promise.resolve({
+            ...this,
+            userId: mockUserId,
+          });
+        }),
+      };
+      mockOrderModel.findById.mockResolvedValueOnce(order);
+      mockUsersService.findOne
+        .mockResolvedValueOnce({ _id: riderId, role: 'DELIVERY' })
+        .mockResolvedValueOnce({
+          email: 'client@test.com',
+          role: 'CLIENT',
+          fcmTokens: [],
+        });
+
+      await service.updateStatus(
+        mockOrderId,
+        OrderStatus.OUT_FOR_DELIVERY,
+        riderId,
+      );
+
+      expect(order.deliveryId).toBe(riderId);
+      expect(order.status).toBe(OrderStatus.OUT_FOR_DELIVERY);
+      expect(order.save).toHaveBeenCalled();
+    });
+
     it('permite confirmar directamente (PENDING -> CONFIRMED) un pedido contraentrega en efectivo', async () => {
       const order = {
         ...mockOrder,
@@ -578,11 +623,13 @@ describe('OrdersService', () => {
 
       expect(result.paymentMethod).toBe(PaymentMethod.CASH_ON_DELIVERY);
       expect(result.paymentStatus).toBe(PaymentStatus.PENDING);
+      expect(result.deliveryFee).toBe(5000);
+      expect(result.total).toBe(35000);
       expect(result.cashAmountGiven).toBe(50000);
-      expect(result.changeDue).toBe(20000);
+      expect(result.changeDue).toBe(15000);
     });
 
-    it('rechaza pedido en efectivo si cashAmountGiven es menor al total y restaura stock', async () => {
+    it('rechaza pedido en efectivo si cashAmountGiven no alcanza a cubrir productos + domicilio y restaura stock', async () => {
       mockCartService.getActiveCart.mockResolvedValue({ ...mockCart });
 
       await expect(
@@ -591,7 +638,7 @@ describe('OrdersService', () => {
           'Calle 123',
           undefined,
           PaymentMethod.CASH_ON_DELIVERY,
-          10000,
+          30000,
         ),
       ).rejects.toThrow(BadRequestException);
 

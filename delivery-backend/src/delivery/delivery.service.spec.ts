@@ -198,6 +198,38 @@ describe('DeliveryService', () => {
       expect(mockOrderModel.findById).not.toHaveBeenCalled();
     });
 
+    it('acepta pedido CONFIRMED cuando el repartidor está Online y emite eventos en vivo', async () => {
+      mockDeliveryProfileModel.findOne.mockResolvedValueOnce({
+        _id: 'prof-1',
+        status: DeliveryProfileStatus.APPROVED,
+        isAvailable: true,
+      });
+      mockOrderModel.findById.mockResolvedValueOnce({
+        _id: 'order-confirmed-1',
+        status: OrderStatus.CONFIRMED,
+        deliveryId: null,
+      });
+      const updatedOrder = {
+        _id: { toString: () => 'order-confirmed-1' },
+        userId: { toString: () => 'client-1' },
+        deliveryId: 'rider-1',
+        status: OrderStatus.OUT_FOR_DELIVERY,
+      };
+      mockOrderModel.findOneAndUpdate.mockResolvedValueOnce(updatedOrder);
+
+      const res = await service.acceptOrder('rider-1', 'order-confirmed-1');
+
+      expect(res).toEqual(updatedOrder);
+      expect(mockEventsGateway.emitOrderStatusUpdate).toHaveBeenCalledWith(
+        'client-1',
+        updatedOrder,
+      );
+      expect(mockEventsGateway.emitOrderTaken).toHaveBeenCalledWith(
+        'order-confirmed-1',
+        'rider-1',
+      );
+    });
+
     it('acepta pedido cuando el repartidor está Online y emite order_status_updated + order_taken', async () => {
       mockDeliveryProfileModel.findOne.mockResolvedValueOnce({
         _id: 'prof-1',

@@ -7,6 +7,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { ConfigService } from '@nestjs/config';
 import { Order, OrderDocument } from './schemas/order.schema';
 import { Model } from 'mongoose';
 import { CartService } from 'src/cart/cart.service';
@@ -26,6 +27,7 @@ import { QueuesService } from '../queues/queues.service';
 
 export const RIDER_MONTHLY_DISCOUNT_LIMIT = 4;
 export const RIDER_DISCOUNT_PERCENT = 10;
+export const DEFAULT_DELIVERY_FEE = 5000;
 
 export function getAllowedOrderTransitions(
   status: OrderStatus,
@@ -42,8 +44,15 @@ export function getAllowedOrderTransitions(
   const validTransitions: Record<OrderStatus, OrderStatus[]> = {
     [OrderStatus.PENDING]: [OrderStatus.PAID, OrderStatus.CANCELLED],
     [OrderStatus.PAID]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
-    [OrderStatus.CONFIRMED]: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
-    [OrderStatus.PREPARING]: [OrderStatus.OUT_FOR_DELIVERY],
+    [OrderStatus.CONFIRMED]: [
+      OrderStatus.OUT_FOR_DELIVERY,
+      OrderStatus.CANCELLED,
+    ],
+    // Compatibilidad retroactiva para pedidos históricos que hayan quedado en PREPARING
+    [OrderStatus.PREPARING]: [
+      OrderStatus.OUT_FOR_DELIVERY,
+      OrderStatus.CANCELLED,
+    ],
     [OrderStatus.OUT_FOR_DELIVERY]: [OrderStatus.DELIVERED],
     [OrderStatus.DELIVERED]: [],
     [OrderStatus.CANCELLED]: [],
@@ -68,7 +77,33 @@ export class OrdersService {
     @Optional()
     @Inject(forwardRef(() => ProductsService))
     private productsService?: ProductsService,
+    @Optional() private configService?: ConfigService,
   ) {}
+
+  /**
+   * Calcula la tarifa de domicilio vigente.
+   * Por ahora usa una tarifa fija configurable mediante `DELIVERY_FEE` (default $5.000 COP);
+   * recibe `address` y `subtotal` para evolucionar fácilmente a tarifas por zona/distancia.
+   */
+  calculateDeliveryFee(_address?: string, _subtotal?: number): number {
+    const rawFee = this.configService?.get<string | number>('DELIVERY_FEE');
+    if (rawFee === undefined || rawFee === null || rawFee === '') {
+      return DEFAULT_DELIVERY_FEE;
+    }
+    const parsed = Number(rawFee);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      return DEFAULT_DELIVERY_FEE;
+    }
+    return Math.round(parsed);
+  }
+
+  getDeliveryFeeEstimate(address?: string, subtotal?: number) {
+    return {
+      deliveryFee: this.calculateDeliveryFee(address, subtotal),
+      currency: 'COP' as const,
+      pricingMode: 'FLAT' as const,
+    };
+  }
 
   async getRiderDiscountQuota(userId: string) {
     const base = {
@@ -192,10 +227,12 @@ export class OrdersService {
         couponDiscount = redeemed.discountAmount;
       }
 
-      const finalTotal = Math.max(
+      const productsNetTotal = Math.max(
         0,
         Math.round(subtotal - riderDiscount - couponDiscount),
       );
+      const deliveryFee = this.calculateDeliveryFee(address, subtotal);
+      const finalTotal = Math.round(productsNetTotal + deliveryFee);
 
       let normalizedCashGiven: number | null = null;
       let changeDue = 0;
@@ -220,7 +257,8 @@ export class OrdersService {
           0,
         ),
       );
-      const netProfit = Math.round(finalTotal - totalCost);
+      // El domicilio se cobra aparte y no infla la ganancia neta de productos del local
+      const netProfit = Math.round(productsNetTotal - totalCost);
 
       const order = new this.orderModel({
         userId,
@@ -229,6 +267,7 @@ export class OrdersService {
         riderDiscount,
         couponCode: appliedCouponCode,
         couponDiscount,
+        deliveryFee,
         total: finalTotal,
         totalCost,
         netProfit,
@@ -494,8 +533,11 @@ export class OrdersService {
       savedOrder,
     );
 
-    // Alertar al instante a repartidores conectados cuando un pedido entra en PREPARING sin asignar
-    if (status === OrderStatus.PREPARING && !savedOrder.deliveryId) {
+    // Alertar al instante a repartidores conectados cuando un pedido es confirmado sin asignar
+    if (
+      (status === OrderStatus.CONFIRMED || status === OrderStatus.PREPARING) &&
+      !savedOrder.deliveryId
+    ) {
       this.eventsGateway.emitNewAvailableOrder?.(savedOrder);
     }
 

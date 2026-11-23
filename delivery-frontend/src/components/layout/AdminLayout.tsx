@@ -7,21 +7,20 @@ import {
   ClipboardList,
   FolderKanban,
   LogOut,
-  ShieldAlert,
+  Package,
   Tag,
   Users,
-  Utensils,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useCartDrawerStore } from '@/store/useCartDrawerStore';
-import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { cn } from '@/utils/cn';
 
 const sidebarLinks = [
   { label: 'Dashboard Analytics', icon: BarChart3, to: '/admin', end: true },
   { label: 'Despacho de Pedidos', icon: ClipboardList, to: '/admin/orders' },
-  { label: 'Catálogo Productos', icon: Utensils, to: '/admin/products' },
+  { label: 'Catálogo Productos', icon: Package, to: '/admin/products' },
   { label: 'Categorías', icon: FolderKanban, to: '/admin/categories' },
   { label: 'Cupones y Promos', icon: Tag, to: '/admin/coupons' },
   { label: 'Usuarios y Roles', icon: Users, to: '/admin/users' },
@@ -30,7 +29,8 @@ const sidebarLinks = [
 export function AdminLayout() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { logout } = useAuthStore();
+  const { user, logout } = useAuthStore();
+  const displayName = user?.name?.trim() || 'Administrador';
 
   const handleLogout = async () => {
     await logout();
@@ -42,20 +42,26 @@ export function AdminLayout() {
 
   return (
     <div className="min-h-screen flex bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-50">
-      <aside className="hidden md:flex w-64 flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
-        <div className="flex items-center gap-2.5 px-2 py-2 border-b border-slate-100 dark:border-slate-800 pb-4">
-          <div className="h-9 w-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-heading font-bold">
-            <ShieldAlert className="w-5 h-5" />
-          </div>
-          <div>
-            <span className="font-heading text-base font-bold block">
-              DeliveryAdmin
+      <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+        <Link
+          to="/profile"
+          title={`Perfil de ${displayName}`}
+          className="group flex items-center gap-3 px-2 py-2 border-b border-slate-100 dark:border-slate-800 pb-4 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+        >
+          <UserAvatar
+            src={user?.avatarUrl}
+            name={displayName}
+            className="h-11 w-11 rounded-full shrink-0 ring-2 ring-emerald-500/25 shadow-sm text-sm"
+          />
+          <div className="min-w-0 flex-1">
+            <span
+              className="font-heading text-sm font-extrabold text-slate-900 dark:text-white block truncate group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors"
+              title={displayName}
+            >
+              {displayName}
             </span>
-            <Badge variant="success" className="mt-0.5">
-              Rol ADMIN
-            </Badge>
           </div>
-        </div>
+        </Link>
 
         <nav className="mt-6 flex-1 space-y-1">
           {sidebarLinks.map((item) => {
@@ -93,9 +99,27 @@ export function AdminLayout() {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 flex items-center justify-between gap-3">
-          <h1 className="text-base font-bold">Centro de Control Ejecutivo</h1>
-          <div className="flex items-center gap-2">
+        <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 sm:px-6 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Link
+              to="/profile"
+              className="md:hidden flex items-center gap-2 min-w-0 cursor-pointer"
+              title={`Perfil de ${displayName}`}
+            >
+              <UserAvatar
+                src={user?.avatarUrl}
+                name={displayName}
+                className="h-8 w-8 rounded-full shrink-0 ring-2 ring-emerald-500/25 text-xs"
+              />
+              <span className="font-heading text-sm font-bold text-slate-900 dark:text-white truncate max-w-[140px]">
+                {displayName}
+              </span>
+            </Link>
+            <h1 className="hidden md:block text-base font-bold truncate">
+              Centro de Control Ejecutivo
+            </h1>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
             <Link
               to="/"
               className="md:hidden group inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:border-orange-200 hover:bg-orange-50/60 hover:text-orange-600 transition-all duration-200 cursor-pointer"
@@ -115,8 +139,8 @@ export function AdminLayout() {
           </div>
         </header>
 
-        {/* Navegación compacta en móvil */}
-        <nav className="md:hidden flex gap-2 overflow-x-auto px-4 py-2 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+        {/* Navegación compacta en móvil sin scroll horizontal */}
+        <nav className="md:hidden flex flex-wrap gap-1.5 px-4 py-2 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           {sidebarLinks.map((item) => (
             <NavLink
               key={item.to}

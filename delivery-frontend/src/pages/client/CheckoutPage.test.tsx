@@ -13,6 +13,7 @@ const mockGetMyAddressesApi = vi.fn();
 const mockCreateOrderApi = vi.fn();
 const mockPayOrderApi = vi.fn();
 const mockGetRiderDiscountQuotaApi = vi.fn();
+const mockGetDeliveryFeeApi = vi.fn();
 const mockUpdateUserApi = vi.fn();
 const mockNavigate = vi.fn();
 const mockToastSuccess = vi.fn();
@@ -29,10 +30,12 @@ vi.mock('@/api/endpoints/addresses.api', () => ({
 }));
 
 vi.mock('@/api/endpoints/orders.api', () => ({
+  DEFAULT_DELIVERY_FEE: 5000,
   createOrderApi: (...args: unknown[]) => mockCreateOrderApi(...args),
   payOrderApi: (...args: unknown[]) => mockPayOrderApi(...args),
   getRiderDiscountQuotaApi: (...args: unknown[]) =>
     mockGetRiderDiscountQuotaApi(...args),
+  getDeliveryFeeApi: (...args: unknown[]) => mockGetDeliveryFeeApi(...args),
 }));
 
 vi.mock('@/api/endpoints/users.api', () => ({
@@ -118,6 +121,11 @@ describe('CheckoutPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    mockGetDeliveryFeeApi.mockResolvedValue({
+      deliveryFee: 5000,
+      currency: 'COP',
+      pricingMode: 'FLAT',
+    });
     useAuthStore.setState({
       user: {
         _id: 'user-1',
@@ -188,13 +196,14 @@ describe('CheckoutPage', () => {
           price: 30000,
         },
       ],
-      total: 50000,
+      deliveryFee: 5000,
+      total: 55000,
       address: 'Calle 123 #45-67, Bogotá',
       status: 'PENDING',
       paymentMethod: 'CASH_ON_DELIVERY',
       paymentStatus: 'PENDING',
       cashAmountGiven: 100000,
-      changeDue: 50000,
+      changeDue: 45000,
     };
     mockCreateOrderApi.mockResolvedValue(createdOrder);
 
@@ -205,6 +214,10 @@ describe('CheckoutPage', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('Pizza Margarita')).toBeInTheDocument();
     expect(screen.getByText(/Cupón \(DESCUENTO10\)/i)).toBeInTheDocument();
+    expect(screen.getByText('Costo de domicilio')).toBeInTheDocument();
+    expect(screen.queryByText(/Gratis Promo/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/\$\s*5\.000/)).toBeInTheDocument();
+    expect(screen.getByText(/\$\s*55\.000/)).toBeInTheDocument();
 
     await user.click(
       screen.getByRole('radio', { name: /efectivo contraentrega/i }),
@@ -216,6 +229,7 @@ describe('CheckoutPage', () => {
     expect(
       screen.getByText(/vueltas que llevará el repartidor/i),
     ).toBeInTheDocument();
+    expect(screen.getByText(/\$\s*45\.000/)).toBeInTheDocument();
 
     const submitButton = screen.getByRole('button', {
       name: /confirmar pedido contraentrega/i,

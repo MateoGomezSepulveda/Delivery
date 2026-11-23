@@ -25,7 +25,6 @@ const STATUS_FILTERS: { label: string; value?: OrderStatus }[] = [
   { label: 'Pendientes', value: 'PENDING' },
   { label: 'Pagados', value: 'PAID' },
   { label: 'Confirmados', value: 'CONFIRMED' },
-  { label: 'En Cocina', value: 'PREPARING' },
   { label: 'En Camino', value: 'OUT_FOR_DELIVERY' },
   { label: 'Entregados', value: 'DELIVERED' },
   { label: 'Cancelados', value: 'CANCELLED' },

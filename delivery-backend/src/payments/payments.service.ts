@@ -72,28 +72,46 @@ export class PaymentsService {
         (acc, item) => acc + item.price * item.quantity,
         0,
       );
-      const hasDiscount =
+      const deliveryFee = Math.max(
+        0,
+        Math.round(Number(order.deliveryFee ?? 0)),
+      );
+      const expectedUndiscountedTotal = Math.round(itemsSubtotal + deliveryFee);
+      const hasDiscountOrCustomTotal =
         typeof order.total === 'number' &&
         order.total >= 0 &&
-        order.total < itemsSubtotal;
+        Math.round(order.total) !== expectedUndiscountedTotal;
 
-      const items = hasDiscount
+      const items = hasDiscountOrCustomTotal
         ? [
             {
               id: orderId,
               title: `Pedido DeliveryPro #${orderId.slice(-6).toUpperCase()}${order.couponCode ? ` (Cupón ${order.couponCode})` : ''}`,
               quantity: 1,
-              unit_price: Math.max(1, Number(order.total)),
+              unit_price: Math.max(1, Math.round(Number(order.total))),
               currency_id: 'COP',
             },
           ]
-        : order.items.map((item) => ({
-            id: item.productId.toString(),
-            title: item.name,
-            quantity: item.quantity,
-            unit_price: Math.max(1, Number(item.price)),
-            currency_id: 'COP',
-          }));
+        : [
+            ...order.items.map((item) => ({
+              id: item.productId.toString(),
+              title: item.name,
+              quantity: item.quantity,
+              unit_price: Math.max(1, Number(item.price)),
+              currency_id: 'COP',
+            })),
+            ...(deliveryFee > 0
+              ? [
+                  {
+                    id: 'delivery-fee',
+                    title: 'Costo de domicilio',
+                    quantity: 1,
+                    unit_price: deliveryFee,
+                    currency_id: 'COP',
+                  },
+                ]
+              : []),
+          ];
 
       const appUrl = (
         this.configService.get<string>('APP_URL') || 'http://localhost:3000'

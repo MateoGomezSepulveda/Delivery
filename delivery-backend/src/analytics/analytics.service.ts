@@ -166,6 +166,18 @@ export class AnalyticsService {
       },
       {
         $addFields: {
+          _deliveryFee: { $ifNull: ['$deliveryFee', 0] },
+          _productRevenue: {
+            $max: [
+              0,
+              {
+                $subtract: [
+                  { $ifNull: ['$total', 0] },
+                  { $ifNull: ['$deliveryFee', 0] },
+                ],
+              },
+            ],
+          },
           _resolvedCost: {
             $cond: [
               { $gt: [{ $ifNull: ['$totalCost', 0] }, 0] },
@@ -178,7 +190,7 @@ export class AnalyticsService {
       {
         $addFields: {
           _resolvedProfit: {
-            $subtract: [{ $ifNull: ['$total', 0] }, '$_resolvedCost'],
+            $subtract: ['$_productRevenue', '$_resolvedCost'],
           },
         },
       },
@@ -223,12 +235,12 @@ export class AnalyticsService {
         {
           $group: {
             _id: null,
-            totalRevenue: { $sum: '$total' },
+            totalRevenue: { $sum: '$_productRevenue' },
             totalCost: { $sum: '$_resolvedCost' },
             netProfit: { $sum: '$_resolvedProfit' },
             totalUnitsSold: { $sum: '$_orderUnits' },
             paidOrdersCount: { $sum: 1 },
-            averageOrderValue: { $avg: '$total' },
+            averageOrderValue: { $avg: '$_productRevenue' },
           },
         },
       ]),
@@ -674,7 +686,7 @@ export class AnalyticsService {
           },
           ordersCount: { $sum: 1 },
           unitsSold: { $sum: '$_orderUnits' },
-          dailyRevenue: { $sum: '$total' },
+          dailyRevenue: { $sum: '$_productRevenue' },
           dailyCost: { $sum: '$_resolvedCost' },
           dailyProfit: { $sum: '$_resolvedProfit' },
         },

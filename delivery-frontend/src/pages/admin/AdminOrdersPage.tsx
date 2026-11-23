@@ -4,12 +4,19 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   AlertTriangle,
+  Archive,
   Bike,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Clock,
   LayoutGrid,
   MapPin,
+  PackageCheck,
   RefreshCw,
   Search,
   TableProperties,
+  Truck,
 } from 'lucide-react';
 import {
   getAllOrdersAdminApi,
@@ -25,33 +32,91 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { OrderStatusBadge, PaymentMethodBadge } from '@/components/ui/Badge';
+import { cn } from '@/utils/cn';
 
 type ViewMode = 'kanban' | 'table';
 
-const COLUMNS: { title: string; statuses: OrderStatus[] }[] = [
-  { title: 'Por pagar', statuses: ['PENDING', 'FAILED'] },
-  { title: 'Pagados', statuses: ['PAID'] },
-  { title: 'Confirmados', statuses: ['CONFIRMED'] },
-  { title: 'En cocina', statuses: ['PREPARING'] },
-  { title: 'En camino', statuses: ['OUT_FOR_DELIVERY'] },
-  { title: 'Cerrados', statuses: ['DELIVERED', 'CANCELLED'] },
+interface DispatchColumn {
+  id: string;
+  step: number;
+  title: string;
+  subtitle: string;
+  statuses: OrderStatus[];
+  dotClass: string;
+  headerBgClass: string;
+  icon: React.ReactNode;
+}
+
+/**
+ * Orden lógico del despacho sin cocina:
+ * 1. Pendientes (por pagar online o por confirmar contraentrega)
+ * 2. Pagados (pago online aprobado, listo para confirmar)
+ * 3. Confirmados (listo para recoger por repartidor o despachar; incluye legado PREPARING)
+ * 4. En camino (repartidor en ruta hacia el cliente)
+ * + Sección inferior independiente de Cerrados (Entregados / Cancelados) sin scroll horizontal.
+ */
+const ACTIVE_COLUMNS: DispatchColumn[] = [
+  {
+    id: 'pending',
+    step: 1,
+    title: 'Pendientes',
+    subtitle: 'Por pagar o confirmar',
+    statuses: ['PENDING', 'FAILED'],
+    dotClass: 'bg-amber-500',
+    headerBgClass: 'bg-amber-50/80 dark:bg-amber-950/30 border-amber-200/70 dark:border-amber-900/50',
+    icon: <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />,
+  },
+  {
+    id: 'paid',
+    step: 2,
+    title: 'Pagados',
+    subtitle: 'Pago en línea verificado',
+    statuses: ['PAID'],
+    dotClass: 'bg-emerald-500',
+    headerBgClass: 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-200/70 dark:border-emerald-900/50',
+    icon: (
+      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+    ),
+  },
+  {
+    id: 'confirmed',
+    step: 3,
+    title: 'Confirmados',
+    subtitle: 'Listos para despacho',
+    statuses: ['CONFIRMED', 'PREPARING'],
+    dotClass: 'bg-orange-500',
+    headerBgClass: 'bg-orange-50/80 dark:bg-orange-950/30 border-orange-200/70 dark:border-orange-900/50',
+    icon: (
+      <PackageCheck className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+    ),
+  },
+  {
+    id: 'out_for_delivery',
+    step: 4,
+    title: 'En camino',
+    subtitle: 'Repartidor en ruta',
+    statuses: ['OUT_FOR_DELIVERY'],
+    dotClass: 'bg-blue-500',
+    headerBgClass: 'bg-blue-50/80 dark:bg-blue-950/30 border-blue-200/70 dark:border-blue-900/50',
+    icon: <Truck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />,
+  },
 ];
 
-const ALL_STATUSES: OrderStatus[] = [
-  'PENDING',
-  'PAID',
-  'FAILED',
-  'CONFIRMED',
-  'PREPARING',
-  'OUT_FOR_DELIVERY',
-  'DELIVERED',
-  'CANCELLED',
+const CLOSED_STATUSES: OrderStatus[] = ['DELIVERED', 'CANCELLED'];
+
+const STATUS_FILTER_OPTIONS: { value: OrderStatus; label: string }[] = [
+  { value: 'PENDING', label: 'Pendiente' },
+  { value: 'FAILED', label: 'Pago fallido' },
+  { value: 'PAID', label: 'Pagado' },
+  { value: 'CONFIRMED', label: 'Confirmado (Listo para envío)' },
+  { value: 'OUT_FOR_DELIVERY', label: 'En camino' },
+  { value: 'DELIVERED', label: 'Entregado' },
+  { value: 'CANCELLED', label: 'Cancelado' },
 ];
 
 const ACTION_LABEL: Partial<Record<OrderStatus, string>> = {
   PAID: 'Marcar pagado',
   CONFIRMED: 'Confirmar',
-  PREPARING: 'A cocina',
   OUT_FOR_DELIVERY: 'Despachar',
   DELIVERED: 'Entregado',
   CANCELLED: 'Cancelar',
@@ -92,11 +157,93 @@ function OrderActionButtons({
   );
 }
 
+function DispatchOrderCard({
+  order,
+  customerName,
+  assignedRider,
+  disabled,
+  onTransition,
+}: {
+  order: Order;
+  customerName: string;
+  assignedRider: string | null;
+  disabled: boolean;
+  onTransition: (order: Order, status: OrderStatus) => void;
+}) {
+  return (
+    <article className="min-w-0 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 space-y-2 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+      <div className="flex items-center justify-between gap-2">
+        <Link
+          to={`/orders/${order._id}`}
+          className="font-mono text-xs font-extrabold text-orange-600 dark:text-orange-400 hover:underline cursor-pointer truncate"
+        >
+          #{order._id.slice(-6).toUpperCase()}
+        </Link>
+        <span className="text-sm font-extrabold text-slate-900 dark:text-white shrink-0">
+          {formatCurrency(order.total)}
+        </span>
+      </div>
+
+      <div className="space-y-1 min-w-0">
+        <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">
+          {customerName}
+        </p>
+        <p className="flex items-start gap-1 text-[11px] text-slate-500 dark:text-slate-400">
+          <MapPin className="w-3 h-3 shrink-0 mt-0.5 text-slate-400" />
+          <span className="line-clamp-2 break-words">
+            {order.address || 'Sin dirección'}
+          </span>
+        </p>
+      </div>
+
+      <div className="flex items-center gap-1.5 text-[11px] min-w-0">
+        <Bike className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+        {assignedRider ? (
+          <span className="font-semibold text-blue-700 dark:text-blue-400 truncate">
+            {assignedRider}
+          </span>
+        ) : (
+          <span className="text-slate-400 truncate">Sin repartidor</span>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1">
+        <OrderStatusBadge
+          status={order.status}
+          paymentMethod={order.paymentMethod}
+        />
+        <PaymentMethodBadge
+          method={order.paymentMethod}
+          paymentStatus={order.paymentStatus}
+          compact
+        />
+      </div>
+
+      {order.paymentMethod === 'CASH_ON_DELIVERY' &&
+        order.changeDue &&
+        order.changeDue > 0 && (
+          <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+            Llevar vueltas: {formatCurrency(order.changeDue)}
+          </p>
+        )}
+
+      <div className="pt-1 border-t border-slate-100 dark:border-slate-800/80">
+        <OrderActionButtons
+          order={order}
+          disabled={disabled}
+          onTransition={onTransition}
+        />
+      </div>
+    </article>
+  );
+}
+
 export function AdminOrdersPage() {
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>('ALL');
+  const [showClosedOrders, setShowClosedOrders] = useState(true);
 
   const [pendingDispatchOrder, setPendingDispatchOrder] =
     useState<Order | null>(null);
@@ -192,8 +339,12 @@ export function AdminOrdersPage() {
     const term = searchTerm.trim().toLowerCase();
 
     return orders.filter((order) => {
-      if (statusFilter !== 'ALL' && order.status !== statusFilter) {
-        return false;
+      if (statusFilter !== 'ALL') {
+        const matchesConfirmedLegacy =
+          statusFilter === 'CONFIRMED' && order.status === 'PREPARING';
+        if (order.status !== statusFilter && !matchesConfirmedLegacy) {
+          return false;
+        }
       }
       if (!term) return true;
 
@@ -206,6 +357,11 @@ export function AdminOrdersPage() {
     });
   }, [data?.data, searchTerm, statusFilter, riderName]);
 
+  const closedOrders = useMemo(
+    () => filteredOrders.filter((o) => CLOSED_STATUSES.includes(o.status)),
+    [filteredOrders],
+  );
+
   const handleTransition = (order: Order, status: OrderStatus) => {
     if (status === 'OUT_FOR_DELIVERY' && !order.deliveryId) {
       setPendingDispatchOrder(order);
@@ -216,15 +372,15 @@ export function AdminOrdersPage() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 min-w-0">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="font-heading text-2xl font-extrabold">
+          <h2 className="font-heading text-2xl font-extrabold text-slate-900 dark:text-white">
             Despacho de pedidos
           </h2>
-          <p className="text-xs text-slate-500">
-            Últimos 100 pedidos · se actualiza cada 20 s ({filteredOrders.length}{' '}
-            mostrados)
+          <p className="text-xs text-slate-600 dark:text-slate-400">
+            Flujo directo sin cocina · Últimos 100 pedidos · actualización cada
+            20 s ({filteredOrders.length} mostrados)
           </p>
         </div>
 
@@ -241,7 +397,7 @@ export function AdminOrdersPage() {
               }`}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Kanban</span>
+              <span>Tablero</span>
             </button>
             <button
               type="button"
@@ -287,12 +443,12 @@ export function AdminOrdersPage() {
             onChange={(e) =>
               setStatusFilter(e.target.value as OrderStatus | 'ALL')
             }
-            className="w-full h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500"
+            className="w-full h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 cursor-pointer"
           >
             <option value="ALL">Todos los estados</option>
-            {ALL_STATUSES.map((st) => (
-              <option key={st} value={st}>
-                {st}
+            {STATUS_FILTER_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
               </option>
             ))}
           </select>
@@ -302,121 +458,156 @@ export function AdminOrdersPage() {
       {isLoading ? (
         <p className="text-sm text-slate-500">Cargando pedidos...</p>
       ) : viewMode === 'kanban' ? (
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {COLUMNS.map((col) => {
-            const colOrders = filteredOrders.filter((o) =>
-              col.statuses.includes(o.status),
-            );
-            return (
-              <div
-                key={col.title}
-                className="w-72 shrink-0 rounded-2xl bg-slate-200/60 dark:bg-slate-900/70 p-3 space-y-3"
-              >
-                <div className="flex items-center justify-between px-1">
-                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    {col.title}
-                  </h3>
-                  <span className="text-xs font-bold text-slate-500">
-                    {colOrders.length}
-                  </span>
-                </div>
-
-                {colOrders.map((o) => {
-                  const assignedRider = riderName(o);
-                  return (
-                    <div
-                      key={o._id}
-                      className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 space-y-2 shadow-sm"
-                    >
-                      <div className="flex items-center justify-between">
-                        <Link
-                          to={`/orders/${o._id}`}
-                          className="font-mono text-xs font-extrabold text-orange-600 hover:underline cursor-pointer"
-                        >
-                          #{o._id.slice(-6).toUpperCase()}
-                        </Link>
-                        <span className="text-sm font-extrabold">
-                          {formatCurrency(o.total)}
-                        </span>
-                      </div>
-                      <p className="text-xs font-semibold">{customerName(o)}</p>
-                      <p className="flex items-start gap-1 text-[11px] text-slate-500">
-                        <MapPin className="w-3 h-3 shrink-0 mt-0.5" />
-                        <span className="line-clamp-2">{o.address}</span>
-                      </p>
-
-                      <div className="flex items-center gap-1.5 text-[11px]">
-                        <Bike className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                        {assignedRider ? (
-                          <span className="font-semibold text-blue-700 dark:text-blue-400 truncate">
-                            {assignedRider}
+        <div className="space-y-5">
+          {/* Flujo activo en 4 columnas responsivas (SIN scroll horizontal) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
+            {ACTIVE_COLUMNS.map((col) => {
+              const colOrders = filteredOrders.filter((o) =>
+                col.statuses.includes(o.status),
+              );
+              return (
+                <section
+                  key={col.id}
+                  aria-label={col.title}
+                  className="min-w-0 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-200/50 dark:bg-slate-900/70 p-3 space-y-3"
+                >
+                  <div
+                    className={cn(
+                      'rounded-xl border px-3 py-2 flex items-center justify-between gap-2',
+                      col.headerBgClass,
+                    )}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className={cn(
+                          'h-2 w-2 rounded-full shrink-0',
+                          col.dotClass,
+                        )}
+                      />
+                      <div className="min-w-0">
+                        <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100 flex items-center gap-1.5 truncate">
+                          {col.icon}
+                          <span className="truncate">
+                            {col.step}. {col.title}
                           </span>
-                        ) : (
-                          <span className="text-slate-400">Sin repartidor</span>
-                        )}
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <OrderStatusBadge
-                          status={o.status}
-                          paymentMethod={o.paymentMethod}
-                        />
-                        <PaymentMethodBadge
-                          method={o.paymentMethod}
-                          paymentStatus={o.paymentStatus}
-                          compact
-                        />
-                      </div>
-
-                      {o.paymentMethod === 'CASH_ON_DELIVERY' &&
-                        o.changeDue &&
-                        o.changeDue > 0 && (
-                          <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
-                            Llevar vueltas: {formatCurrency(o.changeDue)}
-                          </p>
-                        )}
-
-                      <div className="pt-1">
-                        <OrderActionButtons
-                          order={o}
-                          disabled={mutation.isPending}
-                          onTransition={handleTransition}
-                        />
+                        </h3>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate">
+                          {col.subtitle}
+                        </p>
                       </div>
                     </div>
-                  );
-                })}
+                    <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-full bg-white/90 dark:bg-slate-800 text-xs font-extrabold text-slate-700 dark:text-slate-200 border border-slate-200/70 dark:border-slate-700 shrink-0">
+                      {colOrders.length}
+                    </span>
+                  </div>
 
-                {colOrders.length === 0 && (
-                  <p className="text-center text-xs text-slate-400 py-4">
-                    Sin pedidos
+                  <div className="space-y-2.5">
+                    {colOrders.map((o) => (
+                      <DispatchOrderCard
+                        key={o._id}
+                        order={o}
+                        customerName={customerName(o)}
+                        assignedRider={riderName(o)}
+                        disabled={mutation.isPending}
+                        onTransition={handleTransition}
+                      />
+                    ))}
+
+                    {colOrders.length === 0 && (
+                      <p className="text-center text-xs text-slate-500 dark:text-slate-400 py-6 rounded-xl border border-dashed border-slate-300/80 dark:border-slate-700/80">
+                        Sin pedidos en esta etapa
+                      </p>
+                    )}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+
+          {/* Sección de pedidos cerrados (Entregados / Cancelados) en grilla fluida */}
+          <section
+            aria-label="Cerrados"
+            className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3 shadow-sm"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
+                  <Archive className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
+                    Cerrados
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Pedidos entregados y cancelados ({closedOrders.length})
                   </p>
-                )}
+                </div>
               </div>
-            );
-          })}
+
+              <button
+                type="button"
+                onClick={() => setShowClosedOrders((prev) => !prev)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                {showClosedOrders ? (
+                  <>
+                    <ChevronUp className="w-3.5 h-3.5" />
+                    <span>Ocultar cerrados</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="w-3.5 h-3.5" />
+                    <span>Mostrar cerrados ({closedOrders.length})</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {showClosedOrders &&
+              (closedOrders.length === 0 ? (
+                <p className="text-center text-xs text-slate-500 dark:text-slate-400 py-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                  Sin pedidos cerrados
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {closedOrders.map((o) => (
+                    <DispatchOrderCard
+                      key={o._id}
+                      order={o}
+                      customerName={customerName(o)}
+                      assignedRider={riderName(o)}
+                      disabled={mutation.isPending}
+                      onTransition={handleTransition}
+                    />
+                  ))}
+                </div>
+              ))}
+          </section>
         </div>
       ) : (
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-card">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-xs uppercase tracking-wider text-slate-500">
+          {/* Tabla fluida de 5 columnas en escritorio (SIN scroll horizontal) */}
+          <div className="hidden lg:block">
+            <table className="w-full table-fixed text-left text-sm">
+              <thead className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-xs uppercase tracking-wider text-slate-600 dark:text-slate-300">
                 <tr>
-                  <th className="px-4 py-3 font-bold">Pedido</th>
-                  <th className="px-4 py-3 font-bold">Cliente</th>
-                  <th className="px-4 py-3 font-bold">Dirección</th>
-                  <th className="px-4 py-3 font-bold">Repartidor</th>
-                  <th className="px-4 py-3 font-bold">Total</th>
-                  <th className="px-4 py-3 font-bold">Estado</th>
-                  <th className="px-4 py-3 font-bold">Acciones</th>
+                  <th className="w-[15%] px-4 py-3 font-bold">Pedido</th>
+                  <th className="w-[27%] px-4 py-3 font-bold">
+                    Cliente y Dirección
+                  </th>
+                  <th className="w-[16%] px-4 py-3 font-bold">Repartidor</th>
+                  <th className="w-[18%] px-4 py-3 font-bold">Total y Pago</th>
+                  <th className="w-[24%] px-4 py-3 font-bold">
+                    Estado y Acciones
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredOrders.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={7}
-                      className="px-4 py-10 text-center text-sm text-slate-400"
+                      colSpan={5}
+                      className="px-4 py-10 text-center text-sm text-slate-500"
                     >
                       No hay pedidos que coincidan con el filtro actual.
                     </td>
@@ -427,41 +618,42 @@ export function AdminOrdersPage() {
                     return (
                       <tr
                         key={o._id}
-                        className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30"
+                        className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors"
                       >
                         <td className="px-4 py-3 align-top">
                           <Link
                             to={`/orders/${o._id}`}
-                            className="font-mono text-xs font-extrabold text-orange-600 hover:underline cursor-pointer block"
+                            className="font-mono text-xs font-extrabold text-orange-600 dark:text-orange-400 hover:underline cursor-pointer block"
                           >
                             #{o._id.slice(-6).toUpperCase()}
                           </Link>
                           {o.createdAt && (
-                            <span className="text-[11px] text-slate-400">
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
                               {formatDateTime(o.createdAt)}
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-3 align-top">
-                          <p className="font-semibold text-slate-900 dark:text-white text-xs">
+                        <td className="px-4 py-3 align-top min-w-0">
+                          <p className="font-semibold text-slate-900 dark:text-white text-xs truncate">
                             {customerName(o)}
                           </p>
                           {customerEmail(o) && (
-                            <p className="text-[11px] text-slate-400">
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
                               {customerEmail(o)}
                             </p>
                           )}
-                        </td>
-                        <td className="px-4 py-3 align-top max-w-[200px]">
-                          <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2">
-                            {o.address || 'Sin dirección'}
+                          <p className="mt-1 flex items-start gap-1 text-[11px] text-slate-600 dark:text-slate-300">
+                            <MapPin className="w-3 h-3 shrink-0 mt-0.5 text-slate-400" />
+                            <span className="line-clamp-2 break-words">
+                              {o.address || 'Sin dirección'}
+                            </span>
                           </p>
                         </td>
-                        <td className="px-4 py-3 align-top whitespace-nowrap">
-                          <div className="inline-flex items-center gap-1.5 text-xs">
-                            <Bike className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                        <td className="px-4 py-3 align-top">
+                          <div className="inline-flex items-center gap-1.5 text-xs min-w-0 max-w-full">
+                            <Bike className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
                             {assignedRider ? (
-                              <span className="font-semibold text-blue-700 dark:text-blue-400">
+                              <span className="font-semibold text-blue-700 dark:text-blue-400 truncate">
                                 {assignedRider}
                               </span>
                             ) : (
@@ -471,31 +663,28 @@ export function AdminOrdersPage() {
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-3 align-top font-heading font-extrabold text-slate-900 dark:text-white whitespace-nowrap">
-                          {formatCurrency(o.total)}
-                        </td>
-                        <td className="px-4 py-3 align-top whitespace-nowrap">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                        <OrderStatusBadge
-                          status={o.status}
-                          paymentMethod={o.paymentMethod}
-                        />
-                        <PaymentMethodBadge
-                          method={o.paymentMethod}
-                          paymentStatus={o.paymentStatus}
-                          compact
-                        />
-                      </div>
-
-                      {o.paymentMethod === 'CASH_ON_DELIVERY' &&
-                        o.changeDue &&
-                        o.changeDue > 0 && (
-                          <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
-                            Llevar vueltas: {formatCurrency(o.changeDue)}
+                        <td className="px-4 py-3 align-top space-y-1.5">
+                          <p className="font-heading font-extrabold text-slate-900 dark:text-white">
+                            {formatCurrency(o.total)}
                           </p>
-                        )}
+                          <PaymentMethodBadge
+                            method={o.paymentMethod}
+                            paymentStatus={o.paymentStatus}
+                            compact
+                          />
+                          {o.paymentMethod === 'CASH_ON_DELIVERY' &&
+                            o.changeDue &&
+                            o.changeDue > 0 && (
+                              <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+                                Llevar vueltas: {formatCurrency(o.changeDue)}
+                              </p>
+                            )}
                         </td>
-                        <td className="px-4 py-3 align-top">
+                        <td className="px-4 py-3 align-top space-y-2">
+                          <OrderStatusBadge
+                            status={o.status}
+                            paymentMethod={o.paymentMethod}
+                          />
                           <OrderActionButtons
                             order={o}
                             disabled={mutation.isPending}
@@ -508,6 +697,27 @@ export function AdminOrdersPage() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Lista responsiva apilada para móvil y tablet (SIN scroll horizontal) */}
+          <div className="lg:hidden divide-y divide-slate-100 dark:divide-slate-800">
+            {filteredOrders.length === 0 ? (
+              <p className="px-4 py-10 text-center text-sm text-slate-500">
+                No hay pedidos que coincidan con el filtro actual.
+              </p>
+            ) : (
+              filteredOrders.map((o) => (
+                <div key={o._id} className="p-3">
+                  <DispatchOrderCard
+                    order={o}
+                    customerName={customerName(o)}
+                    assignedRider={riderName(o)}
+                    disabled={mutation.isPending}
+                    onTransition={handleTransition}
+                  />
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
@@ -546,7 +756,7 @@ export function AdminOrdersPage() {
                 id="select-rider-dispatch"
                 value={selectedRiderId}
                 onChange={(e) => setSelectedRiderId(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm"
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm cursor-pointer"
               >
                 <option value="">Sin asignar (despacho manual)</option>
                 {riders.map((r) => (

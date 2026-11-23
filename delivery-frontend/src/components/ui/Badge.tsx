@@ -2,9 +2,9 @@ import React from 'react';
 import {
   Banknote,
   CheckCircle2,
-  ChefHat,
   Clock,
   CreditCard,
+  PackageCheck,
   ShieldCheck,
   Truck,
   XCircle,
@@ -88,9 +88,9 @@ const orderStatusConfig: Record<
     icon: <ShieldCheck className="w-3.5 h-3.5" />,
   },
   PREPARING: {
-    label: 'En Cocina',
+    label: 'Listo para Envío',
     variant: 'primary',
-    icon: <ChefHat className="w-3.5 h-3.5" />,
+    icon: <PackageCheck className="w-3.5 h-3.5" />,
   },
   OUT_FOR_DELIVERY: {
     label: 'En Camino',
