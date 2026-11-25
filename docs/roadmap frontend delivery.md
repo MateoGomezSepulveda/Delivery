@@ -3,7 +3,7 @@
 Guía arquitectónica y de implementación ordenada **fase por fase** para construir el Frontend completo de la plataforma **App Delivery**, conectando el **100% de los módulos, endpoints y WebSockets** construidos en las Fases 0 a 6 del Backend (`delivery-backend`) bajo los estándares de diseño de **`ui-ux-pro-max`**.
 
 > [!IMPORTANT]
-> **Estrategia del Proyecto:** Antes de ejecutar las fases finales de **Despliegue en AWS (ECS Fargate)** y **Kubernetes (K8s)**, completaremos la **FASE 9 (Frontend Mobile: Responsive Mobile-First, PWA Instalable y App Nativa con Capacitor)** para desplegar en infraestructura Cloud el ecosistema completo (Backend + Web + Mobile) integrado de extremo a extremo.
+> **Estrategia del Proyecto:** Tras un **pulido rápido de fallos responsive críticos en la Web (Fase 9)**, el desarrollo móvil nativo comercial (**Cliente + Repartidor** en una única app) pasa al nuevo roadmap oficial [roadmap mobile delivery.md](roadmap%20mobile%20delivery.md) con **React Native + Expo** para su publicación en **Google Play Store** (manteniendo el **Panel Admin** 100% en Web). Las fases finales de **Despliegue en AWS (ECS Fargate)** y **Kubernetes (K8s)** + **lanzamiento en Play Store** cerrarán el ecosistema integrado de extremo a extremo.
 
 ---
 
@@ -380,152 +380,33 @@ delivery-frontend/
 
 ---
 
-## 📱 FASE 9 — Frontend Mobile: Responsive Mobile-First, PWA Instalable y App Nativa con Capacitor
-**Duración estimada:** 4-5 semanas  
-**Objetivo:** Corregir de raíz los fallos responsive actuales aplicando ergonomía móvil (`ui-ux-pro-max`), consolidar la experiencia web como una PWA instalable de nivel app con soporte offline y empaquetarla con **Capacitor** como aplicación nativa Android (con GPS en segundo plano, push nativo y hápticos), reutilizando **~95% del código React + Vite + Tailwind** existente antes del despliegue en AWS y Kubernetes.
+## 📱 FASE 9 — Pulido Rápido de Fallos Responsive Críticos en Web (Puente hacia React Native)
+**Duración estimada:** 3-5 días  
+**Objetivo:** Corregir únicamente los fallos responsive críticos detectados en la Web (`delivery-frontend/`) — garantizando que el **Panel Admin** (que permanece 100% en Web) y los accesos web de clientes operen sin desbordes ni bloqueos — para pasar de inmediato al desarrollo de la app nativa comercial `delivery-mobile/` en **React Native + Expo** ([roadmap mobile delivery.md](roadmap%20mobile%20delivery.md)).
 
-### 🤔 ¿Arreglar responsive, PWA, Capacitor o React Native? — Mi Recomendación
+### 🤔 Decisión Arquitectónica: Web Admin + App Nativa en React Native (Expo) para Play Store
 
-**Decisión arquitectónica:** Seguir un **enfoque híbrido en 3 capas** — **(1) blindar el diseño responsive mobile-first → (2) llevar la PWA a nivel app → (3) empaquetar con Capacitor para Android** — y **descartar React Native / Expo por ahora**.
+1. **Roles definidos por plataforma:** **Cliente + Repartidor** vivirán en una sola app nativa (`delivery-mobile/`) que adapta sus pantallas según el rol (`CLIENT` / `DELIVERY`) para lanzamiento comercial en **Google Play Store**; el **Panel Admin** permanece en esta Web (`delivery-frontend/`).
+2. **Base técnica móvil:** **Expo (SDK 52+) + Expo Router + Development Builds / EAS Build** para generar un Android App Bundle (`.aab`) firmado para Play Store, con GPS en segundo plano real y Firebase FCM nativo.
+3. **Pulido rápido Web primero:** corregimos en 3-5 días los fallos responsive críticos existentes antes de iniciar `M0`, evitando arrastrar bugs visuales en Admin o accesos web compartidos.
+4. **Orden hacia producción:** `FE Fase 9 (Pulido Web)` → `Mobile M0–M7` → `Infraestructura Cloud (AWS ECS Fargate + Kubernetes)` + `Mobile M8 (Play Store)`.
 
-| Criterio | A. Solo responsive | B. Responsive + PWA | C. Responsive + PWA + Capacitor ✅ | D. React Native / Expo |
-|----------|--------------------|---------------------|-----------------------------------|------------------------|
-| **Reutilización de código** | `100%` | `100%` | `~95%` | `~30%` |
-| **Tiempo estimado** | `2 semanas` | `3 semanas` | `4-5 semanas` | `8-12 semanas` |
-| **Instalable en móvil** | No | Sí (pantalla de inicio) | **Sí + Google Play Store** | Sí + Play Store / App Store |
-| **GPS en segundo plano (repartidor)** | No | No | **Sí (plugin nativo)** | Sí |
-| **Push Notifications en iOS** | No | Solo PWA instalada (iOS 16.4+) | Nativo (al compilar en macOS/Xcode) | Nativo |
-| **Mantenimiento** | 1 base | 1 base | **1 base + carpeta `android/`** | 2 bases de UI separadas |
-| **Impacto en Docker / K8s** | Ninguno | Ninguno | **Ninguno** | Pipeline EAS adicional |
+### Tareas de la Fase 9
 
-**¿Por qué NO React Native ahora y SÍ Responsive + PWA + Capacitor?**
-1. **Arreglar el responsive es obligatorio en cualquier escenario:** la web sigue siendo producto principal (el panel Admin en escritorio, clientes entrando desde enlaces o navegadores sin instalar nada) y tanto la PWA como Capacitor renderizan esa misma UI.
-2. **Capacitor reutiliza ~95% del frontend ya probado:** mantiene React 18, Vite, Tailwind, React Query, Zustand y Leaflet sin reescrituras, sumando lo único que la web no puede hacer: GPS del repartidor con pantalla bloqueada, push notifications nativas, vibración háptica y distribución en Google Play Store.
-3. **React Native obligaría a reescribir las 22 páginas y ~53 archivos `.tsx` de UI:** habría que migrar Tailwind DOM a NativeWind, Leaflet/OSM a `react-native-maps`, gráficas SVG a `victory-native` y `react-router-dom` a `expo-router`. Solo se aprovecharían `types/`, clientes Axios, stores de Zustand y lógica de React Query (~30%), lo que tomaría 8-12 semanas, frenaría los despliegues de AWS/K8s que ya están muy cerca y duplicaría el mantenimiento futuro.
-4. **Compatibilidad inmediata de sesión:** los tokens JWT ya se persisten en `localStorage` (`src/api/axios.client.ts`), mecanismo totalmente funcional dentro del WebView de Capacitor (con opción de reforzar el `refreshToken` usando `@capacitor/preferences`).
+| # | Sub-fase / Tarea | Detalle Técnico |
+|---|--------------------|-----------------|
+| 1 | **9.0 Auditoría rápida de desbordes en archivos críticos** | Ejecutar en DevTools móvil (`360×740` y `390×844`) el snippet anti-overflow `[...document.querySelectorAll('*')].filter(el => el.scrollWidth > document.documentElement.clientWidth)` concentrándonos en los archivos críticos detectados: `AdminDashboardPage.tsx` (7 anchos fijos + tabla), tablas de `AdminUsersPage.tsx` (2 tablas), `AdminOrdersPage.tsx`, `AdminProductsPage.tsx` y `AdminCouponsPage.tsx`, `ProfilePage.tsx` (1520 líneas / solo 2 breakpoints `md:`), `CartDrawer.tsx` (ancho fijo) e `index.html`. |
+| 2 | **9.1 Viewport, tablas Admin y gráficas sin anchos fijos** | En `index.html`, añadir `viewport-fit=cover`. En `AdminDashboardPage.tsx`, eliminar anchos fijos (`w-[..px]` / `min-w-[..]`) en gráficas haciéndolas fluidas. En todas las tablas Admin (`AdminUsersPage`, `AdminOrdersPage`, `AdminProductsPage`, `AdminCouponsPage` y rentabilidad), aplicar `overflow-x-auto` limpio o vista en tarjetas debajo de `md`. |
+| 3 | **9.1 `CartDrawer` full-width y orden en `ProfilePage`** | Ajustar `CartDrawer.tsx` a `w-full sm:max-w-md` sin desbordes horizontales. Organizar `ProfilePage.tsx` con tabs o acordeones básicos en móvil para evitar un scroll infinito desordenado. |
 
-```mermaid
-flowchart LR
-    F90["9.0 Auditoría móvil"] --> F91["9.1 Fundaciones UI"]
-    F91 --> F92["9.2 Cliente móvil"]
-    F92 --> F93["9.3 Repartidor móvil"]
-    F93 --> F94["9.4 Admin móvil"]
-    F94 --> F95["9.5 PWA nivel app"]
-    F95 --> F96["9.6 Capacitor Android"]
-    F96 --> F97["9.7 QA y cierre"]
-```
-
----
-
-### 🔍 Sub-fase 9.0 — Auditoría Móvil y Baseline
-**Fecha objetivo:** 2026-11-25 · **Prioridad:** Alta · **Módulo:** `ui`
-
-| # | Tarea | Detalle Técnico |
-|---|-------|-----------------|
-| 1 | **Matriz de viewports y dispositivos reales** | Recorrer las **22 páginas × 3 roles** (`CLIENT`, `DELIVERY`, `ADMIN`) en Chrome DevTools Device Mode y en un teléfono real (`npm run dev -- --host` + IP LAN; `localtunnel` HTTPS para probar GPS y Service Worker) en `360×740`, `390×844`, `412×915`, `768×1024` y escritorio. |
-| 2 | **Registro de hallazgos y Lighthouse baseline** | Documentar cada falla en `docs/auditoria/mobile_audit.md` con tabla `Página \| Viewport \| Problema \| Severidad \| Componente \| Estado` y registrar el puntaje inicial de **Lighthouse Mobile**. |
-| 3 | **Detección programática de overflow horizontal** | Ejecutar en consola por cada ruta/estado el snippet `[...document.querySelectorAll('*')].filter(el => el.scrollWidth > document.documentElement.clientWidth)` para cazar desbordes ocultos. |
-
-**Archivos de mayor riesgo identificados en el análisis inicial:**
-- `src/pages/client/ProfilePage.tsx`: **1520 líneas** y apenas **2 breakpoints `md:`**.
-- `src/pages/admin/AdminDashboardPage.tsx`: **7 anchos fijos** (`w-[..px]` / `min-w-[..]`) y 1 tabla.
-- Tablas sin vista móvil en `AdminUsersPage.tsx` (2 tablas), `AdminCouponsPage.tsx`, `AdminProductsPage.tsx` y `AdminOrdersPage.tsx`.
-- `src/pages/delivery/RiderActiveRoutePage.tsx`: **0 breakpoints** responsivos.
-- `src/components/cart/CartDrawer.tsx`: ancho fijo (`fixedW`).
-- `src/components/layout/ClientLayout.tsx`: sin barra inferior de navegación móvil (actualmente solo `DeliveryLayout.tsx` implementa `BottomNav`).
-- `src/components/layout/AdminLayout.tsx`: navegación móvil con `flex-wrap`; requiere migración a Drawer hamburguesa.
-- `index.html`: falta `viewport-fit=cover` y `apple-touch-icon` apunta a `.svg` (iOS exige PNG `180×180`).
-- `delivery-backend/src/main.ts`: CORS controlado por `ALLOWED_ORIGINS`, requerirá añadir orígenes de Capacitor.
-- **Pendiente heredado:** montar `useSocket({ playRiderAlerts: isOnline })` en `src/components/layout/DeliveryLayout.tsx`.
-
----
-
-### 🧱 Sub-fase 9.1 — Fundaciones Mobile-First del Design System
-**Fecha objetivo:** 2026-11-28 · **Prioridad:** Alta · **Módulo:** `ui`
-
-| # | Tarea | Detalle Técnico |
-|---|-------|-----------------|
-| 1 | **Viewport, iOS Meta Tags e ícono Apple PNG** | En `index.html`, añadir `viewport-fit=cover` al meta `viewport`, agregar metas `apple-mobile-web-app-capable` / `status-bar-style` y generar `apple-touch-icon` en formato **PNG `180×180`**. |
-| 2 | **Safe Areas, `dvh` y prevención de zoom iOS** | Configurar utilidades de Safe Area con `env(safe-area-inset-*)` (ej. `pb-safe` en `tailwind.config.js`), migrar `min-h-screen` a `min-h-dvh` y garantizar tipografía `≥16px` en inputs móviles (`text-base sm:text-sm`) para evitar zoom automático en iOS. |
-| 3 | **Ergonomía táctil y CSS global** | Asegurar targets táctiles `≥44×44px` (`ui-ux-pro-max`) en controles interactivos y añadir en `src/index.css`: `touch-action: manipulation`, `overscroll-behavior` y respeto estricto a `prefers-reduced-motion`. |
-| 4 | **Hook `useMediaQuery` y primitivas nuevas** | Crear `src/hooks/useMediaQuery.ts`, componente `BottomSheet` (`Modal` que abre como hoja inferior por debajo de `640px`), patrón `ResponsiveTable` (tabla en `md+` / tarjetas en móvil) y `src/components/layout/BottomNav.tsx` reutilizable. |
-
----
-
-### 🛒 Sub-fase 9.2 — Experiencia Móvil del Cliente
-**Fecha objetivo:** 2026-12-04 · **Prioridad:** Alta · **Módulo:** `ui`
-
-| # | Tarea | Detalle Técnico |
-|---|-------|-----------------|
-| 1 | **BottomNav y CartDrawer mobile-first** | Integrar `BottomNav` en `ClientLayout.tsx` (`md:hidden`: **Catálogo**, **Mis pedidos**, **Carrito** con badge en vivo y **Perfil**). Ajustar `CartDrawer.tsx` a `w-full sm:max-w-md` con botón CTA sticky respetando `pb-safe`. |
-| 2 | **Catálogo, filtros y detalle en BottomSheet** | Convertir `ProductDetailModal.tsx` y `ProductFiltersBar.tsx` en `BottomSheet` móvil; añadir `snap-x` en `CategoryPills.tsx` y grilla `grid-cols-2` desde `360px` en `CatalogPage.tsx`. |
-| 3 | **Checkout, tracking y libreta de direcciones** | En `CheckoutPage.tsx`: stepper compacto, resumen colapsable y CTA **Pagar** sticky inferior. En `OrderDetailPage.tsx` / `LiveTrackingMap.tsx`: altura de mapa `h-[45dvh]` para no atrapar el scroll. En `AddressesModal.tsx`: pantalla completa en móvil. |
-| 4 | **Refactor de `ProfilePage` y teclados Auth** | Dividir `ProfilePage.tsx` (1520 líneas) en subcomponentes con tabs o acordeones en móvil. Añadir `inputMode`, `autoComplete` y `enterKeyHint` en `LoginPage`, `RegisterPage` y recuperación de contraseña. |
-
----
-
-### 🛵 Sub-fase 9.3 — Experiencia Móvil del Repartidor
-**Fecha objetivo:** 2026-12-09 · **Prioridad:** Alta · **Módulo:** `delivery`
-
-| # | Tarea | Detalle Técnico |
-|---|-------|-----------------|
-| 1 | **Ruta activa en Zona del Pulgar** | Rediseñar `RiderActiveRoutePage.tsx` con mapa a sangre (full-bleed) y panel inferior en la zona del pulgar agrupando **Llamar**, **WhatsApp**, **Google Maps**, **Waze** y **Marcar como Entregado**. |
-| 2 | **Ergonomía exterior, Safe Area y Socket en vivo** | Botones de al menos `48px` (`≥48px`) y alto contraste para uso bajo luz solar/guantes; aplicar `pb-safe` al `BottomNav` de `DeliveryLayout.tsx` y `pb-20` al contenido. Montar `useSocket({ playRiderAlerts: isOnline })` en `DeliveryLayout.tsx`. |
-| 3 | **Wake Lock, vibración y límite web** | Activar **Screen Wake Lock API** mientras exista ruta activa y disparar `navigator.vibrate` al entrar nuevos pedidos. *Limitación web documentada:* el navegador no permite emitir GPS continuo con la pantalla bloqueada, lo que motiva la Sub-fase 9.6. |
-
----
-
-### 🛠️ Sub-fase 9.4 — Panel Admin Usable en Móvil
-**Fecha objetivo:** 2026-12-15 · **Prioridad:** Media · **Módulo:** `ui`
-
-| # | Tarea | Detalle Técnico |
-|---|-------|-----------------|
-| 1 | **Drawer hamburguesa y Tablas → Tarjetas** | Reemplazar el menú `flex-wrap` de `AdminLayout.tsx` por un Drawer lateral hamburguesa. Transformar las tablas en tarjetas por debajo de `md` (`AdminUsersPage`, `AdminOrdersPage` modo tabla, `AdminProductsPage`, `AdminCouponsPage` y rentabilidad de `AdminDashboardPage`) o usar `overflow-x-auto` con primera columna sticky. |
-| 2 | **Kanban deslizable, gráficas y modales** | Aplicar `snap-x snap-mandatory` con columnas `w-[85vw]` en el Kanban de `AdminOrdersPage.tsx`. Eliminar anchos fijos en gráficas de `AdminDashboardPage.tsx` (`w-full` + `viewBox`) ubicando el inspector diario debajo. Convertir modales de productos y cupones a pantalla completa móvil con footer sticky. |
-
----
-
-### 📲 Sub-fase 9.5 — PWA de Nivel App
-**Fecha objetivo:** 2026-12-18 · **Prioridad:** Alta · **Módulo:** `ui`
-
-| # | Tarea | Detalle Técnico |
-|---|-------|-----------------|
-| 1 | **Banner de instalación y guía iOS** | Interceptar `beforeinstallprompt` para mostrar un banner propio no intrusivo en Android/Desktop y ofrecer guía paso a paso en iOS (*Compartir → Añadir a pantalla de inicio*). |
-| 2 | **Offline real, caché y aviso de actualización** | Precachear `/offline.html` en `public/sw.js` con estrategia **network-first** para API y **cache-first** para assets estáticos; mostrar Toast *"Nueva versión disponible"* cuando haya un SW en espera. (Evaluar opcionalmente `vite-plugin-pwa` vs. `sw.js` manual conviviendo con `firebase-messaging-sw.js`). |
-| 3 | **Manifest enriquecido y prueba real HTTPS** | Añadir `id`, `shortcuts` (Catálogo, Mis pedidos, Rider App), `screenshots` (`narrow` y `wide`) y separar íconos `maskable` de `any` en `public/manifest.webmanifest`. Verificar instalación en Android real sobre HTTPS. |
-
----
-
-### 🤖 Sub-fase 9.6 — App Nativa Android con Capacitor
-**Fecha objetivo:** 2026-12-30 · **Prioridad:** Media · **Módulo:** `infra`
-
-| # | Tarea | Detalle Técnico |
-|---|-------|-----------------|
-| 1 | **Bootstrap de Capacitor y ciclo build/sync** | Instalar `@capacitor/core`, `@capacitor/cli` y `@capacitor/android`; ejecutar `npx cap init DeliveryPro com.deliverypro.app --web-dir=dist` y `npx cap add android`. Flujo de compilación: `npm run build && npx cap sync android && npx cap open android`. |
-| 2 | **Capa puente `src/native/` con fallback web** | Crear `src/native/platform.ts` (`Capacitor.isNativePlatform()`), `geolocation.ts`, `push.ts` y `haptics.ts` degradando limpiamente a Web APIs cuando corra en navegador. |
-| 3 | **GPS en background, Push nativo y Browser OAuth/Pagos** | Integrar `@capacitor/geolocation`, `@capacitor-community/background-geolocation` (`ACCESS_BACKGROUND_LOCATION` + foreground service), `@capacitor/push-notifications` (FCM nativo con `google-services.json`, conectado al pendiente `fcmTokens`), `@capacitor/haptics`, `status-bar`, `splash-screen`, `keyboard`, `@capacitor/app` (botón atrás + `appUrlOpen`) y `@capacitor/browser` para MercadoPago y OAuth (Google bloquea OAuth dentro de WebViews). |
-| 4 | **Deep Links, CORS, Assets y APK debug** | Configurar esquema `deliverypro://` (App Links con `/.well-known/assetlinks.json` queda diferido a Fase 7 por dominio HTTPS). Usar `VITE_API_URL`/`VITE_WS_URL` absolutos (IP LAN en dev, cleartext solo en debug) y añadir `https://localhost,capacitor://localhost` a `ALLOWED_ORIGINS` en backend. Generar íconos/splash con `@capacitor/assets` y validar **APK debug** en teléfono real (firma release y Play Store USD 25 en Prueba interna quedan post-Fase 7; iOS opcional por requerir macOS + Xcode + USD 99/año; opcional `@capacitor/preferences` para `refreshToken`). |
-
----
-
-### ✅ Sub-fase 9.7 — QA Móvil y Cierre
-**Fecha objetivo:** 2027-01-05 · **Prioridad:** Alta · **Módulo:** `testing`
-
-| # | Tarea | Detalle Técnico |
-|---|-------|-----------------|
-| 1 | **Tests unitarios y E2E Playwright móvil** | Añadir en `playwright.config.ts` los projects `devices['Pixel 7']` y `devices['iPhone 13']` con `e2e/mobile-smoke.spec.ts` (cero overflow horizontal, `BottomNav` visible, checkout completo). Sumar tests Vitest para `BottomNav`, `BottomSheet` y `useMediaQuery`. |
-| 2 | **Lighthouse Mobile, dispositivos reales y Postman** | Alcanzar `Lighthouse Mobile ≥90`; probar manualmente en Android Chrome, PWA instalada, APK debug Capacitor e iOS Safari PWA. **Validar en Postman** el CORS del backend enviando header `Origin: https://localhost` (y `capacitor://localhost`) en los endpoints clave. |
-| 3 | **Cierre documental y commit** | Actualizar `STATUS.md`, `README.md`, `delivery-frontend/README.md` y el tablero de Notion, y realizar commit detallado siguiendo `commit-standard`. |
+*(Nota: el pendiente previo de `useSocket({ playRiderAlerts: isOnline })` en `DeliveryLayout.tsx` ya quedó implementado y probado en `FE · Repartidores` — 27 suites / 85 tests pasando).*
 
 ### ✅ Checklist Fase 9
-- [ ] **9.0** Auditoría móvil completa (22 páginas × 3 roles) registrada en `docs/auditoria/mobile_audit.md` + Lighthouse baseline.
-- [ ] **9.1** Fundaciones mobile-first (`viewport-fit=cover`, Safe Areas `pb-safe`, `min-h-dvh`, inputs `≥16px`, targets `≥44px`, `BottomSheet`, `ResponsiveTable`, `BottomNav`, `useMediaQuery`).
-- [ ] **9.2** Experiencia móvil Cliente (`ClientLayout` con `BottomNav`, `CartDrawer`, `CatalogPage`, `CheckoutPage`, `OrderDetailPage`, `ProfilePage` refactorizado y auth).
-- [ ] **9.3** Experiencia móvil Repartidor (`RiderActiveRoutePage` zona del pulgar, `Wake Lock`, `navigator.vibrate` y `useSocket` montado en `DeliveryLayout.tsx`).
-- [ ] **9.4** Panel Admin usable en móvil (Drawer hamburguesa, Tablas → Tarjetas, Kanban `snap-x` y gráficas fluidas).
-- [ ] **9.5** PWA de nivel app (`beforeinstallprompt`, guía iOS, `/offline.html`, aviso de nueva versión y `manifest.webmanifest` completo).
-- [ ] **9.6** App nativa Android con Capacitor (`src/native/`, GPS background, Push FCM nativo, `@capacitor/browser`, CORS y APK debug probado en dispositivo real).
-- [ ] **9.7** QA móvil (`Playwright` Pixel 7 + iPhone 13, `Vitest`, `Lighthouse ≥90`, CORS probado en Postman) y cierre en `STATUS.md` / `README.md` / Notion.
+- [ ] **9.0** Verificación anti-overflow (`360px` / `390px`) sin desbordes horizontales bloqueantes en vistas críticas de Cliente y Admin.
+- [ ] **9.1** Tablas Admin (`overflow-x-auto`/tarjetas) y gráficas de `AdminDashboardPage` fluidas sin anchos fijos.
+- [ ] **9.1** `CartDrawer.tsx` (`w-full sm:max-w-md`), `viewport-fit=cover` en `index.html` y `ProfilePage.tsx` ordenado en acordeones/tabs móviles.
+- [x] Montado `useSocket({ playRiderAlerts: isOnline })` en `DeliveryLayout.tsx` con verificación funcional (`FE · Repartidores`).
+- [ ] Validación rápida en navegador móvil/DevTools + `npm run lint`, `npm run test` y `npm run build` en verde para dar paso a **Mobile M0** (`delivery-mobile/`).
 
 ---
 
@@ -542,8 +423,9 @@ flowchart LR
 | **Fase 6** | Portal del Repartidor / Rider App Mobile-First + GPS | `delivery`, `events` | 1.5 semanas |
 | **Fase 7** | Panel Admin Ejecutivo: Analytics, Despacho, Catálogo S3, Cupones y Roles | `analytics`, `orders`, `products`, `categories`, `coupons`, `users`, `uploads` | 2 semanas |
 | **Fase 8** | Testing (Vitest + Playwright), PWA y Dockerización con Nginx | Integración Full-Stack completa | 1.5 semanas |
-| **Fase 9** | **Frontend Mobile: Responsive Mobile-First, PWA Instalable y App Android (Capacitor)** | `delivery`, `notifications`, `auth`, `orders`, `common` (CORS) | 4-5 semanas |
-| **Post-FE** | **Retomar Fase 7 y 8 del Proyecto General:** Despliegue Full-Stack en **AWS (ECS Fargate + S3/CloudFront)** y **Kubernetes** + publicación Android en Google Play (Prueba interna) y App Links | Infraestructura Cloud Completa | 3-4 semanas |
+| **Fase 9** | **Pulido Rápido de Fallos Responsive Críticos en Web** *(Puente hacia App Nativa)* | UI Web (tablas/gráficas Admin, `ProfilePage`, `CartDrawer`) | 3-5 días |
+| **Mobile (`M0–M8`)** | **App Nativa React Native + Expo (`delivery-mobile/`: Cliente + Repartidor)** → ver [roadmap mobile delivery.md](roadmap%20mobile%20delivery.md) | `auth`, `users`, `catalog`, `cart`, `orders`, `payments`, `delivery`, `events`, `notifications` | 11-13 semanas |
+| **Post-Mobile** | **Despliegue Full-Stack en AWS (ECS Fargate + S3/CloudFront) y Kubernetes + publicación en Google Play Store (`.aab`)** | Infraestructura Cloud Completa + Play Console | 3-4 semanas |
 
 ---
 

@@ -95,12 +95,7 @@ npm run build
   - **Performance & PWA**: `React.lazy` + `Suspense` en `AppRouter.tsx`, `manualChunks` en `vite.config.ts`, `public/manifest.webmanifest`, íconos PNG y SVG (`192`/`512`) y Service Workers (`public/sw.js` + `public/firebase-messaging-sw.js`).
   - **Docker Producción (Non-Root)**: `Dockerfile` multi-stage con `nginxinc/nginx-unprivileged:1.27-alpine` en puerto `8080`, `nginx.conf` (Gzip, caché `/assets/`, no-cache para SWs, `/healthz`, SPA fallback) y `.dockerignore`.
 
-- 🚧 **Fase 9 (Frontend Mobile: Responsive Mobile-First, PWA Instalable y App Android con Capacitor)** — planificada ([roadmap](../docs/roadmap%20frontend%20delivery.md)):
-  - **9.0 Auditoría móvil y baseline:** recorrido de 22 páginas × 3 roles (`360×740` a `768×1024`), snippet anti-overflow, `mobile_audit.md` y Lighthouse inicial.
-  - **9.1 Fundaciones mobile-first:** `viewport-fit=cover`, Safe Areas (`pb-safe`), `min-h-dvh`, inputs `≥16px`, targets `≥44px`, `useMediaQuery`, `BottomSheet`, `ResponsiveTable` y `BottomNav`.
-  - **9.2 Experiencia móvil Cliente:** `BottomNav` en `ClientLayout`, `CartDrawer` full-width, filtros/detalle en `BottomSheet`, `CheckoutPage` sticky, mapa `h-[45dvh]` y refactor de `ProfilePage`.
-  - **9.3 Experiencia móvil Repartidor:** `RiderActiveRoutePage` en zona del pulgar (≥48px), `Wake Lock` y `navigator.vibrate` (`useSocket` en `DeliveryLayout` ya completado en `FE · Repartidores`).
-  - **9.4 Panel Admin móvil:** Drawer hamburguesa en `AdminLayout`, tablas convertidas a tarjetas en `<md`, Kanban `snap-x` y gráficas fluidas sin anchos fijos.
-  - **9.5 PWA de nivel app:** banner `beforeinstallprompt` + guía iOS, `/offline.html` en `sw.js`, aviso de nueva versión y `manifest.webmanifest` con `shortcuts` y `screenshots`.
-  - **9.6 App nativa Android (Capacitor):** proyecto `android/`, capa `src/native/`, GPS background, Push FCM nativo, `@capacitor/browser` para pagos/OAuth, CORS y APK debug.
-  - **9.7 QA móvil y cierre:** Playwright (`Pixel 7` / `iPhone 13`), Vitest, Lighthouse Mobile `≥90`, validación CORS en Postman y cierre documental.
+- 🚧 **Fase 9 (Pulido Rápido Responsive Crítico Web — Puente hacia App Nativa)** — planificada ([roadmap frontend](../docs/roadmap%20frontend%20delivery.md) · [roadmap mobile](../docs/roadmap%20mobile%20delivery.md)):
+  - **9.0 Auditoría rápida de desbordes:** verificación anti-overflow en `360px` / `390px` sobre tablas/gráficas Admin (`AdminDashboardPage`, `AdminUsersPage`, `AdminOrdersPage`, `AdminProductsPage`, `AdminCouponsPage`), `ProfilePage`, `CartDrawer` e `index.html`.
+  - **9.1 Correcciones críticas Web:** `viewport-fit=cover`, tablas Admin con `overflow-x-auto`/tarjetas, gráficas fluidas sin anchos fijos, `CartDrawer` (`w-full sm:max-w-md`) y acordeones/tabs básicos en `ProfilePage`. *(Nota: `useSocket` en `DeliveryLayout.tsx` ya quedó completado en `FE · Repartidores`).*
+  - *Nota de arquitectura:* el **Panel Admin permanece 100% en esta Web**, mientras que la experiencia comercial de **Cliente + Repartidor** para **Google Play Store** pasa al nuevo proyecto nativo **`delivery-mobile/` (React Native + Expo)** en [docs/roadmap mobile delivery.md](../docs/roadmap%20mobile%20delivery.md).

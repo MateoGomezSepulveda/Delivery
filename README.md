@@ -150,9 +150,11 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
 
 - ✅ **Frontend Fase 8 (Testing, ESLint, Code Splitting, PWA y Dockerización)**: suite unitaria con **Vitest + Testing Library** (27 archivos / 85 tests pasando), flujo E2E multirrol con **Playwright**, configuración **ESLint 9**, **Code Splitting** (`React.lazy` + `manualChunks`), soporte **PWA** (`manifest.webmanifest` + íconos PNG/SVG + Service Workers), `Dockerfile` **Nginx unprivileged** (puerto `8080`), integración en **Docker Compose** y pipeline **GitHub Actions CI (`frontend-ci`)**.
 
-- 🚧 **Frontend Fase 9 (Mobile: Responsive Mobile-First, PWA Instalable y App Android con Capacitor)** — planificada (ver [roadmap frontend delivery.md](docs/roadmap%20frontend%20delivery.md))
+- 🚧 **Frontend Fase 9 (Pulido Rápido Responsive Crítico Web)** — planificada (ver [roadmap frontend delivery.md](docs/roadmap%20frontend%20delivery.md))
 
-*Siguiente paso: Frontend Fase 9 — Mobile, y luego Infraestructura Cloud — Backend Fase 7 (AWS ECS Fargate) y Fase 8 (Kubernetes).*
+- 🚧 **Mobile Fases M0–M8 (`delivery-mobile/` — React Native + Expo para Google Play Store: Cliente + Repartidor)** — planificada (ver [roadmap mobile delivery.md](docs/roadmap%20mobile%20delivery.md))
+
+*Siguiente paso: Frontend Fase 9 (pulido responsive crítico Web) → App Nativa React Native (`delivery-mobile/`, M0–M8) → Infraestructura Cloud AWS (ECS Fargate), Kubernetes y lanzamiento en Google Play Store.*
 
 ---
 
