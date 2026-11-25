@@ -8,7 +8,8 @@ Bienvenido al repositorio principal de la plataforma **App Delivery**. Este proy
 
 - **`delivery-backend/`**: Servidor API RESTful principal. Construido con **NestJS 11**, **MongoDB**, **Mongoose** y contenedorizado con **Docker**. Contiene toda la lógica de negocio, reglas de seguridad y autenticación. Consulta su documentación completa en el [README del backend](./delivery-backend/README.md).
 - **`delivery-frontend/`**: Aplicación web Multi-Rol (**Cliente**, **Repartidor** y **Administrador**) construida con **React 18**, **TypeScript**, **Vite**, **Tailwind CSS**, **TanStack Query v5** y **Zustand** bajo el sistema de diseño `ui-ux-pro-max`. Consulta su documentación en el [README del frontend](./delivery-frontend/README.md).
-- **`docs/`**: Documentación adicional de la arquitectura, roadmaps ([Backend](./docs/roadmap%20backend%20delivery.md) y [Frontend](./docs/roadmap%20frontend%20delivery.md)) e infraestructura del proyecto.
+- **`delivery-mobile/`**: Aplicación móvil nativa unificada (**Cliente** y **Repartidor**) para **Google Play Store**, construida con **React Native (`0.88`)**, **Expo (`SDK 58`)**, **Expo Router**, **TypeScript**, **`expo-secure-store`**, **TanStack Query v5** y **Zustand**. Consulta su documentación en el [README móvil](./delivery-mobile/README.md).
+- **`docs/`**: Documentación adicional de la arquitectura, roadmaps ([Backend](./docs/roadmap%20backend%20delivery.md), [Frontend](./docs/roadmap%20frontend%20delivery.md) y [Mobile](./docs/roadmap%20mobile%20delivery.md)) e infraestructura del proyecto.
 - **`STATUS.md`**: Archivo de seguimiento en tiempo real que documenta el progreso actual, fases completadas y siguientes pasos del desarrollo.
 
 ---
@@ -152,9 +153,9 @@ Las siguientes fases centrales ya están implementadas y probadas (con Tests Uni
 
 - 🚧 **Frontend Fase 9 (Pulido Rápido Responsive Crítico Web)** — planificada (ver [roadmap frontend delivery.md](docs/roadmap%20frontend%20delivery.md))
 
-- 🚧 **Mobile Fases M0–M8 (`delivery-mobile/` — React Native + Expo para Google Play Store: Cliente + Repartidor)** — planificada (ver [roadmap mobile delivery.md](docs/roadmap%20mobile%20delivery.md))
+- 🚧 **Mobile Fases M0–M6 Base v1 Implementadas (`delivery-mobile/` — React Native + Expo SDK 58: Cliente + Repartidor)**: arquitectura Expo Router con grupos `(auth)`, `(client)` y `(delivery)`, tokens cifrados en `expo-secure-store` + Axios Silent Refresh Queue, `StyleSheet` nativo Claro/Oscuro (`ui-ux-pro-max`), Auth completo (Login, Registro 2 pasos Email/SMS, OTP 6 dígitos, Reset Password), Catálogo + Filtros + Reseñas verificadas, Carrito Optimista + Cupones + Descuento Rider `-10%`, Direcciones con GPS, Checkout Dual (MercadoPago + Efectivo Contraentrega con calculadora de vueltas), Mis Pedidos + Tracking Socket.io en vivo + Calificaciones, Perfil con Avatar S3 + Postulación Rider, y Portal Repartidor completo (Switch Online/Offline, Alertas Socket.io hápticas, Ruta Activa con GPS/Simulador + Llamar/WhatsApp/Maps/Waze y Ganancias por `deliveryFee`). **4 suites / 10 tests pasando en Jest** y `tsc --noEmit` 0 errores; actualmente en etapa de ajustes finos rumbo a **M7 (Compliance Play Store)** y **M8 (`.aab`)** (ver [roadmap mobile delivery.md](docs/roadmap%20mobile%20delivery.md)).
 
-*Siguiente paso: Frontend Fase 9 (pulido responsive crítico Web) → App Nativa React Native (`delivery-mobile/`, M0–M8) → Infraestructura Cloud AWS (ECS Fargate), Kubernetes y lanzamiento en Google Play Store.*
+*Siguiente paso: Ajustes finos en `delivery-mobile/` → Frontend Fase 9 + Mobile M7 → Infraestructura Cloud AWS (ECS Fargate), Kubernetes y lanzamiento en Google Play Store (M8).*
 
 ---
 
@@ -196,6 +197,7 @@ docker compose restart api
 |----------|-----|
 | Frontend (Vite Dev) | `http://localhost:5173` |
 | Frontend (Docker Nginx) | `http://localhost:8080` |
+| Mobile (Expo Metro LAN) | `exp://<IP_LAN>:8082` (`http://localhost:8082`) |
 | API REST | `http://localhost:3000/api/v1` |
 | Swagger UI | `http://localhost:3000/api/docs` |
 | Health Check API | `http://localhost:3000/api/v1/health` |

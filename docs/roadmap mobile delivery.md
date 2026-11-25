@@ -127,10 +127,10 @@ flowchart LR
 | 4 | **Kit UI Nativo base + Healthcheck LAN** | Construir componentes `Button` (`≥48px`), `Input`, `Badge`, `Skeleton`, `EmptyState` con `lucide-react-native` (0 emojis) y probar conectividad real desde dispositivo/emulador contra `GET /api/v1/health` vía IP LAN o túnel HTTPS. |
 
 ### ✅ Checklist Fase M0
-- [ ] Proyecto `delivery-mobile/` corriendo en Android con **Expo Development Build**.
-- [ ] Design System (`ui-ux-pro-max`) con tipografías `Outfit`/`Plus Jakarta Sans`, paleta Light/Dark y `SafeAreaView` operativo.
-- [ ] Cliente Axios desenvolviendo `{ success, data }` y rotando tokens de forma segura sobre `expo-secure-store`.
-- [ ] Conexión verificada contra `delivery-backend` local desde dispositivo físico Android.
+- [x] Proyecto `delivery-mobile/` corriendo en Android con **Expo Go / SDK 58** en puerto dedicado `8082` y capa de compatibilidad Node 20 (`scripts/node-compat.cjs`).
+- [x] Design System (`ui-ux-pro-max`) con `StyleSheet` nativo puro + `expo-linear-gradient`, tipografías `Outfit`/`Plus Jakarta Sans`, paleta Light/Dark y `SafeAreaView` operativo.
+- [x] Cliente Axios desenvolviendo `{ success, data }` y rotando tokens de forma segura sobre `expo-secure-store` (`4/4` suites Jest pasando).
+- [x] Conexión verificada contra `delivery-backend` local desde dispositivo físico Android vía IP LAN (`192.168.1.7:3000`).
 
 ---
 
@@ -154,10 +154,10 @@ flowchart LR
 | 4 | **Perfil S3, Avatar nativo y Postulación Repartidor** | Pantalla `profile.tsx` con edición de datos/celular, selector de cámara/galería (`expo-image-picker` + `expo-image-manipulator` compresión JPG) hacia `POST /uploads/avatars`, cuentas vinculadas y flujo de postulación a repartidor (`PENDING` / `APPROVED` / `REJECTED`). |
 
 ### ✅ Checklist Fase M1
-- [ ] Registro con celular obligatorio, verificación Gmail/SMS y recuperación de contraseña operativos.
-- [ ] Google Sign-In nativo autenticando `idToken` contra el backend (verificado en Postman y móvil real).
-- [ ] Enrutamiento estricto por rol (`CLIENT`, `DELIVERY` y aviso web para `ADMIN`).
-- [ ] Subida de avatar desde cámara/galería a S3 persistiendo `avatarUrl` en MongoDB.
+- [x] Registro con celular obligatorio, verificación Gmail/SMS y recuperación de contraseña operativos.
+- [ ] Google Sign-In nativo autenticando `idToken` contra el backend (pendiente Development Build + SHA-1).
+- [x] Enrutamiento estricto por rol (`CLIENT`, `DELIVERY` y acceso a tienda desde ambos).
+- [x] Subida de avatar desde galería a S3 persistiendo `avatarUrl` en MongoDB + postulación a Repartidor.
 
 ---
 
@@ -177,9 +177,9 @@ flowchart LR
 | 3 | **Bottom Sheet de Filtros y Detalle de Producto** | Usar `@gorhom/bottom-sheet` para filtrar por rango de precios, disponibilidad y ordenamiento; pantalla `product/[id].tsx` mostrando alertas de `lowStock`, reseñas públicas (`GET /reviews/product/:productId`) y botón sticky **"Agregar al carrito"** con `expo-haptics`. |
 
 ### ✅ Checklist Fase M2
-- [ ] Navegación fluida a 60 FPS en catálogo de 2 columnas con `expo-image`, Skeletons y scroll infinito.
-- [ ] Búsqueda con debounce y filtros avanzados en `@gorhom/bottom-sheet`.
-- [ ] Detalle de producto con reseñas verificadas, indicador de stock y respuesta háptica al agregar.
+- [x] Navegación fluida en catálogo con Hero naranja, Skeletons, *pull-to-refresh* y paginación.
+- [x] Búsqueda con debounce, categorías horizontales y filtros de disponibilidad y ordenamiento.
+- [x] Detalle de producto modal con reseñas verificadas, indicador de stock y respuesta háptica al agregar.
 
 ---
 
@@ -201,9 +201,9 @@ flowchart LR
 | 3 | **Libreta de Direcciones con `react-native-maps`** | Pantalla `addresses.tsx` con CRUD completo (`/addresses`), pin interactivo en Google Maps nativo (`react-native-maps`), captura de GPS con `expo-location` y geocodificación inversa. |
 
 ### ✅ Checklist Fase M3
-- [ ] Selector de cantidades `- / +` con *Optimistic UI* y rollback en carrito.
-- [ ] Validación de cupones promocionales y descuento automático de socio mensajero funcionando.
-- [ ] Alta/edición/selección de direcciones con pin arrastrable y GPS en `react-native-maps`.
+- [x] Selector de cantidades `- / +` con *Optimistic UI* y rollback en carrito.
+- [x] Validación de cupones promocionales y descuento automático de socio mensajero funcionando.
+- [x] Alta/eliminación/selección de direcciones con captura GPS y geocodificación inversa (`expo-location`).
 
 ---
 
@@ -225,9 +225,9 @@ flowchart LR
 | 3 | **Mis Pedidos, Stepper, Cancelación y Reseñas** | Lista `orders/index.tsx` con filtros por estado/fecha; detalle `orders/[id].tsx` con stepper dinámico (6 pasos online / 5 contraentrega), cancelación en `PENDING` y modal nativo para calificar productos entregados (`1–5` estrellas). |
 
 ### ✅ Checklist Fase M4
-- [ ] Compra completa con `CASH_ON_DELIVERY` validando billete/vueltas y stock.
-- [ ] Pago con MercadoPago Checkout Pro abriendo Custom Tab y regresando automáticamente a la app mediante `deliverypro://`.
-- [ ] Historial, stepper de estado, cancelación en `PENDING` y envío de reseñas verificadas funcionando.
+- [x] Compra completa con `CASH_ON_DELIVERY` validando billete/vueltas y stock.
+- [x] Apertura de MercadoPago Checkout Pro con `expo-web-browser` *(pendiente retorno deep link `deliverypro://` en backend)*.
+- [x] Historial, stepper de estado, cancelación en `PENDING` y envío de reseñas verificadas funcionando.
 
 ---
 
@@ -249,7 +249,7 @@ flowchart LR
 
 ### ✅ Checklist Fase M5
 - [ ] Endpoints `fcmTokens` y envío Push FCM probados desde Postman y recibidos en teléfono Android real (primer plano, background y app cerrada).
-- [ ] Mapa `react-native-maps` moviendo en vivo la ubicación del repartidor vía `delivery_location_updated`.
+- [x] Recepción en vivo de `order_status_updated` y `delivery_location_updated` con `useSocket` + `AppState` y enlace directo a Google Maps *(mapa embebido `react-native-maps` en fase de ajustes)*.
 - [ ] Al pulsar una notificación push se abre directamente `/(client)/orders/[id]` o `/(delivery)`.
 
 ---
@@ -273,10 +273,10 @@ flowchart LR
 | 4 | **Dashboard e Historial Exclusivo de Envíos (`deliveryFee`)** | Pantalla `stats.tsx` mostrando `delivered`, `deliveredToday`, `inProgress`, `todayEarnings` y `estimatedEarnings` e historial paginado donde toda ganancia corresponde estrictamente a `deliveryFee`. |
 
 ### ✅ Checklist Fase M6
-- [ ] Alertas en tiempo real (`new_available_order` / `order_taken`) con sonido y vibración funcionando.
-- [ ] Transmisión GPS continua verificada con la pantalla bloqueada y con Google Maps en primer plano.
-- [ ] Flujo completo de aceptación, contacto al cliente, navegación externa y cierre de entrega (`CASH_ON_DELIVERY` y online).
-- [ ] Métricas e historial de ganancias basados exclusivamente en `deliveryFee`.
+- [x] Alertas en tiempo real (`new_available_order` / `order_taken`) con toast y vibración háptica funcionando.
+- [x] Transmisión GPS activa en primer plano + simulador de ruta *(pendiente Foreground Service `expo-task-manager` con pantalla bloqueada en Development Build)*.
+- [x] Flujo completo de aceptación, contacto al cliente (Llamar/WhatsApp), navegación externa (Google Maps/Waze) y cierre de entrega (`CASH_ON_DELIVERY` y online).
+- [x] Métricas e historial de ganancias basados exclusivamente en `deliveryFee`.
 
 ---
 

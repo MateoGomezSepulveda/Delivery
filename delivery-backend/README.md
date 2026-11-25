@@ -275,4 +275,4 @@ docker compose up -d --build api
   - ✅ **Dashboard Analytics**: Endpoints de KPIs, ventas diarias y top productos mediante Aggregation Pipelines de MongoDB.
   - ✅ **Multi-entorno**: Soporte para `.env.development`, `.env.staging` y `.env.production`.
 
-*Siguiente paso: Fase 7 — Deploy a Producción con AWS (ECS Fargate).*
+*Siguiente paso: Ajustes de integración móvil (`delivery-mobile/` en Expo SDK 58 sobre puerto `8082`, ya conectado por REST y Socket.io) → Fase 7 — Deploy a Producción con AWS (ECS Fargate).*
