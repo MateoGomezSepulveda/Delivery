@@ -98,10 +98,14 @@ describe('Rider App — Bloque de Repartidores', () => {
       profile: { ...baseProfile, isAvailable: false },
       onToggleAvailability,
       isTogglingAvailability: false,
+      socketConnected: true,
     });
 
     expect(
       await screen.findByText(/estás en estado no disponible/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/alertas en pausa \(offline\)/i),
     ).toBeInTheDocument();
     expect(await screen.findByText('Laura Cliente')).toBeInTheDocument();
 
@@ -114,6 +118,34 @@ describe('Rider App — Bloque de Repartidores', () => {
       screen.getByRole('button', { name: /ponerme disponible/i }),
     );
     expect(onToggleAvailability).toHaveBeenCalledWith(true);
+  });
+
+  it('RiderAvailableOrdersPage reflects live WebSocket state (connected vs reconnecting) while Online', async () => {
+    mockGetAvailableOrdersApi.mockResolvedValue([]);
+
+    const { unmount } = renderWithOutletContext(<RiderAvailableOrdersPage />, {
+      profile: { ...baseProfile, isAvailable: true },
+      onToggleAvailability: vi.fn(),
+      isTogglingAvailability: false,
+      socketConnected: true,
+    });
+
+    expect(
+      await screen.findByText(/alertas en vivo activas/i),
+    ).toBeInTheDocument();
+
+    unmount();
+
+    renderWithOutletContext(<RiderAvailableOrdersPage />, {
+      profile: { ...baseProfile, isAvailable: true },
+      onToggleAvailability: vi.fn(),
+      isTogglingAvailability: false,
+      socketConnected: false,
+    });
+
+    expect(
+      await screen.findByText(/reconectando alertas en vivo/i),
+    ).toBeInTheDocument();
   });
 
   it('RiderActiveRoutePage shows customer Call/WhatsApp, Google Maps/Waze links, and requires modal confirmation to deliver', async () => {
@@ -141,6 +173,7 @@ describe('Rider App — Bloque de Repartidores', () => {
       profile: { ...baseProfile, isAvailable: true },
       onToggleAvailability: vi.fn(),
       isTogglingAvailability: false,
+      socketConnected: true,
     });
 
     expect(await screen.findByText('Andrés Destino')).toBeInTheDocument();
@@ -211,6 +244,7 @@ describe('Rider App — Bloque de Repartidores', () => {
       profile: { ...baseProfile, isAvailable: true },
       onToggleAvailability: vi.fn(),
       isTogglingAvailability: false,
+      socketConnected: true,
     });
 
     expect(await screen.findByText('Mateo Efectivo')).toBeInTheDocument();

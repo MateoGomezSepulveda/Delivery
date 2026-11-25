@@ -60,12 +60,14 @@ export async function showOrderStatusNotification(
   title: string,
   body: string,
   orderId?: string,
+  customTargetUrl?: string,
 ): Promise<boolean> {
   if (getNotificationPermission() !== 'granted') {
     return false;
   }
 
-  const targetUrl = orderId ? `/orders/${orderId}` : '/profile';
+  const targetUrl =
+    customTargetUrl || (orderId ? `/orders/${orderId}` : '/profile');
   const tag = orderId
     ? `delivery-order-${orderId}`
     : `delivery-order-test-${Date.now()}`;

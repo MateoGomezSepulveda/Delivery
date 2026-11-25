@@ -26,6 +26,7 @@ import { extractErrorMessage } from '@/api/axios.client';
 import type { DeliveryProfile, VehicleType } from '@/types/delivery.types';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useCartDrawerStore } from '@/store/useCartDrawerStore';
+import { useSocket } from '@/hooks/useSocket';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -35,6 +36,7 @@ export interface DeliveryOutletContext {
   profile: DeliveryProfile;
   onToggleAvailability: (next: boolean) => void;
   isTogglingAvailability: boolean;
+  socketConnected: boolean;
 }
 
 const VEHICLES: { value: VehicleType; label: string; icon: React.ReactNode }[] =
@@ -204,6 +206,9 @@ export function DeliveryLayout() {
   });
 
   const isOnline = Boolean(isApproved && profile?.isAvailable);
+  const { connected: socketConnected } = useSocket({
+    playRiderAlerts: isOnline,
+  });
   const resolvedPlate = profile?.licensePlate || profile?.plate;
 
   return (
@@ -238,20 +243,41 @@ export function DeliveryLayout() {
 
         <div className="flex items-center gap-2">
           {isApproved && (
-            <button
-              type="button"
-              disabled={availabilityMutation.isPending}
-              onClick={() => availabilityMutation.mutate(!isOnline)}
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition-colors cursor-pointer disabled:opacity-60',
-                isOnline
-                  ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                  : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
-              )}
-            >
-              <Power className="w-3.5 h-3.5" />
-              <span>{isOnline ? 'Online' : 'Offline'}</span>
-            </button>
+            <>
+              <span
+                role="status"
+                aria-label={
+                  socketConnected
+                    ? 'Conexión en tiempo real activa'
+                    : 'Reconectando conexión en tiempo real'
+                }
+                title={
+                  socketConnected
+                    ? 'Tiempo real conectado'
+                    : 'Reconectando tiempo real'
+                }
+                className={cn(
+                  'h-2.5 w-2.5 rounded-full shrink-0 transition-colors duration-200',
+                  socketConnected
+                    ? 'bg-emerald-500'
+                    : 'bg-amber-400 animate-pulse',
+                )}
+              />
+              <button
+                type="button"
+                disabled={availabilityMutation.isPending}
+                onClick={() => availabilityMutation.mutate(!isOnline)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition-colors cursor-pointer disabled:opacity-60',
+                  isOnline
+                    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                    : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+                )}
+              >
+                <Power className="w-3.5 h-3.5" />
+                <span>{isOnline ? 'Online' : 'Offline'}</span>
+              </button>
+            </>
           )}
           <Link
             to="/"
@@ -345,6 +371,7 @@ export function DeliveryLayout() {
                 onToggleAvailability: (next: boolean) =>
                   availabilityMutation.mutate(next),
                 isTogglingAvailability: availabilityMutation.isPending,
+                socketConnected,
               } satisfies DeliveryOutletContext
             }
           />

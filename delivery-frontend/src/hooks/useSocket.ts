@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { io, type Socket } from 'socket.io-client';
 import { toast } from 'sonner';
@@ -14,6 +14,17 @@ export interface DeliveryLocation {
   lat: number;
   lng: number;
 }
+
+export interface UseSocketOptions {
+  /**
+   * Activa alertas sonoras, toast y notificaciones del navegador cuando llegan
+   * nuevos pedidos disponibles (`new_available_order`). En el portal del
+   * repartidor se enlaza con el estado Online (`isAvailable === true`).
+   */
+  playRiderAlerts?: boolean;
+}
+
+const DEFAULT_DELIVERY_FEE = 5000;
 
 const STATUS_MESSAGES: Record<OrderStatus, string> = {
   PENDING: 'Tu pedido está pendiente de pago.',
@@ -34,13 +45,18 @@ export const WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:3000';
  * - Se reconecta con el nuevo token cuando el Refresh Token lo rota.
  * - `order_status_updated` -> actualiza caché, toast y sonido.
  * - `delivery_location_updated` -> guarda posición en caché ['delivery-location', orderId].
- * - `new_available_order` -> alerta en vivo con sonido a repartidores conectados.
+ * - `new_available_order` -> invalida lista de disponibles y, si `playRiderAlerts` es true, dispara alerta con sonido.
  * - `order_taken` -> remueve al instante el pedido ya tomado de la lista de disponibles.
  */
-export function useSocket(): { connected: boolean } {
+export function useSocket(options?: UseSocketOptions): { connected: boolean } {
   const queryClient = useQueryClient();
   const { accessToken, isAuthenticated } = useAuthStore();
   const [connected, setConnected] = useState(false);
+  const playRiderAlertsRef = useRef(Boolean(options?.playRiderAlerts));
+
+  useEffect(() => {
+    playRiderAlertsRef.current = Boolean(options?.playRiderAlerts);
+  }, [options?.playRiderAlerts]);
 
   useEffect(() => {
     if (!isAuthenticated || !accessToken) {
@@ -58,6 +74,7 @@ export function useSocket(): { connected: boolean } {
 
     socket.on('connect', () => setConnected(true));
     socket.on('disconnect', () => setConnected(false));
+    socket.on('connect_error', () => setConnected(false));
 
     socket.on('order_status_updated', (order: Order) => {
       if (!order?._id) return;
@@ -91,8 +108,14 @@ export function useSocket(): { connected: boolean } {
       queryClient.invalidateQueries({ queryKey: ['delivery-available'] });
       queryClient.invalidateQueries({ queryKey: ['rider-available-orders'] });
 
+      if (!playRiderAlertsRef.current) return;
+
       const shortId = order._id.slice(-6).toUpperCase();
-      const summary = `${order.address || 'Nueva entrega'} · ${formatCurrency(order.total ?? 0)}`;
+      const riderEarning =
+        order.deliveryFee && order.deliveryFee > 0
+          ? order.deliveryFee
+          : DEFAULT_DELIVERY_FEE;
+      const summary = `${order.address || 'Nueva entrega'} · Ganancia envío +${formatCurrency(riderEarning)}`;
       toast.success(`¡Nuevo pedido disponible #${shortId}!`, {
         description: summary,
       });
@@ -103,6 +126,7 @@ export function useSocket(): { connected: boolean } {
           `Nuevo pedido disponible #${shortId}`,
           summary,
           order._id,
+          '/delivery',
         );
       }
     });

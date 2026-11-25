@@ -72,7 +72,7 @@ npm run build
   - `CouponInputBox` conectado a `POST /api/v1/coupons/apply` calculando ahorro y total final en tiempo real.
 
 - ✅ **Fase 6 (Portal del Repartidor)**:
-  - `delivery.api.ts`, `DeliveryLayout` (onboarding + disponibilidad), `/delivery` (pedidos disponibles), `/delivery/active` (emisor GPS/simulador) y `/delivery/stats`.
+  - `delivery.api.ts`, `DeliveryLayout` (aprobación `PENDING`/`APPROVED`/`REJECTED`, switch Online/Offline y conexión Socket.io en vivo `useSocket({ playRiderAlerts: isOnline })`), `/delivery` (pedidos disponibles con badge real de conexión/reconexión, bloqueo Offline y ganancia por `deliveryFee`), `/delivery/active` (emisor GPS/simulador, Llamar/WhatsApp, Google Maps/Waze, alertas contraentrega y modal de confirmación) y `/delivery/stats` (KPIs e historial paginado por costo de envío).
 
 - ✅ **Fase 7 (Panel de Administración, Inventario/Stock y Analytics de Ganancias Reales)**:
   - `analytics.api.ts` y páginas `/admin` (dashboard financiero con ventas, costos de compra COGS, ganancia neta real, margen %, capital en inventario, gráfica comparativa Ventas vs. Ganancia real, tabla de rentabilidad por producto, alertas de inventario y exportación CSV), `/admin/orders` (vista dual **Kanban | Tabla**), `/admin/products` (gestión de stock, precio de compra, calculadora de margen en vivo y desactivación automática al agotarse), `/admin/categories`, `/admin/coupons` y `/admin/users`.
@@ -90,7 +90,17 @@ npm run build
 
 - ✅ **Fase 8 (Calidad, Testing, PWA, Code Splitting y Dockerización)**:
   - **ESLint 9 (`eslint.config.js`)** + scripts `lint`, `typecheck`, `test`, `test:watch` y `test:e2e`.
-  - **Tests Unitarios y de Componentes (Vitest + Testing Library + jsdom)**: 20 archivos / 59 tests (`jwt.test.ts`, `formatters.test.ts`, `inventory.test.ts`, `browserNotifications.test.ts`, `useAuthStore.test.ts`, `useCartMutations.test.tsx`, `CouponInputBox.test.tsx`, `SocialAuthButtons.test.tsx`, `ClientLayout.test.tsx`, `UserAvatar.test.tsx`, `ProductCard.test.tsx`, `LoginPage.test.tsx`, `RegisterPage.test.tsx`, `VerifyEmailPage.test.tsx`, `PasswordRecovery.test.tsx`, `ProfilePage.test.tsx`, `CheckoutPage.test.tsx`, `AdminDashboardPage.test.tsx`, `AdminOrdersPage.test.tsx` y `AdminUsersPage.test.tsx`).
+  - **Tests Unitarios y de Componentes (Vitest + Testing Library + jsdom)**: 27 archivos / 85 tests (`jwt.test.ts`, `formatters.test.ts`, `inventory.test.ts`, `browserNotifications.test.ts`, `useAuthStore.test.ts`, `useCartMutations.test.tsx`, `useSocket.test.tsx`, `CartDrawer.test.tsx`, `CouponInputBox.test.tsx`, `SocialAuthButtons.test.tsx`, `AdminLayout.test.tsx`, `ClientLayout.test.tsx`, `DeliveryLayout.test.tsx`, `UserAvatar.test.tsx`, `ProductCard.test.tsx`, `LoginPage.test.tsx`, `RegisterPage.test.tsx`, `VerifyEmailPage.test.tsx`, `PasswordRecovery.test.tsx`, `ProfilePage.test.tsx`, `CheckoutPage.test.tsx`, `PaymentResultPage.test.tsx`, `RiderPages.test.tsx`, `AdminDashboardPage.test.tsx`, `AdminOrdersPage.test.tsx`, `AdminProductsPage.test.tsx` y `AdminUsersPage.test.tsx`).
   - **Tests E2E Multirrol (`e2e/delivery-flow.spec.ts` con Playwright)**: flujo completo Cliente -> Admin -> Repartidor -> Cliente reseña.
   - **Performance & PWA**: `React.lazy` + `Suspense` en `AppRouter.tsx`, `manualChunks` en `vite.config.ts`, `public/manifest.webmanifest`, íconos PNG y SVG (`192`/`512`) y Service Workers (`public/sw.js` + `public/firebase-messaging-sw.js`).
   - **Docker Producción (Non-Root)**: `Dockerfile` multi-stage con `nginxinc/nginx-unprivileged:1.27-alpine` en puerto `8080`, `nginx.conf` (Gzip, caché `/assets/`, no-cache para SWs, `/healthz`, SPA fallback) y `.dockerignore`.
+
+- 🚧 **Fase 9 (Frontend Mobile: Responsive Mobile-First, PWA Instalable y App Android con Capacitor)** — planificada ([roadmap](../docs/roadmap%20frontend%20delivery.md)):
+  - **9.0 Auditoría móvil y baseline:** recorrido de 22 páginas × 3 roles (`360×740` a `768×1024`), snippet anti-overflow, `mobile_audit.md` y Lighthouse inicial.
+  - **9.1 Fundaciones mobile-first:** `viewport-fit=cover`, Safe Areas (`pb-safe`), `min-h-dvh`, inputs `≥16px`, targets `≥44px`, `useMediaQuery`, `BottomSheet`, `ResponsiveTable` y `BottomNav`.
+  - **9.2 Experiencia móvil Cliente:** `BottomNav` en `ClientLayout`, `CartDrawer` full-width, filtros/detalle en `BottomSheet`, `CheckoutPage` sticky, mapa `h-[45dvh]` y refactor de `ProfilePage`.
+  - **9.3 Experiencia móvil Repartidor:** `RiderActiveRoutePage` en zona del pulgar (≥48px), `Wake Lock` y `navigator.vibrate` (`useSocket` en `DeliveryLayout` ya completado en `FE · Repartidores`).
+  - **9.4 Panel Admin móvil:** Drawer hamburguesa en `AdminLayout`, tablas convertidas a tarjetas en `<md`, Kanban `snap-x` y gráficas fluidas sin anchos fijos.
+  - **9.5 PWA de nivel app:** banner `beforeinstallprompt` + guía iOS, `/offline.html` en `sw.js`, aviso de nueva versión y `manifest.webmanifest` con `shortcuts` y `screenshots`.
+  - **9.6 App nativa Android (Capacitor):** proyecto `android/`, capa `src/native/`, GPS background, Push FCM nativo, `@capacitor/browser` para pagos/OAuth, CORS y APK debug.
+  - **9.7 QA móvil y cierre:** Playwright (`Pixel 7` / `iPhone 13`), Vitest, Lighthouse Mobile `≥90`, validación CORS en Postman y cierre documental.

@@ -9,6 +9,7 @@ import {
   Phone,
   Power,
   Radio,
+  RefreshCw,
   Store,
   User as UserIcon,
 } from 'lucide-react';
@@ -28,13 +29,17 @@ import type { DeliveryOutletContext } from '@/components/layout/DeliveryLayout';
 export function RiderAvailableOrdersPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { profile, onToggleAvailability, isTogglingAvailability } =
-    useOutletContext<DeliveryOutletContext>();
+  const {
+    profile,
+    onToggleAvailability,
+    isTogglingAvailability,
+    socketConnected,
+  } = useOutletContext<DeliveryOutletContext>();
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ['delivery-available'],
     queryFn: getAvailableOrdersApi,
-    refetchInterval: 10_000,
+    refetchInterval: socketConnected ? 30_000 : 10_000,
   });
 
   const acceptMutation = useMutation({
@@ -56,6 +61,24 @@ export function RiderAvailableOrdersPage() {
 
   const isOffline = !profile.isAvailable;
 
+  const alertBadge = isOffline
+    ? {
+        variant: 'neutral' as const,
+        icon: <Radio className="w-3.5 h-3.5" />,
+        label: 'Alertas en pausa (Offline)',
+      }
+    : socketConnected
+      ? {
+          variant: 'success' as const,
+          icon: <Radio className="w-3.5 h-3.5" />,
+          label: 'Alertas en vivo activas',
+        }
+      : {
+          variant: 'warning' as const,
+          icon: <RefreshCw className="w-3.5 h-3.5 animate-spin" />,
+          label: 'Reconectando alertas en vivo...',
+        };
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -70,10 +93,12 @@ export function RiderAvailableOrdersPage() {
         </div>
 
         <Badge
-          variant={isOffline ? 'neutral' : 'success'}
-          icon={<Radio className="w-3.5 h-3.5" />}
+          role="status"
+          aria-live="polite"
+          variant={alertBadge.variant}
+          icon={alertBadge.icon}
         >
-          {isOffline ? 'Alertas en pausa (Offline)' : 'Alertas en vivo activas'}
+          {alertBadge.label}
         </Badge>
       </div>
 

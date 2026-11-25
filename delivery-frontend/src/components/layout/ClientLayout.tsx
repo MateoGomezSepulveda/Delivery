@@ -33,7 +33,7 @@ export function ClientLayout() {
   const { openDrawer, openAddressModal, activeAddressLabel, resetCartUi } =
     useCartDrawerStore();
   const { user, isAuthenticated, logout } = useAuthStore();
-  const { connected: socketConnected } = useSocket();
+  const { connected: socketConnected } = useSocket({ playRiderAlerts: false });
   const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
 
   const needsPhoneRegistration = Boolean(
